@@ -1,7 +1,7 @@
 # Test Cases & Results
 
 Last run: 2026-04-22
-Status: **62/62 passing**
+Status: **64/64 passing**
 
 ## Unit Tests
 
@@ -29,6 +29,8 @@ Status: **62/62 passing**
 | GitSyncJob | runs sync on interval | PASS |
 | GitSyncJob | handles sync errors gracefully | PASS |
 | GitSyncJob | does not start sync if not github driver | PASS |
+| Rate Limiting | should not rate limit health endpoints | PASS |
+| Rate Limiting | should return 429 after exceeding rate limit | PASS |
 
 ## Integration Tests
 

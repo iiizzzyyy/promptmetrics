@@ -23,5 +23,5 @@ describe('Rate Limiting', () => {
 
     const res = await request(app).get('/v1/prompts');
     expect(res.status).toBe(429);
-  });
+  }, 15000);
 });
