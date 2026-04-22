@@ -33,18 +33,9 @@
   "license": "MIT",
   "files": [
     "dist/",
-    "src/",
-    "docs/",
-    "examples/",
-    "clients/",
-    "Dockerfile",
-    "docker-compose.yml",
     "README.md",
-    "CONTRIBUTING.md",
-    "SECURITY.md",
-    "CHANGELOG.md",
     "LICENSE",
-    ".env.example"
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=20.0.0"
