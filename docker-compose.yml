@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  promptmetrics:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DRIVER=filesystem
+      - SQLITE_PATH=/app/data/promptmetrics.db
+      - API_KEY_SALT=${API_KEY_SALT}
+      - GITHUB_REPO=${GITHUB_REPO}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - OTEL_ENABLED=${OTEL_ENABLED:-false}
+    volumes:
+      - promptmetrics-data:/app/data
+      - promptmetrics-prompts:/app/prompts
+
+volumes:
+  promptmetrics-data:
+  promptmetrics-prompts:
