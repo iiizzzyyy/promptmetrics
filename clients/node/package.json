@@ -1,0 +1,23 @@
+{
+  "name": "@promptmetrics/client",
+  "version": "1.0.0",
+  "description": "Official PromptMetrics Node.js client",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "keywords": ["promptmetrics", "prompts", "llm", "registry"],
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.15.2"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^24.6.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.0",
+    "typescript": "^5.9.2"
+  }
+}
