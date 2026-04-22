@@ -1,0 +1,50 @@
+name: Feature Request
+description: Suggest an idea for PromptMetrics
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature. Please describe the use case and proposed solution.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the use case or limitation you are hitting.
+      placeholder: "I need to be able to roll back a prompt version without manually editing Git..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the solution you'd like
+      description: What should happen? Be specific about API/CLI changes if applicable.
+      placeholder: "Add a `promptmetrics rollback welcome --to 1.0.0` command that..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Describe alternatives you've considered
+      description: Any workarounds or other approaches.
+      placeholder: "I could manually check out an old version in the prompts directory, but..."
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else that helps us understand the request.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues to avoid duplicates.
+          required: true
+        - label: This is a feature request, not a bug report.
+          required: true

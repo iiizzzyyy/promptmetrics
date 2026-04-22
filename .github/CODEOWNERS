@@ -1,0 +1,17 @@
+# Default owners for everything in the repo
+* @iiizzzyyy
+
+# Core API and storage logic
+/src/drivers/ @iiizzzyyy
+/src/controllers/ @iiizzzyyy
+/src/models/ @iiizzzyyy
+
+# CLI
+/src/cli/ @iiizzzyyy
+
+# Documentation
+/docs/ @iiizzzyyy
+/README.md @iiizzzyyy
+
+# CI/CD
+/.github/workflows/ @iiizzzyyy

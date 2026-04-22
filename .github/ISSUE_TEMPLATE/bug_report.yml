@@ -1,0 +1,70 @@
+name: Bug Report
+description: Report a bug in PromptMetrics
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill out the details below.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear description of what went wrong.
+      placeholder: "When I run `promptmetrics get-prompt welcome`, I get a 500 error..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to reproduce the bug.
+      placeholder: |
+        1. Start the server with `node dist/server.js`
+        2. Run `promptmetrics create-prompt --file welcome.json`
+        3. Run `promptmetrics get-prompt welcome`
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+      placeholder: "The prompt should be returned with version 1.0.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Your runtime environment.
+      value: |
+        - Node.js version:
+        - PromptMetrics version:
+        - OS:
+        - Storage driver (filesystem / github):
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error messages
+      description: Paste any relevant logs or stack traces.
+      render: shell
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues to avoid duplicates.
+          required: true
+        - label: I can reproduce this with the latest code on `main`.
+          required: true

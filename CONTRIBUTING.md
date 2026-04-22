@@ -34,7 +34,7 @@ Be respectful, constructive, and inclusive. Disagreement is healthy; personal at
 ### Fork and Clone
 
 ```bash
-git clone https://github.com/your-username/promptmetrics.git
+git clone https://github.com/iiizzzyyy/promptmetrics.git
 cd promptmetrics
 ```
 
@@ -218,9 +218,11 @@ Include:
 
 ## Reporting Issues
 
+We use GitHub issue templates to make sure we get the right information upfront.
+
 ### Bugs
 
-Include:
+[Open a bug report](https://github.com/iiizzzyyy/promptmetrics/issues/new?template=bug_report.yml) and include:
 - Node.js version (`node -v`)
 - PromptMetrics version (`npm list promptmetrics`)
 - Steps to reproduce
@@ -229,14 +231,14 @@ Include:
 
 ### Feature Requests
 
-Include:
+[Open a feature request](https://github.com/iiizzzyyy/promptmetrics/issues/new?template=feature_request.yml) and include:
 - Use case description
 - Proposed API or CLI interface
 - Why existing features don't solve the problem
 
 ### Security Issues
 
-See [SECURITY.md](SECURITY.md) for responsible disclosure.
+See [SECURITY.md](SECURITY.md) for responsible disclosure. Do not open public issues for security vulnerabilities.
 
 ---
 
@@ -246,12 +248,14 @@ Releases are cut by maintainers from `main`:
 
 1. Update version in `package.json`
 2. Update `CHANGELOG.md`
-3. Tag: `git tag -a v1.0.0 -m "Release v1.0.0"`
-4. Push tags: `git push origin v1.0.0`
-5. GitHub Actions publishes the npm package
+3. Run full verification: `npm run build && npm test && npm run lint`
+4. Tag: `git tag -a v1.0.0 -m "Release v1.0.0"`
+5. Push tags: `git push origin v1.0.0`
+6. Create GitHub Release from the tag with release notes
+7. Publish to npm: `npm publish --access public`
 
 ---
 
 ## Questions?
 
-Open a [discussion](https://github.com/your-username/promptmetrics/discussions) or [issue](https://github.com/your-username/promptmetrics/issues). We are happy to help.
+Open a [discussion](https://github.com/iiizzzyyy/promptmetrics/discussions) or [issue](https://github.com/iiizzzyyy/promptmetrics/issues). We are happy to help.
