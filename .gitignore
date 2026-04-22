@@ -9,3 +9,5 @@ prompts/
 *.db-wal
 *.db-shm
 .DS_Store
+*.tgz
+promptmetrics.yaml

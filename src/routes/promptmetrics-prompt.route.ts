@@ -28,9 +28,10 @@ export function createPromptRoutes(driver: PromptDriver): Router {
   router.use(authenticateApiKey);
 
   router.get('/v1/prompts', (req, res) => void controller.listPrompts(req, res));
+  router.get('/v1/prompts/search', (req, res) => void controller.listPrompts(req, res));
   router.get('/v1/prompts/:name', (req, res) => void controller.getPrompt(req, res));
   router.get('/v1/prompts/:name/versions', (req, res) => void controller.listVersions(req, res));
-  router.post('/v1/prompts', requireScope('write'), auditLog('create'), (req, res) => void controller.createPrompt(req, res));
+  router.post('/v1/prompts', requireScope('write'), auditLog('create_prompt'), (req, res) => void controller.createPrompt(req, res));
 
   router.get('/v1/audit-logs', requireScope('admin'), (req, res) => {
     const db = getDb();

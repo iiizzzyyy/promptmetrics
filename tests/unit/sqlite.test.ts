@@ -48,6 +48,8 @@ describe('SQLite Database', () => {
     expect(tables).toContain('logs');
     expect(tables).toContain('config');
     expect(tables).toContain('audit_logs');
+    expect(tables).toContain('traces');
+    expect(tables).toContain('spans');
   });
 
   it('should create indexes', () => {
@@ -61,5 +63,7 @@ describe('SQLite Database', () => {
     expect(indexes).toContain('idx_prompts_name');
     expect(indexes).toContain('idx_logs_prompt');
     expect(indexes).toContain('idx_audit_logs_timestamp');
+    expect(indexes).toContain('idx_traces_trace_id');
+    expect(indexes).toContain('idx_spans_trace');
   });
 });

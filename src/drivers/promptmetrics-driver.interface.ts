@@ -1,7 +1,19 @@
+export interface PromptMessage {
+  role: string;
+  content: string;
+  name?: string;
+}
+
+export interface OllamaConfig {
+  options?: Record<string, unknown>;
+  keep_alive?: string;
+  format?: string | Record<string, unknown>;
+}
+
 export interface PromptFile {
   name: string;
   version: string;
-  template: string;
+  messages: PromptMessage[];
   variables?: Record<string, { type: string; required?: boolean; default?: unknown }>;
   model_config?: {
     model?: string;
@@ -9,6 +21,7 @@ export interface PromptFile {
     max_tokens?: number;
     [key: string]: unknown;
   };
+  ollama?: OllamaConfig;
   tags?: string[];
   [key: string]: unknown;
 }

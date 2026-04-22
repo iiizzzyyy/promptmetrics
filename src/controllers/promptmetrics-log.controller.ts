@@ -18,8 +18,8 @@ export class LogController {
       const db = getDb();
       const result = db
         .prepare(
-          `INSERT INTO logs (prompt_name, version_tag, metadata_json, provider, model, tokens_in, tokens_out, latency_ms, cost_usd)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO logs (prompt_name, version_tag, metadata_json, provider, model, tokens_in, tokens_out, latency_ms, cost_usd, ollama_options, ollama_keep_alive, ollama_format)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           value.prompt_name,
@@ -31,6 +31,9 @@ export class LogController {
           value.tokens_out || null,
           value.latency_ms || null,
           value.cost_usd || null,
+          value.ollama_options ? JSON.stringify(value.ollama_options) : null,
+          value.ollama_keep_alive || null,
+          value.ollama_format ? (typeof value.ollama_format === 'string' ? value.ollama_format : JSON.stringify(value.ollama_format)) : null,
         );
 
       const logEntry = {

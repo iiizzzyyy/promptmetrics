@@ -16,6 +16,9 @@ export const logMetadataSchema = Joi.object({
   tokens_out: Joi.number().integer().min(0),
   latency_ms: Joi.number().integer().min(0),
   cost_usd: Joi.number().min(0),
+  ollama_options: Joi.object().unknown(true),
+  ollama_keep_alive: Joi.string().max(16),
+  ollama_format: Joi.alternatives().try(Joi.string(), Joi.object()),
   metadata: Joi.object().pattern(metadataKeySchema, metadataValueSchema).max(50).messages({
     'object.max': 'metadata cannot contain more than 50 keys',
   }),

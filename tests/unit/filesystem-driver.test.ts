@@ -23,7 +23,10 @@ describe('FilesystemDriver', () => {
   const samplePrompt: PromptFile = {
     name: 'welcome',
     version: '1.0.0',
-    template: 'Hello {{name}}!',
+    messages: [
+      { role: 'system', content: 'You are a helpful assistant.' },
+      { role: 'user', content: 'Hello {{name}}!' },
+    ],
     variables: {
       name: { type: 'string', required: true },
     },
@@ -40,17 +43,30 @@ describe('FilesystemDriver', () => {
     await driver.createPrompt(samplePrompt);
     const result = await driver.getPrompt('welcome', '1.0.0');
     expect(result).toBeDefined();
-    expect(result!.content.template).toBe('Hello {{name}}!');
+    expect(result!.content.messages).toEqual([
+      { role: 'system', content: 'You are a helpful assistant.' },
+      { role: 'user', content: 'Hello {{name}}!' },
+    ]);
     expect(result!.version.version_tag).toBe('1.0.0');
   });
 
   it('should get latest version when version is omitted', async () => {
     await driver.createPrompt(samplePrompt);
-    await driver.createPrompt({ ...samplePrompt, version: '1.1.0', template: 'Hi {{name}}!' });
+    await driver.createPrompt({
+      ...samplePrompt,
+      version: '1.1.0',
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: 'Hi {{name}}!' },
+      ],
+    });
     const result = await driver.getPrompt('welcome');
     expect(result).toBeDefined();
     expect(result!.content.version).toBe('1.1.0');
-    expect(result!.content.template).toBe('Hi {{name}}!');
+    expect(result!.content.messages).toEqual([
+      { role: 'system', content: 'You are a helpful assistant.' },
+      { role: 'user', content: 'Hi {{name}}!' },
+    ]);
   });
 
   it('should return undefined for non-existent prompt', async () => {
@@ -88,5 +104,26 @@ describe('FilesystemDriver', () => {
     expect(result.length).toBe(2);
     expect(result).toContain('user-onboarding');
     expect(result).toContain('onboarding-v2');
+  });
+
+  it('should create a prompt with ollama config', async () => {
+    const ollamaPrompt: PromptFile = {
+      ...samplePrompt,
+      name: 'ollama-test',
+      ollama: {
+        options: { temperature: 0.8, num_ctx: 4096, seed: 42 },
+        keep_alive: '5m',
+        format: 'json',
+      },
+    };
+    const result = await driver.createPrompt(ollamaPrompt);
+    const retrieved = await driver.getPrompt('ollama-test', '1.0.0');
+    expect(retrieved).toBeDefined();
+    expect(retrieved!.content.ollama).toEqual({
+      options: { temperature: 0.8, num_ctx: 4096, seed: 42 },
+      keep_alive: '5m',
+      format: 'json',
+    });
+    expect(result.version_tag).toBe('1.0.0');
   });
 });

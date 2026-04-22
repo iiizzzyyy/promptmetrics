@@ -66,13 +66,34 @@ export class PromptController {
       }
 
       let content = result.content;
+      const isExplicitRender = req.query.render === 'true';
+
+      const shouldValidate = shouldRender && (isExplicitRender || (variables && Object.keys(variables).length > 0));
+      if (shouldValidate) {
+        const requiredVars = Object.entries(content.variables || {}).filter(
+          ([, def]) => (def as { required?: boolean }).required,
+        ).map(([key]) => key);
+        const providedVars = Object.keys(variables || {});
+        const missing = requiredVars.filter((v) => !providedVars.includes(v));
+        if (missing.length > 0) {
+          res.status(400).json({
+            error: 'Bad Request',
+            message: `Missing required variables: ${missing.join(', ')}`,
+          });
+          return;
+        }
+      }
 
       if (shouldRender && variables && Object.keys(variables).length > 0) {
-        let rendered = content.template;
-        for (const [key, value] of Object.entries(variables)) {
-          rendered = rendered.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'), String(value));
-        }
-        content = { ...content, template: rendered };
+        const renderedMessages = content.messages.map((msg) => {
+          if (msg.role === 'assistant') return msg;
+          let rendered = msg.content;
+          for (const [key, value] of Object.entries(variables)) {
+            rendered = rendered.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'), String(value));
+          }
+          return { ...msg, content: rendered };
+        });
+        content = { ...content, messages: renderedMessages };
       }
 
       res.json({ content, version: result.version });

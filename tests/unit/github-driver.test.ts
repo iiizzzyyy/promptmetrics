@@ -25,7 +25,10 @@ describe('GithubDriver', () => {
   const samplePrompt: PromptFile = {
     name: 'welcome',
     version: '1.0.0',
-    template: 'Hello {{name}}!',
+    messages: [
+      { role: 'system', content: 'You are a helpful assistant.' },
+      { role: 'user', content: 'Hello {{name}}!' },
+    ],
     variables: {
       name: { type: 'string', required: true },
     },

@@ -5,10 +5,16 @@ export interface PromptMetricsConfig {
   apiKey: string;
 }
 
+export interface PromptMessage {
+  role: string;
+  content: string;
+  name?: string;
+}
+
 export interface Prompt {
   name: string;
   version: string;
-  template: string;
+  messages: PromptMessage[];
   variables?: Record<string, { type: string; required?: boolean }>;
   model_config?: Record<string, unknown>;
   tags?: string[];

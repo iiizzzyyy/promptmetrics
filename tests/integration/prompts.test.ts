@@ -62,7 +62,10 @@ describe('Prompt API Integration', () => {
       .send({
         name: 'welcome',
         version: '1.0.0',
-        template: 'Hello {{name}}!',
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant.' },
+          { role: 'user', content: 'Hello {{name}}!' },
+        ],
         variables: { name: { type: 'string', required: true } },
       });
 
@@ -81,7 +84,10 @@ describe('Prompt API Integration', () => {
   it('GET /v1/prompts/:name returns latest version', async () => {
     const res = await request(app).get('/v1/prompts/welcome').set('X-API-Key', apiKey);
     expect(res.status).toBe(200);
-    expect(res.body.content.template).toBe('Hello {{name}}!');
+    expect(res.body.content.messages).toEqual([
+      { role: 'system', content: 'You are a helpful assistant.' },
+      { role: 'user', content: 'Hello {{name}}!' },
+    ]);
   });
 
   it('GET /v1/prompts/:name/versions lists versions', async () => {
@@ -105,6 +111,42 @@ describe('Prompt API Integration', () => {
         latency_ms: 500,
         cost_usd: 0.001,
         metadata: { user_id: 'user_123', experiment: 'headline-v2' },
+      });
+
+    expect(res.status).toBe(202);
+    expect(res.body.status).toBe('accepted');
+  });
+
+  it('POST /v1/prompts accepts ollama config', async () => {
+    const res = await request(app)
+      .post('/v1/prompts')
+      .set('X-API-Key', apiKey)
+      .send({
+        name: 'ollama-prompt',
+        version: '1.0.0',
+        messages: [{ role: 'user', content: 'Hello' }],
+        ollama: {
+          options: { temperature: 0.8, num_ctx: 4096 },
+          keep_alive: '5m',
+          format: 'json',
+        },
+      });
+
+    expect(res.status).toBe(201);
+  });
+
+  it('POST /v1/logs accepts ollama fields', async () => {
+    const res = await request(app)
+      .post('/v1/logs')
+      .set('X-API-Key', apiKey)
+      .send({
+        prompt_name: 'ollama-prompt',
+        version_tag: '1.0.0',
+        provider: 'ollama',
+        model: 'llama3.1',
+        ollama_options: { temperature: 0.8, num_ctx: 4096 },
+        ollama_keep_alive: '5m',
+        ollama_format: 'json',
       });
 
     expect(res.status).toBe(202);

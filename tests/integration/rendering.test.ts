@@ -45,46 +45,84 @@ describe('Template Rendering Integration', () => {
     if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
   });
 
-  it('should render template with variables from query string', async () => {
+  it('should render messages with variables from query string', async () => {
     await request(app)
       .post('/v1/prompts')
       .set('X-API-Key', apiKey)
       .send({
         name: 'greeting',
         version: '1.0.0',
-        template: 'Hello {{name}}! You are {{age}} years old.',
+        messages: [
+          { role: 'system', content: 'You are a {{role}}.' },
+          { role: 'user', content: 'Hello {{name}}! You are {{age}} years old.' },
+        ],
         variables: {
           name: { type: 'string', required: true },
           age: { type: 'number', required: true },
+          role: { type: 'string', required: true },
         },
       });
 
     const res = await request(app)
-      .get('/v1/prompts/greeting?variables[name]=Alice&variables[age]=30')
+      .get('/v1/prompts/greeting?variables[name]=Alice&variables[age]=30&variables[role]=developer')
       .set('X-API-Key', apiKey);
 
     expect(res.status).toBe(200);
-    expect(res.body.content.template).toBe('Hello Alice! You are 30 years old.');
+    expect(res.body.content.messages).toEqual([
+      { role: 'system', content: 'You are a developer.' },
+      { role: 'user', content: 'Hello Alice! You are 30 years old.' },
+    ]);
   });
 
-  it('should return raw template when render=false', async () => {
+  it('should return raw messages when render=false', async () => {
     const res = await request(app)
-      .get('/v1/prompts/greeting?render=false&variables[name]=Alice')
+      .get('/v1/prompts/greeting?render=false&variables[name]=Alice&variables[role]=developer')
       .set('X-API-Key', apiKey);
 
     expect(res.status).toBe(200);
-    expect(res.body.content.template).toBe('Hello {{name}}! You are {{age}} years old.');
+    expect(res.body.content.messages).toEqual([
+      { role: 'system', content: 'You are a {{role}}.' },
+      { role: 'user', content: 'Hello {{name}}! You are {{age}} years old.' },
+    ]);
   });
 
-  it('should render template with variables from POST body', async () => {
+  it('should render messages with variables from POST body', async () => {
     const res = await request(app)
       .get('/v1/prompts/greeting')
       .set('X-API-Key', apiKey)
       .send({
-        variables: { name: 'Bob', age: '25' },
+        variables: { name: 'Bob', age: '25', role: 'manager' },
       });
 
     expect(res.status).toBe(200);
-    expect(res.body.content.template).toBe('Hello Bob! You are 25 years old.');
+    expect(res.body.content.messages).toEqual([
+      { role: 'system', content: 'You are a manager.' },
+      { role: 'user', content: 'Hello Bob! You are 25 years old.' },
+    ]);
+  });
+
+  it('should not render assistant role messages', async () => {
+    await request(app)
+      .post('/v1/prompts')
+      .set('X-API-Key', apiKey)
+      .send({
+        name: 'assistant-test',
+        version: '1.0.0',
+        messages: [
+          { role: 'user', content: 'What is {{topic}}?' },
+          { role: 'assistant', content: 'Let me tell you about {{topic}}.' },
+        ],
+        variables: { topic: { type: 'string', required: true } },
+      });
+
+    const res = await request(app)
+      .get('/v1/prompts/assistant-test?variables[topic]=AI')
+      .set('X-API-Key', apiKey);
+
+    expect(res.status).toBe(200);
+    expect(res.body.content.messages).toEqual([
+      { role: 'user', content: 'What is AI?' },
+      { role: 'assistant', content: 'Let me tell you about {{topic}}.' },
+    ]);
   });
 });

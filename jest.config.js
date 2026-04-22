@@ -20,5 +20,6 @@ module.exports = {
   },
   collectCoverageFrom: ['src/**/*.ts', '!src/scripts/**', '!src/cli/**'],
   coverageDirectory: 'coverage',
+  setupFiles: ['<rootDir>/tests/env-setup.ts'],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
 };

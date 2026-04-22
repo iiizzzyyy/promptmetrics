@@ -39,7 +39,7 @@ async function generateWelcome(userName: string) {
   const start = Date.now();
   const completion = await openai.chat.completions.create({
     model: prompt.model_config?.model || 'gpt-4o',
-    messages: [{ role: 'user', content: prompt.template }],
+    messages: prompt.messages,
     temperature: prompt.model_config?.temperature ?? 0.7,
   });
   const latencyMs = Date.now() - start;
@@ -82,7 +82,7 @@ def generate_welcome(user_name: str):
     start = time.time()
     completion = openai.chat.completions.create(
         model=prompt.model_config.get("model", "gpt-4o"),
-        messages=[{"role": "user", "content": prompt.template}],
+        messages=prompt.messages,
         temperature=prompt.model_config.get("temperature", 0.7),
     )
     latency_ms = int((time.time() - start) * 1000)
@@ -130,8 +130,16 @@ const completion = await openai.chat.completions.create({ ... });
 The REST API is complete and stable — any SDK is a thin wrapper around:
 
 - `GET /v1/prompts/:name?variables[key]=value`
-- `POST /v1/logs`
-- `GET /v1/prompts` (list)
 - `POST /v1/prompts` (create)
+- `GET /v1/prompts` (list)
+- `POST /v1/logs`
+- `POST /v1/traces` — create a trace
+- `GET /v1/traces/:trace_id` — get trace with spans
+- `POST /v1/traces/:trace_id/spans` — add a span
+- `POST /v1/runs` — create a workflow run
+- `PATCH /v1/runs/:run_id` — update run status/output
+- `GET /v1/runs` — list runs
+- `POST /v1/prompts/:name/labels` — tag a version
+- `GET /v1/prompts/:name/labels/:label_name` — resolve a label
 
 If you build one, open a PR to add it to this list.

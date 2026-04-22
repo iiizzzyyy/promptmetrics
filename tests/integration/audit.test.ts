@@ -59,7 +59,10 @@ describe('Audit Logging Integration', () => {
       .send({
         name: 'audit-test',
         version: '1.0.0',
-        template: 'Test template',
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant.' },
+          { role: 'user', content: 'Test template' },
+        ],
       });
 
     const db = getDb();
@@ -68,7 +71,7 @@ describe('Audit Logging Integration', () => {
       .get('audit-test') as { action: string; api_key_name: string } | undefined;
 
     expect(row).toBeDefined();
-    expect(row!.action).toBe('create');
+    expect(row!.action).toBe('create_prompt');
     expect(row!.api_key_name).toBe('test-write-key');
   });
 

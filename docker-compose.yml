@@ -9,13 +9,31 @@ services:
       - PORT=3000
       - DRIVER=filesystem
       - SQLITE_PATH=/app/data/promptmetrics.db
-      - API_KEY_SALT=${API_KEY_SALT}
+      - API_KEY_SALT=${API_KEY_SALT:-docker-compose-smoke-test}
       - GITHUB_REPO=${GITHUB_REPO}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - OTEL_ENABLED=${OTEL_ENABLED:-false}
     volumes:
       - promptmetrics-data:/app/data
       - promptmetrics-prompts:/app/prompts
+      - ./seed-smoke-api-key.js:/app/seed-smoke-api-key.js:ro
+    command: >
+      sh -c "node dist/scripts/init-db.js && node /app/seed-smoke-api-key.js && exec node dist/server.js"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  smoke-test:
+    build:
+      context: ./examples/smoke-test
+    depends_on:
+      promptmetrics:
+        condition: service_healthy
+    environment:
+      - SERVER_URL=http://promptmetrics:3000
+      - API_KEY=pm_smoke_test_key
 
 volumes:
   promptmetrics-data:

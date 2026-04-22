@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build
+        run: npm run build
+
       - name: Run linter
         run: npm run lint
 
@@ -32,8 +35,8 @@ jobs:
         env:
           API_KEY_SALT: test-salt-for-ci
 
-      - name: Build
-        run: npm run build
+      - name: Audit
+        run: npm audit --audit-level=moderate
 
       - name: Test CLI
         run: node dist/scripts/generate-api-key.js ci-key read,write
