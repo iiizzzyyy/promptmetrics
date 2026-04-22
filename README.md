@@ -1,5 +1,6 @@
 # PromptMetrics
 
+[![CI](https://github.com/iiizzzyyy/promptmetrics/actions/workflows/ci.yml/badge.svg)](https://github.com/iiizzzyyy/promptmetrics/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
@@ -99,7 +100,7 @@ Read the full architecture in [docs/architecture.md](docs/architecture.md).
 ### Option A: Docker Compose (Recommended)
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/iiizzzyyy/promptmetrics.git
 cd promptmetrics
 cp .env.example .env
 # Edit .env and set API_KEY_SALT
@@ -128,7 +129,7 @@ node $(npm root -g)/promptmetrics/dist/scripts/generate-api-key.js default read,
 ### Option C: From Source
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/iiizzzyyy/promptmetrics.git
 cd promptmetrics
 cp .env.example .env          # set API_KEY_SALT and other config
 npm install
