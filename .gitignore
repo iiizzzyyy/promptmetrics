@@ -4,6 +4,7 @@ coverage/
 *.log
 .env
 data/
+prompts/
 *.db
 *.db-wal
 *.db-shm
