@@ -43,6 +43,7 @@
     "PROMPT_FORMAT.md",
     "CLI.md",
     "SDK.md",
+    "SECURITY.md",
     "LICENSE",
     ".env.example"
   ],
