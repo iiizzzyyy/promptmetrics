@@ -10,10 +10,16 @@ PromptMetrics is intentionally thin. You can use it with raw `curl`, but thin wr
 
 This keeps PromptMetrics out of the inference path — no proxy, no latency overhead, no rate-limit management.
 
-## Node.js SDK (Conceptual)
+## Node.js SDK
+
+The Node.js SDK lives in `clients/node/`. It is published as `@promptmetrics/client`.
+
+```bash
+npm install @promptmetrics/client
+```
 
 ```typescript
-import { PromptMetrics } from 'promptmetrics-client';
+import { PromptMetrics } from '@promptmetrics/client';
 import OpenAI from 'openai';
 
 const pm = new PromptMetrics({
@@ -114,9 +120,14 @@ const openai = wrapOpenAI(new OpenAI({ ... }), {
 const completion = await openai.chat.completions.create({ ... });
 ```
 
-## Status
+## SDK Status
 
-These SDKs are not yet implemented. They are included here as a specification for community contributions. The REST API is complete and stable — any SDK is a thin wrapper around:
+| SDK | Status | Location |
+|---|---|---|
+| Node.js | Implemented | `clients/node/` |
+| Python | Planned | Community contribution welcome |
+
+The REST API is complete and stable — any SDK is a thin wrapper around:
 
 - `GET /v1/prompts/:name?variables[key]=value`
 - `POST /v1/logs`
