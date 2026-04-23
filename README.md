@@ -1,5 +1,6 @@
 # PromptMetrics
 
+[![npm](https://img.shields.io/npm/v/promptmetrics.svg)](https://www.npmjs.com/package/promptmetrics)
 [![CI](https://github.com/iiizzzyyy/promptmetrics/actions/workflows/ci.yml/badge.svg)](https://github.com/iiizzzyyy/promptmetrics/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
@@ -97,7 +98,20 @@ Read the full architecture in [docs/architecture.md](docs/architecture.md).
 
 ## Quickstart
 
-### Option A: Docker Compose (Recommended)
+### Option A: npm Global Install (Fastest)
+
+```bash
+npm install -g promptmetrics
+promptmetrics-server
+```
+
+Generate an API key (in another terminal):
+```bash
+node $(npm root -g)/promptmetrics/dist/scripts/generate-api-key.js default read,write
+# => pm_xxxxxxxx... (store this)
+```
+
+### Option B: Docker Compose
 
 ```bash
 git clone https://github.com/iiizzzyyy/promptmetrics.git
@@ -110,19 +124,6 @@ docker compose up --build
 Generate an API key:
 ```bash
 docker compose exec promptmetrics node dist/scripts/generate-api-key.js default read,write
-# => pm_xxxxxxxx... (store this)
-```
-
-### Option B: npm Global Install
-
-```bash
-npm install -g promptmetrics
-promptmetrics-server
-```
-
-Generate an API key (in another terminal):
-```bash
-node $(npm root -g)/promptmetrics/dist/scripts/generate-api-key.js default read,write
 # => pm_xxxxxxxx... (store this)
 ```
 
