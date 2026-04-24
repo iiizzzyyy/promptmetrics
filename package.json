@@ -42,6 +42,7 @@
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
+    "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/hpp": "^0.2.6",
@@ -71,6 +72,7 @@
     "axios": "^1.15.2",
     "better-sqlite3": "^12.1.1",
     "commander": "^13.1.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",

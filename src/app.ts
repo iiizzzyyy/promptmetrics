@@ -2,6 +2,7 @@ import express, { Application } from 'express';
 import helmet from 'helmet';
 import hpp from 'hpp';
 import cors from 'cors';
+import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { config } from '@config/index';
 import { PromptDriver } from '@drivers/promptmetrics-driver.interface';
@@ -24,6 +25,7 @@ export function createApp(driver?: PromptDriver): Application {
   app.use(helmet());
   app.use(hpp());
   app.use(cors());
+  app.use(compression());
   app.use(
     rateLimit({
       windowMs: 60 * 1000,
