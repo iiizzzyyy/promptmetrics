@@ -34,3 +34,8 @@ export async function initSchema(): Promise<void> {
   const migrator = createMigrator();
   await migrator.up();
 }
+
+export function withTransaction<T>(fn: (db: Database.Database) => T): T {
+  const db = getDb();
+  return db.transaction(fn)(db);
+}

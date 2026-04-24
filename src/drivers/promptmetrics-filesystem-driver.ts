@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { PromptDriver, PromptFile, PromptVersion } from './promptmetrics-driver.interface';
+import { withTransaction } from '@models/promptmetrics-sqlite';
 
 export class FilesystemDriver implements PromptDriver {
   private readonly basePath: string;
@@ -71,12 +72,20 @@ export class FilesystemDriver implements PromptDriver {
     fs.writeFileSync(filePath, JSON.stringify(prompt, null, 2), 'utf-8');
 
     const stats = fs.statSync(filePath);
-    return {
+    const version: PromptVersion = {
       name: prompt.name,
       version_tag: prompt.version,
       fs_path: filePath,
       created_at: Math.floor(stats.mtime.getTime() / 1000),
     };
+
+    withTransaction((db) => {
+      db.prepare(
+        'INSERT OR REPLACE INTO prompts (name, version_tag, fs_path, driver, created_at) VALUES (?, ?, ?, ?, ?)',
+      ).run(prompt.name, prompt.version, filePath, 'filesystem', version.created_at);
+    });
+
+    return version;
   }
 
   async listVersions(name: string, page: number = 1, limit: number = 50): Promise<{ items: PromptVersion[]; total: number }> {

@@ -4,7 +4,7 @@ import path from 'path';
 import axios from 'axios';
 import { PromptDriver, PromptFile, PromptVersion } from './promptmetrics-driver.interface';
 import { config } from '@config/index';
-import { getDb } from '@models/promptmetrics-sqlite';
+import { getDb, withTransaction } from '@models/promptmetrics-sqlite';
 
 export class GithubDriver implements PromptDriver {
   private readonly clonePath: string;
@@ -164,17 +164,36 @@ export class GithubDriver implements PromptDriver {
           created_at: Math.floor(Date.now() / 1000),
         };
 
-        // Update SQLite index
-        const db = getDb();
-        db.prepare(
-          'INSERT OR REPLACE INTO prompts (name, version_tag, commit_sha, driver, created_at) VALUES (?, ?, ?, ?, ?)',
-        ).run(
-          prompt.name,
-          prompt.version,
-          version.commit_sha,
-          'github',
-          version.created_at,
-        );
+        // Update SQLite index inside a transaction
+        try {
+          withTransaction((db) => {
+            db.prepare(
+              'INSERT OR REPLACE INTO prompts (name, version_tag, commit_sha, driver, created_at) VALUES (?, ?, ?, ?, ?)',
+            ).run(
+              prompt.name,
+              prompt.version,
+              version.commit_sha,
+              'github',
+              version.created_at,
+            );
+          });
+        } catch (dbError) {
+          // Attempt to revert GitHub changes on DB failure
+          try {
+            await axios.request({
+              method: 'DELETE',
+              url: `${this.apiBase}/repos/${this.repo}/contents/${filePath}`,
+              headers: this.getAuthHeaders(),
+              data: {
+                message: `Revert prompt: ${prompt.name} v${prompt.version}`,
+                sha: existingSha || (await this.getLatestSha()) || '',
+              },
+            });
+          } catch {
+            // Best-effort revert; original error is what matters
+          }
+          throw dbError;
+        }
 
         return version;
       } catch (err) {
