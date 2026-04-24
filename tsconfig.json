@@ -23,6 +23,7 @@
       "@interfaces/*": ["interfaces/*"],
       "@jobs/*": ["jobs/*"],
       "@middlewares/*": ["middlewares/*"],
+      "@migrations/*": ["migrations/*"],
       "@models/*": ["models/*"],
       "@routes/*": ["routes/*"],
       "@services/*": ["services/*"],

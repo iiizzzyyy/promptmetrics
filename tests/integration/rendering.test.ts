@@ -12,7 +12,7 @@ describe('Template Rendering Integration', () => {
   let app: ReturnType<typeof createApp>;
   let apiKey: string;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     process.env.SQLITE_PATH = testDbPath;
     process.env.DRIVER = 'filesystem';
     process.env.API_KEY_SALT = 'test-salt';
@@ -24,7 +24,7 @@ describe('Template Rendering Integration', () => {
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
     if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
 
-    initSchema();
+    await initSchema();
 
     const db = getDb();
     apiKey = 'pm_testrender456';

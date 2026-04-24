@@ -1,9 +1,9 @@
 import { getDb, initSchema, closeDb } from '@models/promptmetrics-sqlite';
 
-function main(): void {
+async function main(): Promise<void> {
   try {
     console.log('Initializing PromptMetrics database...');
-    initSchema();
+    await initSchema();
 
     const db = getDb();
     const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[];
@@ -21,4 +21,7 @@ function main(): void {
   }
 }
 
-main();
+main().catch((err) => {
+  console.error('Failed to initialize database:', err);
+  process.exit(1);
+});

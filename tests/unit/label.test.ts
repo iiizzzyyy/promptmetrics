@@ -10,7 +10,11 @@ describe('LabelController', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-label.db');
   const controller = new LabelController(new LabelService());
 
-  function mockReq(body: unknown, params: Record<string, string> = {}, query: Record<string, string> = {}): Partial<Request> {
+  function mockReq(
+    body: unknown,
+    params: Record<string, string> = {},
+    query: Record<string, string> = {},
+  ): Partial<Request> {
     return { body, params, query } as Partial<Request>;
   }
 
@@ -22,13 +26,13 @@ describe('LabelController', () => {
     return res;
   }
 
-  beforeEach(() => {
+  beforeEach(async () => {
     process.env.SQLITE_PATH = testDbPath;
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
     closeDb();
-    initSchema();
+    await initSchema();
   });
 
   afterEach(() => {

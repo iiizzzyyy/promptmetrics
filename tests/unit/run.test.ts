@@ -10,7 +10,11 @@ describe('RunController', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-run.db');
   const controller = new RunController(new RunService());
 
-  function mockReq(body: unknown, params: Record<string, string> = {}, query: Record<string, string> = {}): Partial<Request> {
+  function mockReq(
+    body: unknown,
+    params: Record<string, string> = {},
+    query: Record<string, string> = {},
+  ): Partial<Request> {
     return { body, params, query } as Partial<Request>;
   }
 
@@ -21,13 +25,13 @@ describe('RunController', () => {
     return res;
   }
 
-  beforeEach(() => {
+  beforeEach(async () => {
     process.env.SQLITE_PATH = testDbPath;
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
     closeDb();
-    initSchema();
+    await initSchema();
   });
 
   afterEach(() => {
@@ -115,7 +119,10 @@ describe('RunController', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect((res.json as jest.Mock).mock.calls[0][0].status).toBe('updated');
 
-    const updated = db.prepare('SELECT * FROM runs WHERE run_id = ?').get(runId) as { status: string; output_json: string };
+    const updated = db.prepare('SELECT * FROM runs WHERE run_id = ?').get(runId) as {
+      status: string;
+      output_json: string;
+    };
     expect(updated.status).toBe('completed');
     expect(JSON.parse(updated.output_json)).toEqual({ result: 'ok' });
   });

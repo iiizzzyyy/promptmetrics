@@ -13,7 +13,7 @@ describe('Audit Logging Integration', () => {
   let writeApiKey: string;
   let adminApiKey: string;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     process.env.SQLITE_PATH = testDbPath;
     process.env.DRIVER = 'filesystem';
     process.env.API_KEY_SALT = 'test-salt';
@@ -25,7 +25,7 @@ describe('Audit Logging Integration', () => {
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
     if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
 
-    initSchema();
+    await initSchema();
 
     const db = getDb();
     writeApiKey = 'pm_testwrite789';

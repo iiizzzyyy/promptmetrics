@@ -52,7 +52,11 @@ export class LogService {
         input.cost_usd || null,
         input.ollama_options ? JSON.stringify(input.ollama_options) : null,
         input.ollama_keep_alive || null,
-        input.ollama_format ? (typeof input.ollama_format === 'string' ? input.ollama_format : JSON.stringify(input.ollama_format)) : null,
+        input.ollama_format
+          ? typeof input.ollama_format === 'string'
+            ? input.ollama_format
+            : JSON.stringify(input.ollama_format)
+          : null,
       );
 
     return {

@@ -12,6 +12,7 @@ module.exports = {
     '^@errors/(.*)$': '<rootDir>/src/errors/$1',
     '^@interfaces/(.*)$': '<rootDir>/src/interfaces/$1',
     '^@middlewares/(.*)$': '<rootDir>/src/middlewares/$1',
+    '^@migrations/(.*)$': '<rootDir>/src/migrations/$1',
     '^@models/(.*)$': '<rootDir>/src/models/$1',
     '^@routes/(.*)$': '<rootDir>/src/routes/$1',
     '^@jobs/(.*)$': '<rootDir>/src/jobs/$1',

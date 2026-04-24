@@ -28,15 +28,15 @@ describe('SQLite Database', () => {
     if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
   });
 
-  it('should create database with WAL mode', () => {
-    initSchema();
+  it('should create database with WAL mode', async () => {
+    await initSchema();
     const db = getDb();
     const journalMode = db.pragma('journal_mode');
     expect(journalMode).toEqual([{ journal_mode: 'wal' }]);
   });
 
-  it('should create all required tables', () => {
-    initSchema();
+  it('should create all required tables', async () => {
+    await initSchema();
     const db = getDb();
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
@@ -52,8 +52,8 @@ describe('SQLite Database', () => {
     expect(tables).toContain('spans');
   });
 
-  it('should create indexes', () => {
-    initSchema();
+  it('should create indexes', async () => {
+    await initSchema();
     const db = getDb();
     const indexes = db
       .prepare("SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_%'")

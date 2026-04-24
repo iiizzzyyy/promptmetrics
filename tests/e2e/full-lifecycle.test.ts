@@ -15,7 +15,7 @@ describe('Full Lifecycle E2E', () => {
   let adminKey: string;
   let badKey: string;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     process.env.SQLITE_PATH = testDbPath;
     process.env.DRIVER = 'filesystem';
     process.env.API_KEY_SALT = 'e2e-salt';
@@ -26,7 +26,7 @@ describe('Full Lifecycle E2E', () => {
     if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
 
     closeDb();
-    initSchema();
+    await initSchema();
 
     const db = getDb();
     readKey = 'pm_readkey123';

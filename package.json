@@ -19,6 +19,7 @@
     "test:integration": "jest tests/integration",
     "test:e2e": "jest tests/e2e",
     "db:init": "ts-node -r tsconfig-paths/register src/scripts/init-db.ts",
+    "migrate": "ts-node -r tsconfig-paths/register src/scripts/migrate.ts",
     "api-key:generate": "ts-node -r tsconfig-paths/register src/scripts/generate-api-key.ts"
   },
   "keywords": [
@@ -51,6 +52,7 @@
     "@types/mustache": "^4.2.6",
     "@types/node": "^24.6.0",
     "@types/supertest": "^6.0.3",
+    "@types/umzug": "^2.3.9",
     "@typescript-eslint/eslint-plugin": "^8.44.1",
     "@typescript-eslint/parser": "^8.44.1",
     "eslint": "^9.36.0",
@@ -81,6 +83,7 @@
     "hpp": "^0.2.3",
     "joi": "^18.0.1",
     "js-yaml": "^4.1.0",
-    "mustache": "^4.2.0"
+    "mustache": "^4.2.0",
+    "umzug": "^3.8.2"
   }
 }

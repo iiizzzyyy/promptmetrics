@@ -252,26 +252,26 @@
 ### Epic 3.1 -- Introduce Migration System
 
 #### Task 3.1.1 -- Choose and install migration tool
-- [ ] **3.1.1.1** Decision: use `umzug` (not `drizzle-orm`) to minimize refactoring
-- [ ] **3.1.1.2** Run: `npm install umzug`
-- [ ] **3.1.1.3** Create `migrations/` directory
-- [ ] **3.1.1.4** Create `src/migrations/migrator.ts` that configures `Umzug` with SQLite
-- [ ] **3.1.1.5** Add `npm run migrate` script to `package.json`
-- [ ] **3.1.1.6** Unit test: `tests/unit/migrations/migrator.test.ts`
-- [ ] **3.1.1.7** Commit: `git commit -m "feat: add umzug migration runner"`
+- [x] **3.1.1.1** Decision: use `umzug` (not `drizzle-orm`) to minimize refactoring
+- [x] **3.1.1.2** Run: `npm install umzug`
+- [x] **3.1.1.3** Create `migrations/` directory
+- [x] **3.1.1.4** Create `src/migrations/migrator.ts` that configures `Umzug` with SQLite
+- [x] **3.1.1.5** Add `npm run migrate` script to `package.json`
+- [x] **3.1.1.6** Unit test: `tests/unit/migrations/migrator.test.ts`
+- [x] **3.1.1.7** Commit: `git commit -m "feat: add umzug migration runner"`
 
 #### Task 3.1.2 -- Extract existing schema into migration files
-- [ ] **3.1.2.1** Create `migrations/001_initial_schema.sql` with all `CREATE TABLE` and `CREATE INDEX` from `initSchema()`
-- [ ] **3.1.2.2** Create `migrations/002_add_ollama_columns.sql` with the three `ALTER TABLE` statements
-- [ ] **3.1.2.3** Update `src/models/promptmetrics-sqlite.ts`:
+- [x] **3.1.2.1** Create `migrations/001_initial_schema.sql` with all `CREATE TABLE` and `CREATE INDEX` from `initSchema()`
+- [x] **3.1.2.2** Create `migrations/002_add_ollama_columns.sql` with the three `ALTER TABLE` statements
+- [x] **3.1.2.3** Update `src/models/promptmetrics-sqlite.ts`:
   - Remove inline `CREATE TABLE` statements
   - Remove `PRAGMA table_info` migration block
   - Call `migrator.up()` on startup instead
-- [ ] **3.1.2.4** Add `migrations` table tracking to `umzug` config
-- [ ] **3.1.2.5** Test fresh database: delete `./data/`, run `npm run db:init`, verify schema matches old behavior
-- [ ] **3.1.2.6** Test existing database: verify `umzug` skips already-applied migrations
-- [ ] **3.1.2.7** Run all tests: `npm test`
-- [ ] **3.1.2.8** Commit: `git commit -m "refactor: extract schema into numbered SQL migrations"`
+- [x] **3.1.2.4** Add `migrations` table tracking to `umzug` config
+- [x] **3.1.2.5** Test fresh database: delete `./data/`, run `npm run db:init`, verify schema matches old behavior
+- [x] **3.1.2.6** Test existing database: verify `umzug` skips already-applied migrations
+- [x] **3.1.2.7** Run all tests: `npm test`
+- [x] **3.1.2.8** Commit: `git commit -m "refactor: extract schema into numbered SQL migrations"`
 
 ---
 

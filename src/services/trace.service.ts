@@ -86,7 +86,9 @@ export class TraceService {
       created_at: row.created_at,
     };
 
-    const spanRows = db.prepare('SELECT * FROM spans WHERE trace_id = ? ORDER BY start_time ASC').all(traceId) as Array<{
+    const spanRows = db
+      .prepare('SELECT * FROM spans WHERE trace_id = ? ORDER BY start_time ASC')
+      .all(traceId) as Array<{
       span_id: string;
       parent_id: string | null;
       name: string;

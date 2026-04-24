@@ -149,16 +149,16 @@ export class RunService {
     const items = db
       .prepare('SELECT * FROM runs ORDER BY created_at DESC LIMIT ? OFFSET ?')
       .all(limit, offset) as Array<{
-        run_id: string;
-        workflow_name: string;
-        status: string;
-        input_json: string | null;
-        output_json: string | null;
-        trace_id: string | null;
-        metadata_json: string | null;
-        created_at: number;
-        updated_at: number;
-      }>;
+      run_id: string;
+      workflow_name: string;
+      status: string;
+      input_json: string | null;
+      output_json: string | null;
+      trace_id: string | null;
+      metadata_json: string | null;
+      created_at: number;
+      updated_at: number;
+    }>;
 
     return buildPaginatedResponse(
       items.map((r) => ({

@@ -21,13 +21,13 @@ describe('TraceController', () => {
     return res;
   }
 
-  beforeEach(() => {
+  beforeEach(async () => {
     process.env.SQLITE_PATH = testDbPath;
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
     closeDb();
-    initSchema();
+    await initSchema();
   });
 
   afterEach(() => {
@@ -104,7 +104,10 @@ describe('TraceController', () => {
     const db = getDb();
     db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
 
-    const req = mockReq({ name: 'agent-step-1', status: 'ok', start_time: 1000, end_time: 2000 }, { trace_id: traceId });
+    const req = mockReq(
+      { name: 'agent-step-1', status: 'ok', start_time: 1000, end_time: 2000 },
+      { trace_id: traceId },
+    );
     const res = mockRes();
     await controller.createSpan(req as Request, res as Response);
 

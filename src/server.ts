@@ -7,10 +7,10 @@ import { initOtel, shutdownOtel } from '@services/promptmetrics-otel.service';
 import { GitSyncJob } from '@jobs/promptmetrics-git-sync.job';
 import { createDriver } from '@drivers/promptmetrics-driver.factory';
 
-function main(): void {
+async function main(): Promise<void> {
   console.log('Starting PromptMetrics...');
 
-  initSchema();
+  await initSchema();
   console.log('Database initialized.');
 
   initOtel();
@@ -44,4 +44,7 @@ function main(): void {
   });
 }
 
-main();
+main().catch((err) => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
+});

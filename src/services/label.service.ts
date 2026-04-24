@@ -33,17 +33,17 @@ export class LabelService {
   listLabels(promptName: string, page: number, limit: number): PaginatedResponse<Label> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const total = (db
-      .prepare('SELECT COUNT(*) as c FROM prompt_labels WHERE prompt_name = ?')
-      .get(promptName) as { c: number }).c;
+    const total = (
+      db.prepare('SELECT COUNT(*) as c FROM prompt_labels WHERE prompt_name = ?').get(promptName) as { c: number }
+    ).c;
     const items = db
       .prepare('SELECT * FROM prompt_labels WHERE prompt_name = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
       .all(promptName, limit, offset) as Array<{
-        prompt_name: string;
-        name: string;
-        version_tag: string;
-        created_at: number;
-      }>;
+      prompt_name: string;
+      name: string;
+      version_tag: string;
+      created_at: number;
+    }>;
 
     return buildPaginatedResponse(
       items.map((l) => ({

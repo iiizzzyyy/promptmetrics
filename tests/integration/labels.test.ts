@@ -11,7 +11,7 @@ describe('Label API Integration', () => {
   let app: ReturnType<typeof createApp>;
   let apiKey: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     process.env.SQLITE_PATH = testDbPath;
     process.env.DRIVER = 'filesystem';
     process.env.API_KEY_SALT = 'test-salt';
@@ -22,7 +22,7 @@ describe('Label API Integration', () => {
     if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
 
     closeDb();
-    initSchema();
+    await initSchema();
 
     const db = getDb();
     apiKey = 'pm_testlabel789';
