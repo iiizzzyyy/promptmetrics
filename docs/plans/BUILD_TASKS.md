@@ -160,21 +160,21 @@
 - [x] **2.2.1.7** Commit: `git commit -m "feat: extract PromptService from controller"`
 
 #### Task 2.2.2 -- Create LogService, TraceService, RunService, LabelService
-- [ ] **2.2.2.1** Create `src/services/log.service.ts` -- extract SQL INSERT logic from `promptmetrics-log.controller.ts`
-- [ ] **2.2.2.2** Create `src/services/trace.service.ts` -- extract trace/span SQL logic
-- [ ] **2.2.2.3** Create `src/services/run.service.ts` -- extract run CRUD SQL logic
-- [ ] **2.2.2.4** Create `src/services/label.service.ts` -- extract label SQL logic
-- [ ] **2.2.2.5** Unit tests for each service with mocked DB (use an in-memory SQLite DB per test file)
-- [ ] **2.2.2.6** Commit: `git commit -m "feat: extract Log, Trace, Run, and Label services"`
+- [x] **2.2.2.1** Create `src/services/log.service.ts` -- extract SQL INSERT logic from `promptmetrics-log.controller.ts`
+- [x] **2.2.2.2** Create `src/services/trace.service.ts` -- extract trace/span SQL logic
+- [x] **2.2.2.3** Create `src/services/run.service.ts` -- extract run CRUD SQL logic
+- [x] **2.2.2.4** Create `src/services/label.service.ts` -- extract label SQL logic
+- [x] **2.2.2.5** Unit tests for each service with mocked DB (use an in-memory SQLite DB per test file)
+- [x] **2.2.2.6** Commit: `git commit -m "feat: extract Log, Trace, Run, and Label services"`
 
 #### Task 2.2.3 -- Refactor controllers to delegate to services
-- [ ] **2.2.3.1** Update `src/controllers/promptmetrics-prompt.controller.ts` to instantiate `PromptService` and delegate all logic
-- [ ] **2.2.3.2** Update `src/controllers/promptmetrics-log.controller.ts` to use `LogService`
-- [ ] **2.2.3.3** Update `src/controllers/promptmetrics-trace.controller.ts` to use `TraceService`
-- [ ] **2.2.3.4** Update `src/controllers/promptmetrics-run.controller.ts` to use `RunService`
-- [ ] **2.2.3.5** Update `src/controllers/promptmetrics-label.controller.ts` to use `LabelService`
-- [ ] **2.2.3.6** Run all integration tests: verify no behavioral changes
-- [ ] **2.2.3.7** Commit: `git commit -m "refactor: thin controllers to delegate to service layer"`
+- [x] **2.2.3.1** Update `src/controllers/promptmetrics-prompt.controller.ts` to instantiate `PromptService` and delegate all logic
+- [x] **2.2.3.2** Update `src/controllers/promptmetrics-log.controller.ts` to use `LogService`
+- [x] **2.2.3.3** Update `src/controllers/promptmetrics-trace.controller.ts` to use `TraceService`
+- [x] **2.2.3.4** Update `src/controllers/promptmetrics-run.controller.ts` to use `RunService`
+- [x] **2.2.3.5** Update `src/controllers/promptmetrics-label.controller.ts` to use `LabelService`
+- [x] **2.2.3.6** Run all integration tests: verify no behavioral changes
+- [x] **2.2.3.7** Commit: `git commit -m "refactor: thin controllers to delegate to service layer"`
 
 ---
 
@@ -197,14 +197,14 @@
 - [x] **2.3.1.3** Commit: `git commit -m "feat: add standardized pagination helpers"`
 
 #### Task 2.3.2 -- Apply pagination helper across all routes
-- [ ] **2.3.2.1** Update `src/routes/promptmetrics-prompt.route.ts` audit-logs endpoint to use `parsePagination` and `paginateResponse`
-- [ ] **2.3.2.2** Update `PromptController.listPrompts()` to use helpers
-- [ ] **2.3.2.3** Update `PromptController.listVersions()` to use helpers
-- [ ] **2.3.2.4** Update `RunController.listRuns()` to use helpers
-- [ ] **2.3.2.5** Update `TraceController` list operations to use helpers
-- [ ] **2.3.2.6** Verify all paginated responses now include `totalPages`
-- [ ] **2.3.2.7** Run all integration tests
-- [ ] **2.3.2.8** Commit: `git commit -m "refactor: apply standardized pagination across all endpoints"`
+- [x] **2.3.2.1** Update `src/routes/promptmetrics-prompt.route.ts` audit-logs endpoint to use `parsePagination` and `paginateResponse`
+- [x] **2.3.2.2** Update `PromptController.listPrompts()` to use helpers
+- [x] **2.3.2.3** Update `PromptController.listVersions()` to use helpers
+- [x] **2.3.2.4** Update `RunController.listRuns()` to use helpers
+- [x] **2.3.2.5** Update `LabelController.listLabels()` to use helpers
+- [x] **2.3.2.6** Verify all paginated responses now include `totalPages`
+- [x] **2.3.2.7** Run all integration tests
+- [x] **2.3.2.8** Commit: `git commit -m "refactor: apply standardized pagination across all endpoints"`
 
 ---
 
@@ -227,19 +227,20 @@
 - [x] **2.4.1.3** Commit: `git commit -m "feat: add query parameter validation middleware"`
 
 #### Task 2.4.2 -- Apply query validation to all routes
-- [ ] **2.4.2.1** Create Joi schemas in `src/validation-schemas/pagination.schema.ts`:
+- [x] **2.4.2.1** Create Joi schemas in `src/validation-schemas/pagination.schema.ts`:
   ```ts
   export const paginationQuerySchema = Joi.object({
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(100).default(50),
   });
   ```
-- [ ] **2.4.2.2** Apply `validateQuery(paginationQuerySchema)` to `GET /v1/prompts`
-- [ ] **2.4.2.3** Apply to `GET /v1/prompts/:name/versions`
-- [ ] **2.4.2.4** Apply to `GET /v1/runs`
-- [ ] **2.4.2.5** Apply to `GET /v1/audit-logs`
-- [ ] **2.4.2.6** Add integration tests for invalid query params (negative page, limit > 100)
-- [ ] **2.4.2.7** Commit: `git commit -m "feat: validate query params on all paginated endpoints"`
+- [x] **2.4.2.2** Apply `validateQuery(paginationQuerySchema)` to `GET /v1/prompts`
+- [x] **2.4.2.3** Apply to `GET /v1/prompts/:name/versions`
+- [x] **2.4.2.4** Apply to `GET /v1/runs`
+- [x] **2.4.2.5** Apply to `GET /v1/audit-logs`
+- [x] **2.4.2.6** Apply to `GET /v1/prompts/:name/labels`
+- [x] **2.4.2.7** Add integration tests for invalid query params (negative page, limit > 100)
+- [x] **2.4.2.8** Commit: `git commit -m "feat: validate query params on all paginated endpoints"`
 
 ---
 
