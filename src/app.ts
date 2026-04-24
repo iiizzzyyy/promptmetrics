@@ -46,7 +46,7 @@ export function createApp(driver?: PromptDriver): Application {
       res.status(400).json({ error: 'Bad Request', message: 'Invalid JSON body', requestId: req.requestId });
       return;
     }
-    console.error('Unhandled error:', err);
+    console.error(`[${req.requestId}] Unhandled error:`, err.message);
     res.status(500).json({ error: 'Internal server error', message: config.nodeEnv === 'development' ? err.message : undefined, requestId: req.requestId });
   });
 
