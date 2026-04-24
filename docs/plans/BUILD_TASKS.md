@@ -22,75 +22,75 @@
 ### Epic 1.1 -- Fix Driver Singleton Bug
 **GitHub Issue:** [#10](https://github.com/iiizzzyyy/promptmetrics/issues/10)
 
-- [ ] **1.1.1** Update `src/app.ts` signature: `export function createApp(driver: PromptDriver): Application`
-- [ ] **1.1.2** Remove `import { createDriver }` and `const driver = createDriver()` from `src/app.ts`
-- [ ] **1.1.3** Update `src/server.ts` to instantiate driver once: `const driver = createDriver();`
-- [ ] **1.1.4** Pass driver to `createApp(driver)` and to `GitSyncJob`
-- [ ] **1.1.5** Run tests: `npx jest tests/integration/prompts.test.ts`
-- [ ] **1.1.6** Run E2E: `npx jest tests/e2e`
-- [ ] **1.1.7** Commit: `git commit -m "fix: singleton driver instance shared between app and sync job"`
+- [x] **1.1.1** Update `src/app.ts` signature: `export function createApp(driver: PromptDriver): Application`
+- [x] **1.1.2** Remove `import { createDriver }` and `const driver = createDriver()` from `src/app.ts`
+- [x] **1.1.3** Update `src/server.ts` to instantiate driver once: `const driver = createDriver();`
+- [x] **1.1.4** Pass driver to `createApp(driver)` and to `GitSyncJob`
+- [x] **1.1.5** Run tests: `npx jest tests/integration/prompts.test.ts`
+- [x] **1.1.6** Run E2E: `npx jest tests/e2e`
+- [x] **1.1.7** Commit: `git commit -m "fix: singleton driver instance shared between app and sync job"`
 
 ---
 
 ### Epic 1.2 -- Replace Custom Regex Rendering with Mustache
 **GitHub Issue:** [#11](https://github.com/iiizzzyyy/promptmetrics/issues/11)
 
-- [ ] **1.2.1** Verify `mustache` is in `package.json` dependencies
-- [ ] **1.2.2** In `src/controllers/promptmetrics-prompt.controller.ts`, replace regex rendering loop with `mustache.render(msg.content, variables)` for `system` and `user` roles only
-- [ ] **1.2.3** Remove the old regex-based rendering code
-- [ ] **1.2.4** Add integration test in `tests/integration/prompts.test.ts` for edge cases:
+- [x] **1.2.1** Verify `mustache` is in `package.json` dependencies
+- [x] **1.2.2** In `src/controllers/promptmetrics-prompt.controller.ts`, replace regex rendering loop with `mustache.render(msg.content, variables)` for `system` and `user` roles only
+- [x] **1.2.3** Remove the old regex-based rendering code
+- [x] **1.2.4** Add integration test in `tests/integration/prompts.test.ts` for edge cases:
   - Missing optional variable
   - Variable with special characters (`<`, `>`, `"`)
   - Empty string variable
   - Variable name containing spaces (should fail gracefully)
-- [ ] **1.2.5** Run tests: `npx jest tests/integration/prompts.test.ts`
-- [ ] **1.2.6** Commit: `git commit -m "refactor: use mustache for prompt variable rendering"`
+- [x] **1.2.5** Run tests: `npx jest tests/integration/prompts.test.ts`
+- [x] **1.2.6** Commit: `git commit -m "refactor: use mustache for prompt variable rendering"`
 
 ---
 
 ### Epic 1.3 -- Add Request ID Middleware
 **GitHub Issue:** [#12](https://github.com/iiizzzyyy/promptmetrics/issues/12)
 
-- [ ] **1.3.1** Create `src/middlewares/request-id.middleware.ts`:
+- [x] **1.3.1** Create `src/middlewares/request-id.middleware.ts`:
   - Import `crypto` from Node.js
   - Generate `crypto.randomUUID()`
   - Attach to `req.requestId`
   - Set response header `X-Request-Id`
-- [ ] **1.3.2** Add middleware to `src/app.ts` near the top of the middleware stack (before routes)
-- [ ] **1.3.3** Update `src/interfaces/express.d.ts` to extend `Request` with `requestId?: string`
-- [ ] **1.3.4** Add integration test asserting `X-Request-Id` header exists on every response
-- [ ] **1.3.5** Add integration test asserting the same request ID is returned in response headers
-- [ ] **1.3.6** (Optional) Attach `requestId` to structured logger context in `src/services/promptmetrics-logger.service.ts`
-- [ ] **1.3.7** Run all integration tests
-- [ ] **1.3.8** Commit: `git commit -m "feat: add x-request-id middleware for request correlation"`
+- [x] **1.3.2** Add middleware to `src/app.ts` near the top of the middleware stack (before routes)
+- [x] **1.3.3** Update `src/interfaces/express.d.ts` to extend `Request` with `requestId?: string`
+- [x] **1.3.4** Add integration test asserting `X-Request-Id` header exists on every response
+- [x] **1.3.5** Add integration test asserting the same request ID is returned in response headers
+- [x] **1.3.6** (Optional) Attach `requestId` to structured logger context in `src/services/promptmetrics-logger.service.ts`
+- [x] **1.3.7** Run all integration tests
+- [x] **1.3.8** Commit: `git commit -m "feat: add x-request-id middleware for request correlation"`
 
 ---
 
 ### Epic 1.4 -- Sanitize Production Error Responses
 **GitHub Issue:** [#13](https://github.com/iiizzzyyy/promptmetrics/issues/13)
 
-- [ ] **1.4.1** In `src/app.ts` global error handler, wrap `err.message` output:
+- [x] **1.4.1** In `src/app.ts` global error handler, wrap `err.message` output:
   ```ts
   message: config.nodeEnv === 'development' ? err.message : undefined
   ```
-- [ ] **1.4.2** Add integration test that:
+- [x] **1.4.2** Add integration test that:
   - Forces a 500 error (e.g., mock a controller to throw)
   - Sets `NODE_ENV=production`
   - Asserts response body does NOT contain the raw error message
-- [ ] **1.4.3** Add integration test that verifies `err.message` IS present when `NODE_ENV=development`
-- [ ] **1.4.4** Run tests: `npx jest tests/integration/`
-- [ ] **1.4.5** Commit: `git commit -m "security: sanitize error messages in production responses"`
+- [x] **1.4.3** Add integration test that verifies `err.message` IS present when `NODE_ENV=development`
+- [x] **1.4.4** Run tests: `npx jest tests/integration/`
+- [x] **1.4.5** Commit: `git commit -m "security: sanitize error messages in production responses"`
 
 ---
 
 ### Epic 1.5 -- Add Compression Middleware
 **GitHub Issue:** [#14](https://github.com/iiizzzyyy/promptmetrics/issues/14)
 
-- [ ] **1.5.1** Run: `npm install compression @types/compression`
-- [ ] **1.5.2** In `src/app.ts`, add `import compression from 'compression'` and `app.use(compression())` after helmet/cors, before JSON parser
-- [ ] **1.5.3** Add integration test that asserts `Content-Encoding: gzip` on a large JSON response (>1KB)
-- [ ] **1.5.4** Verify no existing tests break: `npm test`
-- [ ] **1.5.5** Commit: `git commit -m "perf: add gzip compression middleware"`
+- [x] **1.5.1** Run: `npm install compression @types/compression`
+- [x] **1.5.2** In `src/app.ts`, add `import compression from 'compression'` and `app.use(compression())` after helmet/cors, before JSON parser
+- [x] **1.5.3** Add integration test that asserts `Content-Encoding: gzip` on a large JSON response (>1KB)
+- [x] **1.5.4** Verify no existing tests break: `npm test`
+- [x] **1.5.5** Commit: `git commit -m "perf: add gzip compression middleware"`
 
 ---
 
@@ -102,7 +102,7 @@
 **GitHub Issue:** [#15](https://github.com/iiizzzyyy/promptmetrics/issues/15)
 
 #### Task 2.1.1 -- Create AppError class
-- [ ] **2.1.1.1** Create `src/errors/app.error.ts`:
+- [x] **2.1.1.1** Create `src/errors/app.error.ts`:
   ```ts
   export class AppError extends Error {
     constructor(
@@ -119,31 +119,31 @@
   export const validationFailed = (details) => new AppError('Validation failed', 422, 'VALIDATION_FAILED', details);
   export const internal = (msg?) => new AppError(msg || 'Internal server error', 500, 'INTERNAL_ERROR');
   ```
-- [ ] **2.1.1.2** Unit tests in `tests/unit/errors/app.error.test.ts` for each factory method
-- [ ] **2.1.1.3** Commit: `git commit -m "feat: add AppError class with typed HTTP status codes"`
+- [x] **2.1.1.2** Unit tests in `tests/unit/errors/app.error.test.ts` for each factory method
+- [x] **2.1.1.3** Commit: `git commit -m "feat: add AppError class with typed HTTP status codes"`
 
 #### Task 2.1.2 -- Add global Express error handler middleware
-- [ ] **2.1.2.1** Create `src/middlewares/error-handler.middleware.ts`:
+- [x] **2.1.2.1** Create `src/middlewares/error-handler.middleware.ts`:
   - Check `err instanceof AppError`
   - Map to `err.statusCode` and JSON shape `{ error, code, details? }`
   - Fallback to 500 with sanitized message in production
-- [ ] **2.1.2.2** Register middleware in `src/app.ts` AFTER all routes: `app.use(errorHandler)`
-- [ ] **2.1.2.3** Remove the existing inline error handler from `src/app.ts` (the one at line 39-46)
-- [ ] **2.1.2.4** Integration tests in `tests/integration/errors.test.ts` for each error type
-- [ ] **2.1.2.5** Commit: `git commit -m "feat: add centralized Express error handler middleware"`
+- [x] **2.1.2.2** Register middleware in `src/app.ts` AFTER all routes: `app.use(errorHandler)`
+- [x] **2.1.2.3** Remove the existing inline error handler from `src/app.ts` (the one at line 39-46)
+- [x] **2.1.2.4** Integration tests in `tests/integration/errors.test.ts` for each error type
+- [x] **2.1.2.5** Commit: `git commit -m "feat: add centralized Express error handler middleware"`
 
 #### Task 2.1.3 -- Refactor controllers to throw AppError
-- [ ] **2.1.3.1** `src/controllers/promptmetrics-prompt.controller.ts`:
+- [x] **2.1.3.1** `src/controllers/promptmetrics-prompt.controller.ts`:
   - Replace all `res.status(500).json({ error, message })` with `throw AppError.internal(...)`
   - Replace validation block with `throw AppError.validationFailed(...)`
   - Replace `res.status(404)` with `throw AppError.notFound(...)`
-- [ ] **2.1.3.2** `src/controllers/promptmetrics-log.controller.ts` -- same pattern
-- [ ] **2.1.3.3** `src/controllers/promptmetrics-trace.controller.ts` -- same pattern
-- [ ] **2.1.3.4** `src/controllers/promptmetrics-run.controller.ts` -- same pattern
-- [ ] **2.1.3.5** `src/controllers/promptmetrics-label.controller.ts` -- same pattern
-- [ ] **2.1.3.6** Update `tests/integration/*.test.ts` assertions to expect new error response shape `{ error, code, details }` instead of `{ error, message }`
-- [ ] **2.1.3.7** Run all tests: `npm test`
-- [ ] **2.1.3.8** Commit: `git commit -m "refactor: use AppError in all controllers, remove manual res.status calls"`
+- [x] **2.1.3.2** `src/controllers/promptmetrics-log.controller.ts` -- same pattern
+- [x] **2.1.3.3** `src/controllers/promptmetrics-trace.controller.ts` -- same pattern
+- [x] **2.1.3.4** `src/controllers/promptmetrics-run.controller.ts` -- same pattern
+- [x] **2.1.3.5** `src/controllers/promptmetrics-label.controller.ts` -- same pattern
+- [x] **2.1.3.6** Update `tests/integration/*.test.ts` assertions to expect new error response shape `{ error, code, details }` instead of `{ error, message }`
+- [x] **2.1.3.7** Run all tests: `npm test`
+- [x] **2.1.3.8** Commit: `git commit -m "refactor: use AppError in all controllers, remove manual res.status calls"`
 
 ---
 
@@ -151,13 +151,13 @@
 **GitHub Issue:** [#16](https://github.com/iiizzzyyy/promptmetrics/issues/16)
 
 #### Task 2.2.1 -- Create PromptService
-- [ ] **2.2.1.1** Create `src/services/prompt.service.ts` with constructor accepting `PromptDriver`
-- [ ] **2.2.1.2** Move `listPrompts()` logic from controller: accept query, page, limit; return paginated result
-- [ ] **2.2.1.3** Move `getPrompt()` logic: accept name, version, variables; call driver; render with mustache; return content + version
-- [ ] **2.2.1.4** Move `listVersions()` logic: delegate to driver
-- [ ] **2.2.1.5** Move `createPrompt()` logic: delegate to driver
-- [ ] **2.2.1.6** Unit tests in `tests/unit/services/prompt.service.test.ts` with mocked driver
-- [ ] **2.2.1.7** Commit: `git commit -m "feat: extract PromptService from controller"`
+- [x] **2.2.1.1** Create `src/services/prompt.service.ts` with constructor accepting `PromptDriver`
+- [x] **2.2.1.2** Move `listPrompts()` logic from controller: accept query, page, limit; return paginated result
+- [x] **2.2.1.3** Move `getPrompt()` logic: accept name, version, variables; call driver; render with mustache; return content + version
+- [x] **2.2.1.4** Move `listVersions()` logic: delegate to driver
+- [x] **2.2.1.5** Move `createPrompt()` logic: delegate to driver
+- [x] **2.2.1.6** Unit tests in `tests/unit/services/prompt.service.test.ts` with mocked driver
+- [x] **2.2.1.7** Commit: `git commit -m "feat: extract PromptService from controller"`
 
 #### Task 2.2.2 -- Create LogService, TraceService, RunService, LabelService
 - [ ] **2.2.2.1** Create `src/services/log.service.ts` -- extract SQL INSERT logic from `promptmetrics-log.controller.ts`
@@ -182,7 +182,7 @@
 **GitHub Issue:** [#17](https://github.com/iiizzzyyy/promptmetrics/issues/17)
 
 #### Task 2.3.1 -- Create pagination helper
-- [ ] **2.3.1.1** Create `src/utils/pagination.ts`:
+- [x] **2.3.1.1** Create `src/utils/pagination.ts`:
   ```ts
   export function parsePagination(query: { page?: string; limit?: string }) {
     const page = Math.max(1, parseInt(query.page || '1', 10));
@@ -193,8 +193,8 @@
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
   ```
-- [ ] **2.3.1.2** Unit tests in `tests/unit/utils/pagination.test.ts` for clamping logic
-- [ ] **2.3.1.3** Commit: `git commit -m "feat: add standardized pagination helpers"`
+- [x] **2.3.1.2** Unit tests in `tests/unit/utils/pagination.test.ts` for clamping logic
+- [x] **2.3.1.3** Commit: `git commit -m "feat: add standardized pagination helpers"`
 
 #### Task 2.3.2 -- Apply pagination helper across all routes
 - [ ] **2.3.2.1** Update `src/routes/promptmetrics-prompt.route.ts` audit-logs endpoint to use `parsePagination` and `paginateResponse`
@@ -212,7 +212,7 @@
 **GitHub Issue:** [#18](https://github.com/iiizzzyyy/promptmetrics/issues/18)
 
 #### Task 2.4.1 -- Create reusable query validation middleware
-- [ ] **2.4.1.1** Create `src/middlewares/validate-query.middleware.ts`:
+- [x] **2.4.1.1** Create `src/middlewares/validate-query.middleware.ts`:
   ```ts
   export function validateQuery(schema: Joi.ObjectSchema) {
     return (req, res, next) => {
@@ -223,8 +223,8 @@
     };
   }
   ```
-- [ ] **2.4.1.2** Unit tests for middleware with valid and invalid query objects
-- [ ] **2.4.1.3** Commit: `git commit -m "feat: add query parameter validation middleware"`
+- [x] **2.4.1.2** Unit tests for middleware with valid and invalid query objects
+- [x] **2.4.1.3** Commit: `git commit -m "feat: add query parameter validation middleware"`
 
 #### Task 2.4.2 -- Apply query validation to all routes
 - [ ] **2.4.2.1** Create Joi schemas in `src/validation-schemas/pagination.schema.ts`:
