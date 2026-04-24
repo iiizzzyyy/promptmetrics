@@ -3,11 +3,12 @@ import path from 'path';
 import { getDb, initSchema, closeDb } from '@models/promptmetrics-sqlite';
 import { AppError } from '@errors/app.error';
 import { RunController } from '@controllers/promptmetrics-run.controller';
+import { RunService } from '@services/run.service';
 import { Request, Response } from 'express';
 
 describe('RunController', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-run.db');
-  const controller = new RunController();
+  const controller = new RunController(new RunService());
 
   function mockReq(body: unknown, params: Record<string, string> = {}, query: Record<string, string> = {}): Partial<Request> {
     return { body, params, query } as Partial<Request>;

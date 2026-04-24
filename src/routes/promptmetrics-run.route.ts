@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { RunController } from '@controllers/promptmetrics-run.controller';
+import { RunService } from '@services/run.service';
 import { authenticateApiKey } from '@middlewares/promptmetrics-auth.middleware';
 import { validateQuery } from '@middlewares/promptmetrics-query-validation.middleware';
 import { paginationQuerySchema } from '@validation-schemas/promptmetrics-pagination.schema';
 
 export function createRunRoutes(): Router {
   const router = Router();
-  const controller = new RunController();
+  const controller = new RunController(new RunService());
 
   router.use(authenticateApiKey);
   router.post('/v1/runs', (req, res) => controller.createRun(req, res));

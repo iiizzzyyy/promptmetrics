@@ -3,11 +3,12 @@ import path from 'path';
 import { getDb, initSchema, closeDb } from '@models/promptmetrics-sqlite';
 import { AppError } from '@errors/app.error';
 import { TraceController } from '@controllers/promptmetrics-trace.controller';
+import { TraceService } from '@services/trace.service';
 import { Request, Response } from 'express';
 
 describe('TraceController', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-trace.db');
-  const controller = new TraceController();
+  const controller = new TraceController(new TraceService());
 
   function mockReq(body: unknown, params: Record<string, string> = {}): Partial<Request> {
     return { body, params } as Partial<Request>;

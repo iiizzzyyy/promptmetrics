@@ -1,9 +1,11 @@
 import { Request, Response } from 'express';
 import { AppError } from '@errors/app.error';
-import { getDb } from '@models/promptmetrics-sqlite';
+import { LabelService } from '@services/label.service';
 import { createLabelSchema } from '@validation-schemas/promptmetrics-label.schema';
 
 export class LabelController {
+  constructor(private service: LabelService) {}
+
   async createLabel(req: Request, res: Response): Promise<void> {
     const promptName = req.params.name as string;
     const { error, value } = createLabelSchema.validate(req.body, { abortEarly: false });
@@ -11,57 +13,29 @@ export class LabelController {
       throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    const db = getDb();
-    db.prepare(
-      `INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)
-       ON CONFLICT(prompt_name, name) DO UPDATE SET version_tag = excluded.version_tag`,
-    ).run(promptName, value.name, value.version_tag);
+    const label = this.service.createLabel(promptName, value);
 
     res.status(201).json({
-      prompt_name: promptName,
-      name: value.name,
-      version_tag: value.version_tag,
+      prompt_name: label.prompt_name,
+      name: label.name,
+      version_tag: label.version_tag,
     });
   }
 
   async listLabels(req: Request, res: Response): Promise<void> {
     const promptName = req.params.name as string;
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
 
-    const db = getDb();
-    const items = db
-      .prepare('SELECT * FROM prompt_labels WHERE prompt_name = ? ORDER BY created_at DESC')
-      .all(promptName) as Array<{
-      prompt_name: string;
-      name: string;
-      version_tag: string;
-      created_at: number;
-    }>;
-
-    res.status(200).json({
-      items: items.map((l) => ({
-        prompt_name: l.prompt_name,
-        name: l.name,
-        version_tag: l.version_tag,
-        created_at: l.created_at,
-      })),
-      total: items.length,
-    });
+    const result = this.service.listLabels(promptName, page, limit);
+    res.status(200).json(result);
   }
 
   async getLabel(req: Request, res: Response): Promise<void> {
     const promptName = req.params.name as string;
     const labelName = req.params.label_name as string;
 
-    const db = getDb();
-    const label = db
-      .prepare('SELECT * FROM prompt_labels WHERE prompt_name = ? AND name = ?')
-      .get(promptName, labelName) as
-      | { prompt_name: string; name: string; version_tag: string; created_at: number }
-      | undefined;
-
-    if (!label) {
-      throw AppError.notFound('Label');
-    }
+    const label = this.service.getLabel(promptName, labelName);
 
     res.status(200).json({
       prompt_name: label.prompt_name,
@@ -75,15 +49,7 @@ export class LabelController {
     const promptName = req.params.name as string;
     const labelName = req.params.label_name as string;
 
-    const db = getDb();
-    const result = db
-      .prepare('DELETE FROM prompt_labels WHERE prompt_name = ? AND name = ?')
-      .run(promptName, labelName);
-
-    if (result.changes === 0) {
-      throw AppError.notFound('Label');
-    }
-
+    this.service.deleteLabel(promptName, labelName);
     res.status(204).send();
   }
 }

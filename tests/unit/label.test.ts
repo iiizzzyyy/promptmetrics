@@ -3,14 +3,15 @@ import path from 'path';
 import { getDb, initSchema, closeDb } from '@models/promptmetrics-sqlite';
 import { AppError } from '@errors/app.error';
 import { LabelController } from '@controllers/promptmetrics-label.controller';
+import { LabelService } from '@services/label.service';
 import { Request, Response } from 'express';
 
 describe('LabelController', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-label.db');
-  const controller = new LabelController();
+  const controller = new LabelController(new LabelService());
 
-  function mockReq(body: unknown, params: Record<string, string> = {}): Partial<Request> {
-    return { body, params } as Partial<Request>;
+  function mockReq(body: unknown, params: Record<string, string> = {}, query: Record<string, string> = {}): Partial<Request> {
+    return { body, params, query } as Partial<Request>;
   }
 
   function mockRes(): Partial<Response> {

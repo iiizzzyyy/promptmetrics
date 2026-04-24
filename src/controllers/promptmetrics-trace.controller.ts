@@ -1,76 +1,38 @@
 import { Request, Response } from 'express';
-import crypto from 'crypto';
 import { AppError } from '@errors/app.error';
-import { getDb } from '@models/promptmetrics-sqlite';
+import { TraceService } from '@services/trace.service';
 import { createTraceSchema, createSpanSchema } from '@validation-schemas/promptmetrics-trace.schema';
 
 export class TraceController {
+  constructor(private service: TraceService) {}
+
   async createTrace(req: Request, res: Response): Promise<void> {
     const { error, value } = createTraceSchema.validate(req.body, { abortEarly: false });
     if (error) {
       throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    const db = getDb();
-    const traceId = value.trace_id || crypto.randomUUID();
-
-    db.prepare(
-      `INSERT INTO traces (trace_id, prompt_name, version_tag, metadata_json)
-       VALUES (?, ?, ?, ?)`,
-    ).run(
-      traceId,
-      value.prompt_name || null,
-      value.version_tag || null,
-      value.metadata ? JSON.stringify(value.metadata) : null,
-    );
+    const trace = this.service.createTrace(value);
 
     res.status(201).json({
-      trace_id: traceId,
-      prompt_name: value.prompt_name,
-      version_tag: value.version_tag,
+      trace_id: trace.trace_id,
+      prompt_name: trace.prompt_name,
+      version_tag: trace.version_tag,
       status: 'created',
     });
   }
 
   async getTrace(req: Request, res: Response): Promise<void> {
     const traceId = req.params.trace_id as string;
-
-    const db = getDb();
-    const trace = db.prepare('SELECT * FROM traces WHERE trace_id = ?').get(traceId) as
-      | { trace_id: string; prompt_name: string | null; version_tag: string | null; metadata_json: string | null; created_at: number }
-      | undefined;
-
-    if (!trace) {
-      throw AppError.notFound('Trace');
-    }
-
-    const spans = db.prepare('SELECT * FROM spans WHERE trace_id = ? ORDER BY start_time ASC').all(traceId) as Array<{
-      span_id: string;
-      parent_id: string | null;
-      name: string;
-      status: string;
-      start_time: number | null;
-      end_time: number | null;
-      metadata_json: string | null;
-      created_at: number;
-    }>;
+    const { trace, spans } = this.service.getTrace(traceId);
 
     res.status(200).json({
       trace_id: trace.trace_id,
       prompt_name: trace.prompt_name,
       version_tag: trace.version_tag,
-      metadata: trace.metadata_json ? JSON.parse(trace.metadata_json) : {},
+      metadata: trace.metadata,
       created_at: trace.created_at,
-      spans: spans.map((s) => ({
-        span_id: s.span_id,
-        parent_id: s.parent_id,
-        name: s.name,
-        status: s.status,
-        start_time: s.start_time,
-        end_time: s.end_time,
-        metadata: s.metadata_json ? JSON.parse(s.metadata_json) : {},
-        created_at: s.created_at,
-      })),
+      spans,
     });
   }
 
@@ -81,36 +43,13 @@ export class TraceController {
       throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    const db = getDb();
-    const trace = db.prepare('SELECT trace_id FROM traces WHERE trace_id = ?').get(traceId) as
-      | { trace_id: string }
-      | undefined;
-
-    if (!trace) {
-      throw AppError.notFound('Trace');
-    }
-
-    const spanId = value.span_id || crypto.randomUUID();
-
-    db.prepare(
-      `INSERT INTO spans (trace_id, span_id, parent_id, name, status, start_time, end_time, metadata_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      traceId,
-      spanId,
-      value.parent_id || null,
-      value.name,
-      value.status,
-      value.start_time || null,
-      value.end_time || null,
-      value.metadata ? JSON.stringify(value.metadata) : null,
-    );
+    const span = this.service.createSpan(traceId, value);
 
     res.status(201).json({
       trace_id: traceId,
-      span_id: spanId,
-      name: value.name,
-      status: value.status,
+      span_id: span.span_id,
+      name: span.name,
+      status: span.status,
     });
   }
 
@@ -118,14 +57,7 @@ export class TraceController {
     const traceId = req.params.trace_id as string;
     const spanId = req.params.span_id as string;
 
-    const db = getDb();
-    const span = db.prepare('SELECT * FROM spans WHERE trace_id = ? AND span_id = ?').get(traceId, spanId) as
-      | { span_id: string; parent_id: string | null; name: string; status: string; start_time: number | null; end_time: number | null; metadata_json: string | null; created_at: number }
-      | undefined;
-
-    if (!span) {
-      throw AppError.notFound('Span');
-    }
+    const span = this.service.getSpan(traceId, spanId);
 
     res.status(200).json({
       span_id: span.span_id,
@@ -134,7 +66,7 @@ export class TraceController {
       status: span.status,
       start_time: span.start_time,
       end_time: span.end_time,
-      metadata: span.metadata_json ? JSON.parse(span.metadata_json) : {},
+      metadata: span.metadata,
       created_at: span.created_at,
     });
   }
