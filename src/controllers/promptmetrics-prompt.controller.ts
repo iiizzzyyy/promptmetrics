@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mustache from 'mustache';
 import { PromptDriver } from '@drivers/promptmetrics-driver.interface';
 import { createPromptSchema } from '@validation-schemas/promptmetrics-prompt.schema';
 
@@ -87,10 +88,7 @@ export class PromptController {
       if (shouldRender && variables && Object.keys(variables).length > 0) {
         const renderedMessages = content.messages.map((msg) => {
           if (msg.role === 'assistant') return msg;
-          let rendered = msg.content;
-          for (const [key, value] of Object.entries(variables)) {
-            rendered = rendered.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'), String(value));
-          }
+          const rendered = mustache.render(msg.content, variables, undefined, { escape: (text) => text });
           return { ...msg, content: rendered };
         });
         content = { ...content, messages: renderedMessages };
