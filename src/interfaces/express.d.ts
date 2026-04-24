@@ -7,6 +7,7 @@ declare global {
         name: string;
         scopes: string[];
       };
+      requestId?: string;
     }
   }
 }
