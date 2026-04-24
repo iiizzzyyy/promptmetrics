@@ -4,6 +4,7 @@ import path from 'path';
 import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
+import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
 
 describe('Prompt API Integration', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-integration.db');
@@ -33,7 +34,7 @@ describe('Prompt API Integration', () => {
       'read,write',
     );
 
-    app = createApp();
+    app = createApp(new FilesystemDriver(testPromptsPath));
   });
 
   afterAll(() => {
@@ -82,7 +83,7 @@ describe('Prompt API Integration', () => {
   });
 
   it('GET /v1/prompts/:name returns latest version', async () => {
-    const res = await request(app).get('/v1/prompts/welcome').set('X-API-Key', apiKey);
+    const res = await request(app).get('/v1/prompts/welcome?render=false').set('X-API-Key', apiKey);
     expect(res.status).toBe(200);
     expect(res.body.content.messages).toEqual([
       { role: 'system', content: 'You are a helpful assistant.' },

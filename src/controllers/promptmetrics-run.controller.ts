@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import { AppError } from '@errors/app.error';
 import { getDb } from '@models/promptmetrics-sqlite';
+import { parsePagination, buildPaginatedResponse } from '@utils/pagination';
 import { createRunSchema, updateRunSchema } from '@validation-schemas/promptmetrics-run.schema';
 
 export class RunController {
@@ -124,9 +125,7 @@ export class RunController {
   }
 
   async listRuns(req: Request, res: Response): Promise<void> {
-    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = parsePagination(req.query);
 
     const db = getDb();
     const total = (db.prepare('SELECT COUNT(*) as c FROM runs').get() as { c: number }).c;
@@ -144,22 +143,23 @@ export class RunController {
       updated_at: number;
     }>;
 
-    res.status(200).json({
-      items: items.map((r) => ({
-        run_id: r.run_id,
-        workflow_name: r.workflow_name,
-        status: r.status,
-        input: r.input_json ? JSON.parse(r.input_json) : null,
-        output: r.output_json ? JSON.parse(r.output_json) : null,
-        trace_id: r.trace_id,
-        metadata: r.metadata_json ? JSON.parse(r.metadata_json) : {},
-        created_at: r.created_at,
-        updated_at: r.updated_at,
-      })),
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    });
+    res.status(200).json(
+      buildPaginatedResponse(
+        items.map((r) => ({
+          run_id: r.run_id,
+          workflow_name: r.workflow_name,
+          status: r.status,
+          input: r.input_json ? JSON.parse(r.input_json) : null,
+          output: r.output_json ? JSON.parse(r.output_json) : null,
+          trace_id: r.trace_id,
+          metadata: r.metadata_json ? JSON.parse(r.metadata_json) : {},
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+        })),
+        total,
+        page,
+        limit,
+      ),
+    );
   }
 }

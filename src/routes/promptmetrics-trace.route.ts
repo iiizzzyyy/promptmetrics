@@ -7,10 +7,10 @@ export function createTraceRoutes(): Router {
   const controller = new TraceController();
 
   router.use(authenticateApiKey);
-  router.post('/v1/traces', (req, res) => void controller.createTrace(req, res));
-  router.get('/v1/traces/:trace_id', (req, res) => void controller.getTrace(req, res));
-  router.post('/v1/traces/:trace_id/spans', (req, res) => void controller.createSpan(req, res));
-  router.get('/v1/traces/:trace_id/spans/:span_id', (req, res) => void controller.getSpan(req, res));
+  router.post('/v1/traces', (req, res) => controller.createTrace(req, res));
+  router.get('/v1/traces/:trace_id', (req, res) => controller.getTrace(req, res));
+  router.post('/v1/traces/:trace_id/spans', (req, res) => controller.createSpan(req, res));
+  router.get('/v1/traces/:trace_id/spans/:span_id', (req, res) => controller.getSpan(req, res));
 
   return router;
 }

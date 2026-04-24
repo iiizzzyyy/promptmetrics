@@ -4,6 +4,7 @@ import path from 'path';
 import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
+import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
 
 describe('Full Lifecycle E2E', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-e2e.db');
@@ -49,7 +50,7 @@ describe('Full Lifecycle E2E', () => {
       'read,write,admin',
     );
 
-    app = createApp();
+    app = createApp(new FilesystemDriver(testPromptsPath));
   });
 
   afterAll(() => {
@@ -174,7 +175,7 @@ describe('Full Lifecycle E2E', () => {
     });
 
     it('gets latest version by default', async () => {
-      const res = await request(app).get('/v1/prompts/onboarding').set('X-API-Key', readKey);
+      const res = await request(app).get('/v1/prompts/onboarding?render=false').set('X-API-Key', readKey);
       expect(res.status).toBe(200);
       expect(res.body.content.version).toBe('1.1.0');
       expect(res.body.content.messages).toEqual([
@@ -185,7 +186,7 @@ describe('Full Lifecycle E2E', () => {
 
     it('gets specific version', async () => {
       const res = await request(app)
-        .get('/v1/prompts/onboarding?version=1.0.0')
+        .get('/v1/prompts/onboarding?version=1.0.0&render=false')
         .set('X-API-Key', readKey);
       expect(res.status).toBe(200);
       expect(res.body.content.version).toBe('1.0.0');
@@ -228,7 +229,7 @@ describe('Full Lifecycle E2E', () => {
         .get('/v1/prompts/onboarding?version=1.0.0&render=true')
         .set('X-API-Key', readKey);
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('Missing required variables');
+      expect(res.body.error).toContain('Missing required variables');
     });
 
     it('renders messages when render=true with all variables provided', async () => {

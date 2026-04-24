@@ -7,7 +7,7 @@ export function createLogRoutes(): Router {
   const controller = new LogController();
 
   router.use(authenticateApiKey);
-  router.post('/v1/logs', (req, res) => void controller.createLog(req, res));
+  router.post('/v1/logs', (req, res) => controller.createLog(req, res));
 
   return router;
 }
