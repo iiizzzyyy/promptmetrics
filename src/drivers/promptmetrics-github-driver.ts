@@ -1,7 +1,7 @@
-import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
+import { simpleGit } from 'simple-git';
 import { PromptDriver, PromptFile, PromptVersion } from './promptmetrics-driver.interface';
 import { config } from '@config/index';
 import { getDb, withTransaction } from '@models/promptmetrics-sqlite';
@@ -29,18 +29,18 @@ export class GithubDriver implements PromptDriver {
     };
   }
 
-  private ensureCloned(): void {
+  private async ensureCloned(): Promise<void> {
     if (!fs.existsSync(this.clonePath)) {
       fs.mkdirSync(path.dirname(this.clonePath), { recursive: true });
-      execSync(`git clone https://${this.token}@github.com/${this.repo}.git ${this.clonePath}`, {
-        stdio: 'ignore',
-      });
+      const git = simpleGit();
+      await git.clone(`https://${this.token}@github.com/${this.repo}.git`, this.clonePath);
     }
   }
 
   async sync(): Promise<void> {
-    this.ensureCloned();
-    execSync('git pull', { cwd: this.clonePath, stdio: 'ignore' });
+    await this.ensureCloned();
+    const git = simpleGit(this.clonePath);
+    await git.pull();
   }
 
   async listPrompts(page: number = 1, limit: number = 50): Promise<{ items: string[]; total: number }> {
@@ -92,15 +92,10 @@ export class GithubDriver implements PromptDriver {
       const output = fs.readFileSync(filePath, 'utf-8');
       const content = JSON.parse(output) as PromptFile;
 
+      const git = simpleGit(this.clonePath);
       const sha = version
-        ? execSync(`git rev-list -n 1 refs/tags/prompt-${name}-v${version}`, {
-            cwd: this.clonePath,
-            encoding: 'utf-8',
-          }).trim()
-        : execSync('git rev-parse HEAD', {
-            cwd: this.clonePath,
-            encoding: 'utf-8',
-          }).trim();
+        ? (await git.raw(['rev-list', '-n', '1', `refs/tags/prompt-${name}-v${version}`])).trim()
+        : (await git.revparse(['HEAD'])).trim();
 
       return {
         content,

@@ -278,34 +278,34 @@
 ### Epic 3.2 -- Add Database Transactions
 
 #### Task 3.2.1 -- Create transaction helper
-- [ ] **3.2.1.1** Update `src/models/promptmetrics-sqlite.ts`:
+- [x] **3.2.1.1** Update `src/models/promptmetrics-sqlite.ts`:
   ```ts
   export function withTransaction<T>(fn: (db: Database.Database) => T): T {
     const db = getDb();
-    return db.transaction(fn)();
+    return db.transaction(fn)(db);
   }
   ```
-- [ ] **3.2.1.2** Unit test: verify commit on success, rollback on error
-- [ ] **3.2.1.3** Commit: `git commit -m "feat: add SQLite transaction helper"`
+- [x] **3.2.1.2** Unit test: verify commit on success, rollback on error
+- [x] **3.2.1.3** Commit: `git commit -m "feat: add SQLite transaction helper"`
 
 #### Task 3.2.2 -- Wrap multi-step driver operations in transactions
-- [ ] **3.2.2.1** Update `FilesystemDriver.createPrompt()`: wrap SQLite INSERT in transaction
-- [ ] **3.2.2.2** Update `GithubDriver.createPrompt()`: wrap SQLite INSERT in transaction; if INSERT fails, attempt to revert the GitHub commit/tag
-- [ ] **3.2.2.3** Integration test: simulate a SQLite failure during `createPrompt()` and assert no orphaned prompt files or GitHub commits
-- [ ] **3.2.2.4** Commit: `git commit -m "feat: wrap prompt creation in database transactions"`
+- [x] **3.2.2.1** Update `FilesystemDriver.createPrompt()`: wrap SQLite INSERT in transaction
+- [x] **3.2.2.2** Update `GithubDriver.createPrompt()`: wrap SQLite INSERT in transaction; if INSERT fails, attempt to revert the GitHub commit/tag
+- [x] **3.2.2.3** Integration test: simulate a SQLite failure during `createPrompt()` and assert no orphaned prompt files or GitHub commits
+- [x] **3.2.2.4** Commit: `git commit -m "feat: wrap prompt creation in database transactions"`
 
 ---
 
 ### Epic 3.3 -- Replace execSync Git Calls
 
-- [ ] **3.3.1** Run: `npm install simple-git`
-- [ ] **3.3.2** Replace `execSync('git clone ...')` in `GithubDriver.ensureCloned()` with `simpleGit().clone(...)`
-- [ ] **3.3.3** Replace `execSync('git pull')` in `GithubDriver.sync()` with `simpleGit(repoPath).pull()`
-- [ ] **3.3.4** Replace `execSync('git rev-list ...')` and `execSync('git rev-parse ...')` with equivalent `simpleGit` commands
-- [ ] **3.3.5** Add error handling for authentication failures and merge conflicts
-- [ ] **3.3.6** Unit tests: mock `simple-git` methods, verify error paths
-- [ ] **3.3.7** Integration tests: verify GitHub driver still syncs and creates prompts correctly
-- [ ] **3.3.8** Commit: `git commit -m "refactor: replace execSync git calls with simple-git"`
+- [x] **3.3.1** Run: `npm install simple-git`
+- [x] **3.3.2** Replace `execSync('git clone ...')` in `GithubDriver.ensureCloned()` with `simpleGit().clone(...)`
+- [x] **3.3.3** Replace `execSync('git pull')` in `GithubDriver.sync()` with `simpleGit(repoPath).pull()`
+- [x] **3.3.4** Replace `execSync('git rev-list ...')` and `execSync('git rev-parse ...')` with equivalent `simpleGit` commands
+- [x] **3.3.5** Add error handling for authentication failures and merge conflicts
+- [x] **3.3.6** Unit tests: mock `simple-git` methods, verify error paths
+- [x] **3.3.7** Integration tests: verify GitHub driver still syncs and creates prompts correctly
+- [x] **3.3.8** Commit: `git commit -m "refactor: replace execSync git calls with simple-git"`
 
 ---
 
