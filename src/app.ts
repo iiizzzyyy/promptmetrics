@@ -4,6 +4,7 @@ import hpp from 'hpp';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { config } from '@config/index';
+import { PromptDriver } from '@drivers/promptmetrics-driver.interface';
 import { createDriver } from '@drivers/promptmetrics-driver.factory';
 import { createPromptRoutes } from '@routes/promptmetrics-prompt.route';
 import { createLogRoutes } from '@routes/promptmetrics-log.route';
@@ -11,10 +12,12 @@ import { createTraceRoutes } from '@routes/promptmetrics-trace.route';
 import { createRunRoutes } from '@routes/promptmetrics-run.route';
 import { createLabelRoutes } from '@routes/promptmetrics-label.route';
 
-export function createApp(): Application {
+export function createApp(driver?: PromptDriver): Application {
   const app = express();
   app.set('query parser', 'extended');
-  const driver = createDriver();
+  if (!driver) {
+    driver = createDriver();
+  }
 
   app.use(helmet());
   app.use(hpp());

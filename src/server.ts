@@ -16,7 +16,7 @@ function main(): void {
   initOtel();
 
   const driver = createDriver();
-  const app = createApp();
+  const app = createApp(driver);
   const server = http.createServer(app);
 
   // Start git sync job for github driver
