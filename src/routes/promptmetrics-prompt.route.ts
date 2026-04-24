@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { PromptController } from '@controllers/promptmetrics-prompt.controller';
+import { PromptService } from '@services/prompt.service';
 import { PromptDriver } from '@drivers/promptmetrics-driver.interface';
 import { authenticateApiKey, requireScope } from '@middlewares/promptmetrics-auth.middleware';
 import { auditLog } from '@middlewares/promptmetrics-audit.middleware';
@@ -7,7 +8,8 @@ import { getDb } from '@models/promptmetrics-sqlite';
 
 export function createPromptRoutes(driver: PromptDriver): Router {
   const router = Router();
-  const controller = new PromptController(driver);
+  const service = new PromptService(driver);
+  const controller = new PromptController(service);
 
   router.get('/health', (req, res) => {
     res.json({ status: 'ok' });

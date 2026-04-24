@@ -1,39 +1,18 @@
 import { Request, Response } from 'express';
-import mustache from 'mustache';
 import { AppError } from '@errors/app.error';
-import { PromptDriver } from '@drivers/promptmetrics-driver.interface';
+import { PromptService } from '@services/prompt.service';
 import { createPromptSchema } from '@validation-schemas/promptmetrics-prompt.schema';
 
 export class PromptController {
-  constructor(private driver: PromptDriver) {}
+  constructor(private service: PromptService) {}
 
   async listPrompts(req: Request, res: Response): Promise<void> {
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
     const query = req.query.q as string | undefined;
 
-    if (query) {
-      const items = await this.driver.search(query);
-      const start = (page - 1) * limit;
-      const paginated = items.slice(start, start + limit);
-      res.json({
-        items: paginated.map((name) => ({ name })),
-        total: items.length,
-        page,
-        limit,
-        totalPages: Math.ceil(items.length / limit),
-      });
-      return;
-    }
-
-    const result = await this.driver.listPrompts(page, limit);
-    res.json({
-      items: result.items.map((name) => ({ name })),
-      total: result.total,
-      page,
-      limit,
-      totalPages: Math.ceil(result.total / limit),
-    });
+    const result = await this.service.listPrompts(page, limit, query);
+    res.json(result);
   }
 
   async getPrompt(req: Request, res: Response): Promise<void> {
@@ -54,36 +33,8 @@ export class PromptController {
       variables = { ...variables, ...req.body.variables };
     }
 
-    const result = await this.driver.getPrompt(name, version);
-    if (!result) {
-      throw AppError.notFound('Prompt');
-    }
-
-    let content = result.content;
-    const isExplicitRender = req.query.render === 'true';
-
-    const shouldValidate = shouldRender && (isExplicitRender || (variables && Object.keys(variables).length > 0));
-    if (shouldValidate) {
-      const requiredVars = Object.entries(content.variables || {}).filter(
-        ([, def]) => (def as { required?: boolean }).required,
-      ).map(([key]) => key);
-      const providedVars = Object.keys(variables || {});
-      const missing = requiredVars.filter((v) => !providedVars.includes(v));
-      if (missing.length > 0) {
-        throw AppError.badRequest(`Missing required variables: ${missing.join(', ')}`);
-      }
-    }
-
-    if (shouldRender && variables && Object.keys(variables).length > 0) {
-      const renderedMessages = content.messages.map((msg) => {
-        if (msg.role === 'assistant') return msg;
-        const rendered = mustache.render(msg.content, variables, undefined, { escape: (text) => text });
-        return { ...msg, content: rendered };
-      });
-      content = { ...content, messages: renderedMessages };
-    }
-
-    res.json({ content, version: result.version });
+    const result = await this.service.getPrompt(name, version, variables, shouldRender);
+    res.json(result);
   }
 
   async listVersions(req: Request, res: Response): Promise<void> {
@@ -91,14 +42,8 @@ export class PromptController {
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
 
-    const result = await this.driver.listVersions(name, page, limit);
-    res.json({
-      items: result.items,
-      total: result.total,
-      page,
-      limit,
-      totalPages: Math.ceil(result.total / limit),
-    });
+    const result = await this.service.listVersions(name, page, limit);
+    res.json(result);
   }
 
   async createPrompt(req: Request, res: Response): Promise<void> {
@@ -107,7 +52,7 @@ export class PromptController {
       throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    const version = await this.driver.createPrompt(value);
+    const version = await this.service.createPrompt(value);
     res.status(201).json(version);
   }
 }
