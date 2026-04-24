@@ -9,6 +9,7 @@ module.exports = {
     '^@config/(.*)$': '<rootDir>/src/config/$1',
     '^@controllers/(.*)$': '<rootDir>/src/controllers/$1',
     '^@drivers/(.*)$': '<rootDir>/src/drivers/$1',
+    '^@errors/(.*)$': '<rootDir>/src/errors/$1',
     '^@interfaces/(.*)$': '<rootDir>/src/interfaces/$1',
     '^@middlewares/(.*)$': '<rootDir>/src/middlewares/$1',
     '^@models/(.*)$': '<rootDir>/src/models/$1',

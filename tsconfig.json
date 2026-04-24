@@ -19,6 +19,7 @@
       "@config/*": ["config/*"],
       "@controllers/*": ["controllers/*"],
       "@drivers/*": ["drivers/*"],
+      "@errors/*": ["errors/*"],
       "@interfaces/*": ["interfaces/*"],
       "@jobs/*": ["jobs/*"],
       "@middlewares/*": ["middlewares/*"],

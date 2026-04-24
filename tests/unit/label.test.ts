@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { getDb, initSchema, closeDb } from '@models/promptmetrics-sqlite';
+import { AppError } from '@errors/app.error';
 import { LabelController } from '@controllers/promptmetrics-label.controller';
 import { Request, Response } from 'express';
 
@@ -68,9 +69,9 @@ describe('LabelController', () => {
   it('returns 422 for invalid label body', async () => {
     const req = mockReq({ name: '' }, { name: 'welcome' });
     const res = mockRes();
-    await controller.createLabel(req as Request, res as Response);
-
-    expect(res.status).toHaveBeenCalledWith(422);
+    await expect(controller.createLabel(req as Request, res as Response)).rejects.toThrow(
+      expect.objectContaining({ statusCode: 422, code: 'VALIDATION_FAILED' }),
+    );
   });
 
   it('lists labels for a prompt', async () => {
@@ -117,9 +118,9 @@ describe('LabelController', () => {
   it('returns 404 for non-existent label', async () => {
     const req = mockReq({}, { name: 'welcome', label_name: 'missing' });
     const res = mockRes();
-    await controller.getLabel(req as Request, res as Response);
-
-    expect(res.status).toHaveBeenCalledWith(404);
+    await expect(controller.getLabel(req as Request, res as Response)).rejects.toThrow(
+      expect.objectContaining({ statusCode: 404, code: 'NOT_FOUND' }),
+    );
   });
 
   it('deletes a label', async () => {
@@ -140,8 +141,8 @@ describe('LabelController', () => {
   it('returns 404 when deleting non-existent label', async () => {
     const req = mockReq({}, { name: 'welcome', label_name: 'missing' });
     const res = mockRes();
-    await controller.deleteLabel(req as Request, res as Response);
-
-    expect(res.status).toHaveBeenCalledWith(404);
+    await expect(controller.deleteLabel(req as Request, res as Response)).rejects.toThrow(
+      expect.objectContaining({ statusCode: 404, code: 'NOT_FOUND' }),
+    );
   });
 });

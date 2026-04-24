@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
+import { AppError } from '@errors/app.error';
 import { getDb } from '@models/promptmetrics-sqlite';
 import { config } from '@config/index';
 
@@ -7,12 +8,11 @@ export function hashApiKey(key: string): string {
   return crypto.createHmac('sha256', config.apiKeySalt).update(key).digest('hex');
 }
 
-export function authenticateApiKey(req: Request, res: Response, next: NextFunction): void {
+export function authenticateApiKey(req: Request, _res: Response, next: NextFunction): void {
   const apiKey = req.headers['x-api-key'] as string | undefined;
 
   if (!apiKey) {
-    res.status(401).json({ error: 'Unauthorized', message: 'Missing X-API-Key header' });
-    return;
+    throw AppError.unauthorized('Missing X-API-Key header');
   }
 
   const keyHash = hashApiKey(apiKey);
@@ -23,8 +23,7 @@ export function authenticateApiKey(req: Request, res: Response, next: NextFuncti
     | undefined;
 
   if (!row) {
-    res.status(401).json({ error: 'Unauthorized', message: 'Invalid API key' });
-    return;
+    throw AppError.unauthorized('Invalid API key');
   }
 
   db.prepare('UPDATE api_keys SET last_used_at = ? WHERE key_hash = ?').run(
@@ -41,11 +40,10 @@ export function authenticateApiKey(req: Request, res: Response, next: NextFuncti
 }
 
 export function requireScope(scope: string) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     const apiKey = req.apiKey;
     if (!apiKey || !apiKey.scopes.includes(scope)) {
-      res.status(403).json({ error: 'Forbidden', message: `Missing required scope: ${scope}` });
-      return;
+      throw AppError.forbidden(`Missing required scope: ${scope}`);
     }
     next();
   };

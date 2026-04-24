@@ -32,7 +32,7 @@ export class GithubDriver implements PromptDriver {
   private ensureCloned(): void {
     if (!fs.existsSync(this.clonePath)) {
       fs.mkdirSync(path.dirname(this.clonePath), { recursive: true });
-      execSync(`git clone --bare https://${this.token}@github.com/${this.repo}.git ${this.clonePath}`, {
+      execSync(`git clone https://${this.token}@github.com/${this.repo}.git ${this.clonePath}`, {
         stdio: 'ignore',
       });
     }
@@ -40,7 +40,7 @@ export class GithubDriver implements PromptDriver {
 
   async sync(): Promise<void> {
     this.ensureCloned();
-    execSync('git fetch origin', { cwd: this.clonePath, stdio: 'ignore' });
+    execSync('git pull', { cwd: this.clonePath, stdio: 'ignore' });
   }
 
   async listPrompts(page: number = 1, limit: number = 50): Promise<{ items: string[]; total: number }> {
@@ -56,33 +56,57 @@ export class GithubDriver implements PromptDriver {
     return { items: promptNames.slice(start, start + limit), total };
   }
 
+  private semverCompare(a: string, b: string): number {
+    const pa = a.split('.').map(Number);
+    const pb = b.split('.').map(Number);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const na = pa[i] || 0;
+      const nb = pb[i] || 0;
+      if (na !== nb) return na - nb;
+    }
+    return 0;
+  }
+
   async getPrompt(
     name: string,
     version?: string,
   ): Promise<{ content: PromptFile; version: PromptVersion } | undefined> {
     this.ensureCloned();
 
-    const ref = version || 'HEAD';
-    const filePath = `prompts/${name}/${version || 'latest'}.json`;
+    const promptDir = path.join(this.clonePath, 'prompts', name);
+    if (!fs.existsSync(promptDir)) return undefined;
+
+    let targetVersion = version;
+    if (!targetVersion) {
+      const files = fs.readdirSync(promptDir).filter((f) => f.endsWith('.json'));
+      if (files.length === 0) return undefined;
+      const versions = files.map((f) => f.replace('.json', ''));
+      versions.sort((a, b) => this.semverCompare(a, b));
+      targetVersion = versions[versions.length - 1];
+    }
+
+    const filePath = path.join(promptDir, `${targetVersion}.json`);
+    if (!fs.existsSync(filePath)) return undefined;
 
     try {
-      const output = execSync(`git show ${ref}:${filePath}`, {
-        cwd: this.clonePath,
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'ignore'],
-      });
+      const output = fs.readFileSync(filePath, 'utf-8');
       const content = JSON.parse(output) as PromptFile;
 
-      const sha = execSync(`git rev-parse ${ref}`, {
-        cwd: this.clonePath,
-        encoding: 'utf-8',
-      }).trim();
+      const sha = version
+        ? execSync(`git rev-list -n 1 refs/tags/prompt-${name}-v${version}`, {
+            cwd: this.clonePath,
+            encoding: 'utf-8',
+          }).trim()
+        : execSync('git rev-parse HEAD', {
+            cwd: this.clonePath,
+            encoding: 'utf-8',
+          }).trim();
 
       return {
         content,
         version: {
           name,
-          version_tag: version || 'latest',
+          version_tag: targetVersion,
           commit_sha: sha,
           created_at: Math.floor(Date.now() / 1000),
         },

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { AppError } from '@errors/app.error';
 import { getDb } from '@models/promptmetrics-sqlite';
 import { logMetadataSchema } from '@validation-schemas/promptmetrics-log.schema';
 import { logMetadata } from '@services/promptmetrics-logger.service';
@@ -7,15 +8,10 @@ export class LogController {
   async createLog(req: Request, res: Response): Promise<void> {
     const { error, value } = logMetadataSchema.validate(req.body, { abortEarly: false });
     if (error) {
-      res.status(422).json({
-        error: 'Validation failed',
-        details: error.details.map((d) => d.message),
-      });
-      return;
+      throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    try {
-      const db = getDb();
+    const db = getDb();
       const result = db
         .prepare(
           `INSERT INTO logs (prompt_name, version_tag, metadata_json, provider, model, tokens_in, tokens_out, latency_ms, cost_usd, ollama_options, ollama_keep_alive, ollama_format)
@@ -51,9 +47,6 @@ export class LogController {
         logMetadata(value.metadata);
       }
 
-      res.status(202).json({ id: result.lastInsertRowid, status: 'accepted' });
-    } catch (err) {
-      res.status(500).json({ error: 'Failed to log metadata', message: (err as Error).message });
-    }
+    res.status(202).json({ id: result.lastInsertRowid, status: 'accepted' });
   }
 }

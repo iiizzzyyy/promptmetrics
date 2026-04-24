@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { getDb, initSchema, closeDb } from '@models/promptmetrics-sqlite';
+import { AppError } from '@errors/app.error';
 import { RunController } from '@controllers/promptmetrics-run.controller';
 import { Request, Response } from 'express';
 
@@ -61,17 +62,17 @@ describe('RunController', () => {
   it('returns 422 for invalid run body', async () => {
     const req = mockReq({ status: 'invalid' });
     const res = mockRes();
-    await controller.createRun(req as Request, res as Response);
-
-    expect(res.status).toHaveBeenCalledWith(422);
+    await expect(controller.createRun(req as Request, res as Response)).rejects.toThrow(
+      expect.objectContaining({ statusCode: 422, code: 'VALIDATION_FAILED' }),
+    );
   });
 
   it('returns 404 when trace_id does not exist', async () => {
     const req = mockReq({ workflow_name: 'wf-1', trace_id: '550e8400-e29b-41d4-a716-446655440099' });
     const res = mockRes();
-    await controller.createRun(req as Request, res as Response);
-
-    expect(res.status).toHaveBeenCalledWith(404);
+    await expect(controller.createRun(req as Request, res as Response)).rejects.toThrow(
+      expect.objectContaining({ statusCode: 404, code: 'NOT_FOUND' }),
+    );
   });
 
   it('gets a run by id', async () => {
@@ -96,9 +97,9 @@ describe('RunController', () => {
   it('returns 404 for non-existent run', async () => {
     const req = mockReq({}, { run_id: 'non-existent' });
     const res = mockRes();
-    await controller.getRun(req as Request, res as Response);
-
-    expect(res.status).toHaveBeenCalledWith(404);
+    await expect(controller.getRun(req as Request, res as Response)).rejects.toThrow(
+      expect.objectContaining({ statusCode: 404, code: 'NOT_FOUND' }),
+    );
   });
 
   it('updates run status and output', async () => {
@@ -121,9 +122,9 @@ describe('RunController', () => {
   it('returns 404 when updating non-existent run', async () => {
     const req = mockReq({ status: 'completed' }, { run_id: 'missing' });
     const res = mockRes();
-    await controller.updateRun(req as Request, res as Response);
-
-    expect(res.status).toHaveBeenCalledWith(404);
+    await expect(controller.updateRun(req as Request, res as Response)).rejects.toThrow(
+      expect.objectContaining({ statusCode: 404, code: 'NOT_FOUND' }),
+    );
   });
 
   it('lists runs with pagination', async () => {

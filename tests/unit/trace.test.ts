@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { getDb, initSchema, closeDb } from '@models/promptmetrics-sqlite';
+import { AppError } from '@errors/app.error';
 import { TraceController } from '@controllers/promptmetrics-trace.controller';
 import { Request, Response } from 'express';
 
@@ -60,9 +61,9 @@ describe('TraceController', () => {
   it('returns 422 for invalid trace body', async () => {
     const req = mockReq({ metadata: { nested: { bad: true } } });
     const res = mockRes();
-    await controller.createTrace(req as Request, res as Response);
-
-    expect(res.status).toHaveBeenCalledWith(422);
+    await expect(controller.createTrace(req as Request, res as Response)).rejects.toThrow(
+      expect.objectContaining({ statusCode: 422, code: 'VALIDATION_FAILED' }),
+    );
   });
 
   it('gets a trace with its spans', async () => {
@@ -92,9 +93,9 @@ describe('TraceController', () => {
   it('returns 404 for non-existent trace', async () => {
     const req = mockReq({}, { trace_id: 'non-existent' });
     const res = mockRes();
-    await controller.getTrace(req as Request, res as Response);
-
-    expect(res.status).toHaveBeenCalledWith(404);
+    await expect(controller.getTrace(req as Request, res as Response)).rejects.toThrow(
+      expect.objectContaining({ statusCode: 404, code: 'NOT_FOUND' }),
+    );
   });
 
   it('creates a span under a trace', async () => {
@@ -117,17 +118,17 @@ describe('TraceController', () => {
   it('returns 404 when creating span for non-existent trace', async () => {
     const req = mockReq({ name: 'step', status: 'ok' }, { trace_id: 'missing' });
     const res = mockRes();
-    await controller.createSpan(req as Request, res as Response);
-
-    expect(res.status).toHaveBeenCalledWith(404);
+    await expect(controller.createSpan(req as Request, res as Response)).rejects.toThrow(
+      expect.objectContaining({ statusCode: 404, code: 'NOT_FOUND' }),
+    );
   });
 
   it('returns 422 for invalid span body', async () => {
     const req = mockReq({ name: 'step' }, { trace_id: 'any' });
     const res = mockRes();
-    await controller.createSpan(req as Request, res as Response);
-
-    expect(res.status).toHaveBeenCalledWith(422);
+    await expect(controller.createSpan(req as Request, res as Response)).rejects.toThrow(
+      expect.objectContaining({ statusCode: 422, code: 'VALIDATION_FAILED' }),
+    );
   });
 
   it('gets a single span', async () => {
@@ -153,8 +154,8 @@ describe('TraceController', () => {
   it('returns 404 for non-existent span', async () => {
     const req = mockReq({}, { trace_id: 'any', span_id: 'none' });
     const res = mockRes();
-    await controller.getSpan(req as Request, res as Response);
-
-    expect(res.status).toHaveBeenCalledWith(404);
+    await expect(controller.getSpan(req as Request, res as Response)).rejects.toThrow(
+      expect.objectContaining({ statusCode: 404, code: 'NOT_FOUND' }),
+    );
   });
 });
