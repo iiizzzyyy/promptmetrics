@@ -36,7 +36,6 @@
     "dist/",
     "migrations/",
     "docs/",
-    "clients/node/",
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
