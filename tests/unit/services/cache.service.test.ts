@@ -1,5 +1,7 @@
 import { getCachedPrompt, cacheKey, setCachedPrompt, invalidatePrompt, CachedPrompt } from '@services/cache.service';
 
+const WORKSPACE = 'default';
+
 describe('CacheService', () => {
   beforeEach(async () => {
     const { getRedisClient } = await import('@services/redis.service');
@@ -31,13 +33,13 @@ describe('CacheService', () => {
   });
 
   it('should return a cache miss for unknown keys', async () => {
-    const result = await getCachedPrompt(cacheKey('unknown'));
+    const result = await getCachedPrompt(cacheKey(WORKSPACE, 'unknown'));
     expect(result).toBeUndefined();
   });
 
   it('should return a cache hit after storing a prompt', async () => {
     const entry = makeEntry('hello');
-    const key = cacheKey('hello', '1.0.0');
+    const key = cacheKey(WORKSPACE, 'hello', '1.0.0');
     await setCachedPrompt(key, entry);
 
     const result = await getCachedPrompt(key);
@@ -49,37 +51,37 @@ describe('CacheService', () => {
   it('should differentiate keys by version', async () => {
     const entryV1 = makeEntry('greet');
     const entryV2 = { ...entryV1, version: { ...entryV1.version, version_tag: '2.0.0' } };
-    await setCachedPrompt(cacheKey('greet', '1.0.0'), entryV1);
-    await setCachedPrompt(cacheKey('greet', '2.0.0'), entryV2);
+    await setCachedPrompt(cacheKey(WORKSPACE, 'greet', '1.0.0'), entryV1);
+    await setCachedPrompt(cacheKey(WORKSPACE, 'greet', '2.0.0'), entryV2);
 
-    const resultV1 = await getCachedPrompt(cacheKey('greet', '1.0.0'));
-    const resultV2 = await getCachedPrompt(cacheKey('greet', '2.0.0'));
+    const resultV1 = await getCachedPrompt(cacheKey(WORKSPACE, 'greet', '1.0.0'));
+    const resultV2 = await getCachedPrompt(cacheKey(WORKSPACE, 'greet', '2.0.0'));
     expect(resultV1!.version.version_tag).toBe('1.0.0');
     expect(resultV2!.version.version_tag).toBe('2.0.0');
   });
 
   it('should use latest suffix when no version is provided', () => {
-    const key = cacheKey('latest-prompt');
-    expect(key).toBe('prompt:latest-prompt:latest');
+    const key = cacheKey(WORKSPACE, 'latest-prompt');
+    expect(key).toBe('prompt:default:latest-prompt:latest');
   });
 
   it('should invalidate all versions of a prompt', async () => {
-    await setCachedPrompt(cacheKey('multi', '1.0.0'), makeEntry('multi'));
-    await setCachedPrompt(cacheKey('multi', '2.0.0'), makeEntry('multi'));
-    await setCachedPrompt(cacheKey('multi'), makeEntry('multi'));
-    await setCachedPrompt(cacheKey('other', '1.0.0'), makeEntry('other'));
+    await setCachedPrompt(cacheKey(WORKSPACE, 'multi', '1.0.0'), makeEntry('multi'));
+    await setCachedPrompt(cacheKey(WORKSPACE, 'multi', '2.0.0'), makeEntry('multi'));
+    await setCachedPrompt(cacheKey(WORKSPACE, 'multi'), makeEntry('multi'));
+    await setCachedPrompt(cacheKey(WORKSPACE, 'other', '1.0.0'), makeEntry('other'));
 
-    await invalidatePrompt('multi');
+    await invalidatePrompt(WORKSPACE, 'multi');
 
-    expect(await getCachedPrompt(cacheKey('multi', '1.0.0'))).toBeUndefined();
-    expect(await getCachedPrompt(cacheKey('multi', '2.0.0'))).toBeUndefined();
-    expect(await getCachedPrompt(cacheKey('multi'))).toBeUndefined();
-    expect(await getCachedPrompt(cacheKey('other', '1.0.0'))).toBeDefined();
+    expect(await getCachedPrompt(cacheKey(WORKSPACE, 'multi', '1.0.0'))).toBeUndefined();
+    expect(await getCachedPrompt(cacheKey(WORKSPACE, 'multi', '2.0.0'))).toBeUndefined();
+    expect(await getCachedPrompt(cacheKey(WORKSPACE, 'multi'))).toBeUndefined();
+    expect(await getCachedPrompt(cacheKey(WORKSPACE, 'other', '1.0.0'))).toBeDefined();
   });
 
   it('should expire entries after TTL', async () => {
     const entry = makeEntry('expire-me');
-    const key = cacheKey('expire-me');
+    const key = cacheKey(WORKSPACE, 'expire-me');
     await setCachedPrompt(key, entry, 50);
 
     expect(await getCachedPrompt(key)).toBeDefined();

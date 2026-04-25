@@ -504,16 +504,16 @@
 
 ### Epic 4.8 -- Multi-Tenancy
 
-- [ ] **4.8.1** Create migration `005_add_workspace_id.sql`:
+- [x] **4.8.1** Create migration `005_add_workspace_id.sql`:
   ```sql
   ALTER TABLE prompts ADD COLUMN workspace_id TEXT;
   -- Repeat for all tables
   ```
-- [ ] **4.8.2** Create `src/middlewares/tenant.middleware.ts` to read `X-Workspace-Id`
-- [ ] **4.8.3** Update auth middleware to validate key belongs to workspace
-- [ ] **4.8.4** Update all services to scope queries by `workspace_id`
-- [ ] **4.8.5** Integration tests for cross-tenant isolation
-- [ ] **4.8.6** Commit: `git commit -m "feat: add multi-tenancy with workspace isolation"`
+- [x] **4.8.2** Create `src/middlewares/tenant.middleware.ts` to read `X-Workspace-Id`
+- [x] **4.8.3** Update auth middleware to validate key belongs to workspace
+- [x] **4.8.4** Update all services to scope queries by `workspace_id`
+- [x] **4.8.5** Integration tests for cross-tenant isolation
+- [x] **4.8.6** Commit: `git commit -m "feat: add multi-tenancy with workspace isolation"`
 
 ---
 

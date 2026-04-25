@@ -12,7 +12,8 @@ export class TraceController {
       throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    const trace = await this.service.createTrace(value);
+    const workspaceId = req.workspaceId || 'default';
+    const trace = await this.service.createTrace(value, workspaceId);
 
     res.status(201).json({
       trace_id: trace.trace_id,
@@ -24,7 +25,8 @@ export class TraceController {
 
   async getTrace(req: Request, res: Response): Promise<void> {
     const traceId = req.params.trace_id as string;
-    const { trace, spans } = await this.service.getTrace(traceId);
+    const workspaceId = req.workspaceId || 'default';
+    const { trace, spans } = await this.service.getTrace(traceId, workspaceId);
 
     res.status(200).json({
       trace_id: trace.trace_id,
@@ -43,7 +45,8 @@ export class TraceController {
       throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    const span = await this.service.createSpan(traceId, value);
+    const workspaceId = req.workspaceId || 'default';
+    const span = await this.service.createSpan(traceId, value, workspaceId);
 
     res.status(201).json({
       trace_id: traceId,
@@ -56,8 +59,9 @@ export class TraceController {
   async getSpan(req: Request, res: Response): Promise<void> {
     const traceId = req.params.trace_id as string;
     const spanId = req.params.span_id as string;
+    const workspaceId = req.workspaceId || 'default';
 
-    const span = await this.service.getSpan(traceId, spanId);
+    const span = await this.service.getSpan(traceId, spanId, workspaceId);
 
     res.status(200).json({
       span_id: span.span_id,

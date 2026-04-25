@@ -13,7 +13,8 @@ export class LabelController {
       throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    const label = await this.service.createLabel(promptName, value);
+    const workspaceId = req.workspaceId || 'default';
+    const label = await this.service.createLabel(promptName, value, workspaceId);
 
     res.status(201).json({
       prompt_name: label.prompt_name,
@@ -26,16 +27,18 @@ export class LabelController {
     const promptName = req.params.name as string;
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+    const workspaceId = req.workspaceId || 'default';
 
-    const result = await this.service.listLabels(promptName, page, limit);
+    const result = await this.service.listLabels(promptName, page, limit, workspaceId);
     res.status(200).json(result);
   }
 
   async getLabel(req: Request, res: Response): Promise<void> {
     const promptName = req.params.name as string;
     const labelName = req.params.label_name as string;
+    const workspaceId = req.workspaceId || 'default';
 
-    const label = await this.service.getLabel(promptName, labelName);
+    const label = await this.service.getLabel(promptName, labelName, workspaceId);
 
     res.status(200).json({
       prompt_name: label.prompt_name,
@@ -48,8 +51,9 @@ export class LabelController {
   async deleteLabel(req: Request, res: Response): Promise<void> {
     const promptName = req.params.name as string;
     const labelName = req.params.label_name as string;
+    const workspaceId = req.workspaceId || 'default';
 
-    await this.service.deleteLabel(promptName, labelName);
+    await this.service.deleteLabel(promptName, labelName, workspaceId);
     res.status(204).send();
   }
 }

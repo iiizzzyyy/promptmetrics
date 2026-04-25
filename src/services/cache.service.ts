@@ -13,8 +13,8 @@ const localCache = new LRUCache<string, CachedPrompt>({
   updateAgeOnGet: true,
 });
 
-export function cacheKey(name: string, version?: string): string {
-  return version ? `prompt:${name}:${version}` : `prompt:${name}:latest`;
+export function cacheKey(workspaceId: string, name: string, version?: string): string {
+  return version ? `prompt:${workspaceId}:${name}:${version}` : `prompt:${workspaceId}:${name}:latest`;
 }
 
 export async function getCachedPrompt(key: string): Promise<CachedPrompt | undefined> {
@@ -41,11 +41,11 @@ export async function setCachedPrompt(key: string, value: CachedPrompt, ttlMs = 
   localCache.set(key, value, { ttl: ttlMs });
 }
 
-export async function invalidatePrompt(name: string): Promise<void> {
+export async function invalidatePrompt(workspaceId: string, name: string): Promise<void> {
   if (isRedisEnabled()) {
     const redis = getRedisClient();
     if (redis) {
-      const keys = await redis.keys(`prompt:${name}:*`);
+      const keys = await redis.keys(`prompt:${workspaceId}:${name}:*`);
       if (keys.length > 0) {
         await redis.del(...keys);
       }
@@ -53,7 +53,7 @@ export async function invalidatePrompt(name: string): Promise<void> {
     }
   }
   for (const key of localCache.keys()) {
-    if (key.startsWith(`prompt:${name}:`)) {
+    if (key.startsWith(`prompt:${workspaceId}:${name}:`)) {
       localCache.delete(key);
     }
   }

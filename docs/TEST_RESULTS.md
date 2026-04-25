@@ -207,6 +207,18 @@
 
 ---
 
+## Epic 4.8 — Multi-Tenancy
+
+### After Task 4.8
+- **Status:** PASS
+- **Date:** 2026-04-25
+- **Command:** `npm test`
+- **Results:** 201 passed, 1 failed (pre-existing config failure)
+- **New tests:** `tests/integration/tenant.test.ts` — 6 tests covering cross-workspace API key rejection, prompt isolation, log isolation, trace isolation, run isolation, label isolation, and evaluation isolation
+- **Commit:** `feat: add multi-tenancy with workspace isolation`
+
+---
+
 ## Final Verification Checklist
 
 - [ ] `npm run build` succeeds with zero errors

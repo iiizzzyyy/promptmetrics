@@ -39,18 +39,19 @@ export interface CreateSpanInput {
 }
 
 export class TraceService {
-  async createTrace(input: CreateTraceInput): Promise<Trace> {
+  async createTrace(input: CreateTraceInput, workspaceId: string = 'default'): Promise<Trace> {
     const db = getDb();
     const traceId = input.trace_id || crypto.randomUUID();
 
     await db.prepare(
-      `INSERT INTO traces (trace_id, prompt_name, version_tag, metadata_json)
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO traces (trace_id, prompt_name, version_tag, metadata_json, workspace_id)
+       VALUES (?, ?, ?, ?, ?)`,
     ).run(
       traceId,
       input.prompt_name || null,
       input.version_tag || null,
       input.metadata ? JSON.stringify(input.metadata) : null,
+      workspaceId,
     );
 
     return {
@@ -62,9 +63,9 @@ export class TraceService {
     };
   }
 
-  async getTrace(traceId: string): Promise<{ trace: Trace; spans: Span[] }> {
+  async getTrace(traceId: string, workspaceId: string = 'default'): Promise<{ trace: Trace; spans: Span[] }> {
     const db = getDb();
-    const row = (await db.prepare('SELECT * FROM traces WHERE trace_id = ?').get(traceId)) as
+    const row = (await db.prepare('SELECT * FROM traces WHERE trace_id = ? AND workspace_id = ?').get(traceId, workspaceId)) as
       | {
           trace_id: string;
           prompt_name: string | null;
@@ -87,8 +88,8 @@ export class TraceService {
     };
 
     const spanRows = (await db
-      .prepare('SELECT * FROM spans WHERE trace_id = ? ORDER BY start_time ASC')
-      .all(traceId)) as Array<{
+      .prepare('SELECT * FROM spans WHERE trace_id = ? AND workspace_id = ? ORDER BY start_time ASC')
+      .all(traceId, workspaceId)) as Array<{
       span_id: string;
       parent_id: string | null;
       name: string;
@@ -113,9 +114,9 @@ export class TraceService {
     return { trace, spans };
   }
 
-  async createSpan(traceId: string, input: CreateSpanInput): Promise<Span> {
+  async createSpan(traceId: string, input: CreateSpanInput, workspaceId: string = 'default'): Promise<Span> {
     const db = getDb();
-    const trace = (await db.prepare('SELECT trace_id FROM traces WHERE trace_id = ?').get(traceId)) as
+    const trace = (await db.prepare('SELECT trace_id FROM traces WHERE trace_id = ? AND workspace_id = ?').get(traceId, workspaceId)) as
       | { trace_id: string }
       | undefined;
 
@@ -126,8 +127,8 @@ export class TraceService {
     const spanId = input.span_id || crypto.randomUUID();
 
     await db.prepare(
-      `INSERT INTO spans (trace_id, span_id, parent_id, name, status, start_time, end_time, metadata_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO spans (trace_id, span_id, parent_id, name, status, start_time, end_time, metadata_json, workspace_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       traceId,
       spanId,
@@ -137,6 +138,7 @@ export class TraceService {
       input.start_time || null,
       input.end_time || null,
       input.metadata ? JSON.stringify(input.metadata) : null,
+      workspaceId,
     );
 
     return {
@@ -151,9 +153,9 @@ export class TraceService {
     };
   }
 
-  async getSpan(traceId: string, spanId: string): Promise<Span> {
+  async getSpan(traceId: string, spanId: string, workspaceId: string = 'default'): Promise<Span> {
     const db = getDb();
-    const row = (await db.prepare('SELECT * FROM spans WHERE trace_id = ? AND span_id = ?').get(traceId, spanId)) as
+    const row = (await db.prepare('SELECT * FROM spans WHERE trace_id = ? AND span_id = ? AND workspace_id = ?').get(traceId, spanId, workspaceId)) as
       | {
           span_id: string;
           parent_id: string | null;

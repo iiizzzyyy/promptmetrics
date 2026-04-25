@@ -19,7 +19,7 @@ export async function authenticateApiKey(req: Request, _res: Response, next: Nex
   const db = getDb();
 
   const row = (await db.prepare('SELECT * FROM api_keys WHERE key_hash = ?').get(keyHash)) as
-    | { name: string; scopes: string; last_used_at: number | null; expires_at: number | null }
+    | { name: string; scopes: string; last_used_at: number | null; expires_at: number | null; workspace_id: string }
     | undefined;
 
   if (!row) {
@@ -30,6 +30,11 @@ export async function authenticateApiKey(req: Request, _res: Response, next: Nex
     throw AppError.unauthorized('API key expired');
   }
 
+  const workspaceId = req.workspaceId || 'default';
+  if (row.workspace_id !== workspaceId) {
+    throw AppError.unauthorized('API key does not belong to this workspace');
+  }
+
   await db.prepare('UPDATE api_keys SET last_used_at = ? WHERE key_hash = ?').run(
     Math.floor(Date.now() / 1000),
     keyHash,
@@ -38,6 +43,7 @@ export async function authenticateApiKey(req: Request, _res: Response, next: Nex
   req.apiKey = {
     name: row.name,
     scopes: row.scopes.split(','),
+    workspace_id: row.workspace_id,
   };
 
   next();

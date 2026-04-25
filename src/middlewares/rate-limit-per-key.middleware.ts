@@ -109,18 +109,21 @@ async function checkSqliteRateLimit(
 export function rateLimitPerKey(windowMs = WINDOW_MS, maxRequests = DEFAULT_MAX) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const apiKeyName = req.apiKey?.name;
+    const workspaceId = req.workspaceId || 'default';
     if (!apiKeyName) {
       return next();
     }
 
+    const rateLimitKey = `${workspaceId}:${apiKeyName}`;
+
     const redis = getRedisClient();
     if (redis) {
-      const limited = await checkRedisRateLimit(apiKeyName, windowMs, maxRequests, res);
+      const limited = await checkRedisRateLimit(rateLimitKey, windowMs, maxRequests, res);
       if (limited) return;
       return next();
     }
 
-    const sqliteLimited = await checkSqliteRateLimit(apiKeyName, windowMs, maxRequests, res);
+    const sqliteLimited = await checkSqliteRateLimit(rateLimitKey, windowMs, maxRequests, res);
     if (sqliteLimited) return;
 
     next();

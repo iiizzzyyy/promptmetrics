@@ -33,12 +33,12 @@ export interface CreateLogInput {
 }
 
 export class LogService {
-  async createLog(input: CreateLogInput): Promise<LogEntry> {
+  async createLog(input: CreateLogInput, workspaceId: string = 'default'): Promise<LogEntry> {
     const db = getDb();
     const result = await db
       .prepare(
-        `INSERT INTO logs (prompt_name, version_tag, metadata_json, provider, model, tokens_in, tokens_out, latency_ms, cost_usd, ollama_options, ollama_keep_alive, ollama_format)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO logs (prompt_name, version_tag, metadata_json, provider, model, tokens_in, tokens_out, latency_ms, cost_usd, ollama_options, ollama_keep_alive, ollama_format, workspace_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         input.prompt_name,
@@ -57,6 +57,7 @@ export class LogService {
             ? input.ollama_format
             : JSON.stringify(input.ollama_format)
           : null,
+        workspaceId,
       );
 
     return {

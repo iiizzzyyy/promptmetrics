@@ -13,7 +13,8 @@ export class RunController {
       throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    const run = await this.service.createRun(value);
+    const workspaceId = req.workspaceId || 'default';
+    const run = await this.service.createRun(value, workspaceId);
 
     res.status(201).json({
       run_id: run.run_id,
@@ -24,7 +25,8 @@ export class RunController {
 
   async getRun(req: Request, res: Response): Promise<void> {
     const runId = req.params.run_id as string;
-    const run = await this.service.getRun(runId);
+    const workspaceId = req.workspaceId || 'default';
+    const run = await this.service.getRun(runId, workspaceId);
 
     res.status(200).json({
       run_id: run.run_id,
@@ -46,7 +48,8 @@ export class RunController {
       throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    const result = await this.service.updateRun(runId, value);
+    const workspaceId = req.workspaceId || 'default';
+    const result = await this.service.updateRun(runId, value, workspaceId);
 
     if (result.status === 'unchanged') {
       res.status(200).json({ message: 'No changes' });
@@ -58,7 +61,8 @@ export class RunController {
 
   async listRuns(req: Request, res: Response): Promise<void> {
     const { page, limit } = parsePagination(req.query);
-    const result = await this.service.listRuns(page, limit);
+    const workspaceId = req.workspaceId || 'default';
+    const result = await this.service.listRuns(page, limit, workspaceId);
     res.status(200).json(result);
   }
 }

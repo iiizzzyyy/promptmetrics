@@ -6,8 +6,10 @@ declare global {
       apiKey?: {
         name: string;
         scopes: string[];
+        workspace_id?: string;
       };
       requestId?: string;
+      workspaceId?: string;
     }
   }
 }

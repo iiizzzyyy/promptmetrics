@@ -30,6 +30,7 @@ export function auditLog(action: string) {
             version_tag: versionTag,
             api_key_name: apiKey?.name || 'unknown',
             ip_address: req.ip || req.socket.remoteAddress || 'unknown',
+            workspace_id: req.workspaceId || 'default',
           });
         } catch (err) {
           console.error('Failed to enqueue audit log:', err);

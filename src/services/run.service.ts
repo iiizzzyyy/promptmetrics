@@ -32,12 +32,12 @@ export interface UpdateRunInput {
 }
 
 export class RunService {
-  async createRun(input: CreateRunInput): Promise<Run> {
+  async createRun(input: CreateRunInput, workspaceId: string = 'default'): Promise<Run> {
     const db = getDb();
     const runId = input.run_id || crypto.randomUUID();
 
     if (input.trace_id) {
-      const trace = (await db.prepare('SELECT trace_id FROM traces WHERE trace_id = ?').get(input.trace_id)) as
+      const trace = (await db.prepare('SELECT trace_id FROM traces WHERE trace_id = ? AND workspace_id = ?').get(input.trace_id, workspaceId)) as
         | { trace_id: string }
         | undefined;
       if (!trace) {
@@ -46,8 +46,8 @@ export class RunService {
     }
 
     await db.prepare(
-      `INSERT INTO runs (run_id, workflow_name, status, input_json, output_json, trace_id, metadata_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO runs (run_id, workflow_name, status, input_json, output_json, trace_id, metadata_json, workspace_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       runId,
       input.workflow_name,
@@ -56,6 +56,7 @@ export class RunService {
       input.output ? JSON.stringify(input.output) : null,
       input.trace_id || null,
       input.metadata ? JSON.stringify(input.metadata) : null,
+      workspaceId,
     );
 
     return {
@@ -71,9 +72,9 @@ export class RunService {
     };
   }
 
-  async getRun(runId: string): Promise<Run> {
+  async getRun(runId: string, workspaceId: string = 'default'): Promise<Run> {
     const db = getDb();
-    const run = (await db.prepare('SELECT * FROM runs WHERE run_id = ?').get(runId)) as
+    const run = (await db.prepare('SELECT * FROM runs WHERE run_id = ? AND workspace_id = ?').get(runId, workspaceId)) as
       | {
           run_id: string;
           workflow_name: string;
@@ -104,9 +105,9 @@ export class RunService {
     };
   }
 
-  async updateRun(runId: string, input: UpdateRunInput): Promise<{ run_id: string; status: string }> {
+  async updateRun(runId: string, input: UpdateRunInput, workspaceId: string = 'default'): Promise<{ run_id: string; status: string }> {
     const db = getDb();
-    const existing = (await db.prepare('SELECT run_id FROM runs WHERE run_id = ?').get(runId)) as
+    const existing = (await db.prepare('SELECT run_id FROM runs WHERE run_id = ? AND workspace_id = ?').get(runId, workspaceId)) as
       | { run_id: string }
       | undefined;
 
@@ -137,18 +138,18 @@ export class RunService {
     updates.push('updated_at = unixepoch()');
     params.push(runId);
 
-    await db.prepare(`UPDATE runs SET ${updates.join(', ')} WHERE run_id = ?`).run(...params);
+    await db.prepare(`UPDATE runs SET ${updates.join(', ')} WHERE run_id = ? AND workspace_id = ?`).run(...params, workspaceId);
 
     return { run_id: runId, status: 'updated' };
   }
 
-  async listRuns(page: number, limit: number): Promise<PaginatedResponse<Run>> {
+  async listRuns(page: number, limit: number, workspaceId: string = 'default'): Promise<PaginatedResponse<Run>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const total = ((await db.prepare('SELECT COUNT(*) as c FROM runs').get()) as { c: number }).c;
+    const total = ((await db.prepare('SELECT COUNT(*) as c FROM runs WHERE workspace_id = ?').get(workspaceId)) as { c: number }).c;
     const items = (await db
-      .prepare('SELECT * FROM runs ORDER BY created_at DESC LIMIT ? OFFSET ?')
-      .all(limit, offset)) as Array<{
+      .prepare('SELECT * FROM runs WHERE workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
+      .all(workspaceId, limit, offset)) as Array<{
       run_id: string;
       workflow_name: string;
       status: string;

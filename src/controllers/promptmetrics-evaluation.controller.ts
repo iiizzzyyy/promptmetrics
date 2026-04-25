@@ -6,7 +6,8 @@ export class EvaluationController {
 
   async createEvaluation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const result = await this.service.createEvaluation(req.body);
+      const workspaceId = req.workspaceId || 'default';
+      const result = await this.service.createEvaluation(req.body, workspaceId);
       res.status(201).json(result);
     } catch (err) {
       next(err);
@@ -17,7 +18,8 @@ export class EvaluationController {
     try {
       const page = Number(req.query.page) || 1;
       const limit = Number(req.query.limit) || 50;
-      const result = await this.service.listEvaluations(page, limit);
+      const workspaceId = req.workspaceId || 'default';
+      const result = await this.service.listEvaluations(page, limit, workspaceId);
       res.status(200).json(result);
     } catch (err) {
       next(err);
@@ -27,7 +29,8 @@ export class EvaluationController {
   async getEvaluation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const id = Number(req.params.id);
-      const result = await this.service.getEvaluation(id);
+      const workspaceId = req.workspaceId || 'default';
+      const result = await this.service.getEvaluation(id, workspaceId);
       res.status(200).json(result);
     } catch (err) {
       next(err);
@@ -37,7 +40,8 @@ export class EvaluationController {
   async deleteEvaluation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const id = Number(req.params.id);
-      await this.service.deleteEvaluation(id);
+      const workspaceId = req.workspaceId || 'default';
+      await this.service.deleteEvaluation(id, workspaceId);
       res.status(204).send();
     } catch (err) {
       next(err);
@@ -47,7 +51,8 @@ export class EvaluationController {
   async createResult(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const id = Number(req.params.id);
-      const result = await this.service.createResult(id, req.body);
+      const workspaceId = req.workspaceId || 'default';
+      const result = await this.service.createResult(id, req.body, workspaceId);
       res.status(201).json(result);
     } catch (err) {
       next(err);
@@ -59,7 +64,8 @@ export class EvaluationController {
       const id = Number(req.params.id);
       const page = Number(req.query.page) || 1;
       const limit = Number(req.query.limit) || 50;
-      const result = await this.service.listResults(id, page, limit);
+      const workspaceId = req.workspaceId || 'default';
+      const result = await this.service.listResults(id, page, limit, workspaceId);
       res.status(200).json(result);
     } catch (err) {
       next(err);

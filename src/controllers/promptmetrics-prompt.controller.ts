@@ -11,7 +11,8 @@ export class PromptController {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
     const query = req.query.q as string | undefined;
 
-    const result = await this.service.listPrompts(page, limit, query);
+    const workspaceId = req.workspaceId || 'default';
+    const result = await this.service.listPrompts(workspaceId, page, limit, query);
     res.json(result);
   }
 
@@ -19,6 +20,7 @@ export class PromptController {
     const name = req.params.name as string;
     const version = req.query.version as string | undefined;
     const shouldRender = req.query.render !== 'false';
+    const workspaceId = req.workspaceId || 'default';
 
     let variables: Record<string, string> | undefined;
     const rawVars = req.query.variables;
@@ -33,7 +35,7 @@ export class PromptController {
       variables = { ...variables, ...req.body.variables };
     }
 
-    const result = await this.service.getPrompt(name, version, variables, shouldRender);
+    const result = await this.service.getPrompt(workspaceId, name, version, variables, shouldRender);
     res.json(result);
   }
 
@@ -41,8 +43,9 @@ export class PromptController {
     const name = req.params.name as string;
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+    const workspaceId = req.workspaceId || 'default';
 
-    const result = await this.service.listVersions(name, page, limit);
+    const result = await this.service.listVersions(workspaceId, name, page, limit);
     res.json(result);
   }
 
@@ -52,7 +55,8 @@ export class PromptController {
       throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    const version = await this.service.createPrompt(value);
+    const workspaceId = req.workspaceId || 'default';
+    const version = await this.service.createPrompt(workspaceId, value);
     res.status(201).json(version);
   }
 }

@@ -19,6 +19,7 @@ import { createWebhookRoutes } from '@routes/webhook.route';
 import { createEvaluationRoutes } from '@routes/evaluation.route';
 import { requestIdMiddleware } from '@middlewares/promptmetrics-request-id.middleware';
 import { errorHandlerMiddleware } from '@middlewares/promptmetrics-error-handler.middleware';
+import { tenantMiddleware } from '@middlewares/tenant.middleware';
 
 export function createApp(driver?: PromptDriver): Application {
   const app = express();
@@ -28,6 +29,7 @@ export function createApp(driver?: PromptDriver): Application {
   }
 
   app.use(requestIdMiddleware);
+  app.use(tenantMiddleware);
   app.use(helmet());
   app.use(hpp());
   app.use(cors());

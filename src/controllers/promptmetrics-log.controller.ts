@@ -13,12 +13,11 @@ export class LogController {
       throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    const logEntry = await this.service.createLog(value);
+    const workspaceId = req.workspaceId || 'default';
+    const logEntry = await this.service.createLog(value, workspaceId);
 
-    // Default: structured JSON to stdout
     console.log(JSON.stringify({ type: 'promptmetrics.log', ...logEntry }));
 
-    // OTel: emit metadata as span attributes if enabled
     if (value.metadata) {
       logMetadata(value.metadata);
     }
