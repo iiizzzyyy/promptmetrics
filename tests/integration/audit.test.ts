@@ -5,6 +5,7 @@ import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
 import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
+import { auditLogService } from '@services/audit-log.service';
 
 describe('Audit Logging Integration', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-audit.db');
@@ -66,6 +67,8 @@ describe('Audit Logging Integration', () => {
         ],
       });
 
+    await auditLogService.flush();
+
     const db = getDb();
     const row = db
       .prepare('SELECT * FROM audit_logs WHERE prompt_name = ? ORDER BY timestamp DESC LIMIT 1')
@@ -82,6 +85,8 @@ describe('Audit Logging Integration', () => {
   });
 
   it('should return audit logs with admin scope', async () => {
+    await auditLogService.flush();
+
     const res = await request(app).get('/v1/audit-logs').set('X-API-Key', adminApiKey);
     expect(res.status).toBe(200);
     expect(res.body.items.length).toBeGreaterThan(0);

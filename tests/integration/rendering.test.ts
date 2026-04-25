@@ -116,9 +116,7 @@ describe('Template Rendering Integration', () => {
         variables: { topic: { type: 'string', required: true } },
       });
 
-    const res = await request(app)
-      .get('/v1/prompts/assistant-test?variables[topic]=AI')
-      .set('X-API-Key', apiKey);
+    const res = await request(app).get('/v1/prompts/assistant-test?variables[topic]=AI').set('X-API-Key', apiKey);
 
     expect(res.status).toBe(200);
     expect(res.body.content.messages).toEqual([

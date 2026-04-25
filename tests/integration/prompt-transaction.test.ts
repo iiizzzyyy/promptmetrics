@@ -57,7 +57,9 @@ describe('Prompt Creation Transaction', () => {
     expect(res.status).toBe(201);
 
     const db = getDb();
-    const row = db.prepare('SELECT * FROM prompts WHERE name = ? AND version_tag = ?').get('transaction-prompt', '1.0.0') as {
+    const row = db
+      .prepare('SELECT * FROM prompts WHERE name = ? AND version_tag = ?')
+      .get('transaction-prompt', '1.0.0') as {
       name: string;
       version_tag: string;
       driver: string;

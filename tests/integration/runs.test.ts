@@ -111,16 +111,16 @@ describe('Run API Integration', () => {
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('updated');
 
-    const updated = db.prepare('SELECT * FROM runs WHERE run_id = ?').get(runId) as { status: string; output_json: string };
+    const updated = db.prepare('SELECT * FROM runs WHERE run_id = ?').get(runId) as {
+      status: string;
+      output_json: string;
+    };
     expect(updated.status).toBe('completed');
     expect(JSON.parse(updated.output_json)).toEqual({ result: 'ok' });
   });
 
   it('PATCH /v1/runs/:run_id returns 404 for missing run', async () => {
-    const res = await request(app)
-      .patch('/v1/runs/missing-run')
-      .set('X-API-Key', apiKey)
-      .send({ status: 'completed' });
+    const res = await request(app).patch('/v1/runs/missing-run').set('X-API-Key', apiKey).send({ status: 'completed' });
 
     expect(res.status).toBe(404);
   });

@@ -127,9 +127,7 @@ describe('Trace API Integration', () => {
       'INSERT INTO spans (trace_id, span_id, parent_id, name, status, start_time, end_time, metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     ).run(traceId, spanId, 'parent-1', 'nested-step', 'error', 3000, 4000, JSON.stringify({ retry: 2 }));
 
-    const res = await request(app)
-      .get(`/v1/traces/${traceId}/spans/${spanId}`)
-      .set('X-API-Key', apiKey);
+    const res = await request(app).get(`/v1/traces/${traceId}/spans/${spanId}`).set('X-API-Key', apiKey);
 
     expect(res.status).toBe(200);
     expect(res.body.span_id).toBe(spanId);

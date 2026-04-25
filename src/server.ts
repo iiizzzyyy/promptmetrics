@@ -4,6 +4,7 @@ import { config } from '@config/index';
 import { initSchema } from '@models/promptmetrics-sqlite';
 import { setupGracefulShutdown } from '@utils/promptmetrics-shutdown';
 import { initOtel, shutdownOtel } from '@services/promptmetrics-otel.service';
+import { auditLogService } from '@services/audit-log.service';
 import { GitSyncJob } from '@jobs/promptmetrics-git-sync.job';
 import { createDriver } from '@drivers/promptmetrics-driver.factory';
 
@@ -14,6 +15,7 @@ async function main(): Promise<void> {
   console.log('Database initialized.');
 
   initOtel();
+  auditLogService.start();
 
   const driver = createDriver();
   const app = createApp(driver);
@@ -32,6 +34,12 @@ async function main(): Promise<void> {
       shutdownOtel,
       async () => {
         gitSyncJob.stop();
+      },
+      async () => {
+        await auditLogService.flush();
+      },
+      async () => {
+        auditLogService.stop();
       },
     ],
   });

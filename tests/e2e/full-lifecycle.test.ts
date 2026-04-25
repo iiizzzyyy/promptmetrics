@@ -5,6 +5,7 @@ import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
 import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
+import { auditLogService } from '@services/audit-log.service';
 
 describe('Full Lifecycle E2E', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-e2e.db');
@@ -179,15 +180,13 @@ describe('Full Lifecycle E2E', () => {
       expect(res.status).toBe(200);
       expect(res.body.content.version).toBe('1.1.0');
       expect(res.body.content.messages).toEqual([
-      { role: 'system', content: 'You are a helpful assistant.' },
-      { role: 'user', content: 'Hello {{name}}! Welcome aboard.' },
-    ]);
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: 'Hello {{name}}! Welcome aboard.' },
+      ]);
     });
 
     it('gets specific version', async () => {
-      const res = await request(app)
-        .get('/v1/prompts/onboarding?version=1.0.0&render=false')
-        .set('X-API-Key', readKey);
+      const res = await request(app).get('/v1/prompts/onboarding?version=1.0.0&render=false').set('X-API-Key', readKey);
       expect(res.status).toBe(200);
       expect(res.body.content.version).toBe('1.0.0');
     });
@@ -217,24 +216,22 @@ describe('Full Lifecycle E2E', () => {
     });
 
     it('returns raw messages when render=false', async () => {
-      const res = await request(app)
-        .get('/v1/prompts/onboarding?render=false')
-        .set('X-API-Key', readKey);
+      const res = await request(app).get('/v1/prompts/onboarding?render=false').set('X-API-Key', readKey);
       expect(res.status).toBe(200);
       expect(res.body.content.messages[1].content).toContain('{{name}}');
     });
 
     it('returns 400 when render=true with missing required variables', async () => {
-      const res = await request(app)
-        .get('/v1/prompts/onboarding?version=1.0.0&render=true')
-        .set('X-API-Key', readKey);
+      const res = await request(app).get('/v1/prompts/onboarding?version=1.0.0&render=true').set('X-API-Key', readKey);
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('Missing required variables');
     });
 
     it('renders messages when render=true with all variables provided', async () => {
       const res = await request(app)
-        .get('/v1/prompts/onboarding?version=1.0.0&render=true&variables[name]=Alice&variables[email]=alice@example.com')
+        .get(
+          '/v1/prompts/onboarding?version=1.0.0&render=true&variables[name]=Alice&variables[email]=alice@example.com',
+        )
         .set('X-API-Key', readKey);
       expect(res.status).toBe(200);
       expect(res.body.content.messages[1].content).toContain('Welcome Alice!');
@@ -265,13 +262,10 @@ describe('Full Lifecycle E2E', () => {
     });
 
     it('accepts a log entry with minimal fields', async () => {
-      const res = await request(app)
-        .post('/v1/logs')
-        .set('X-API-Key', writeKey)
-        .send({
-          prompt_name: 'onboarding',
-          version_tag: '1.0.0',
-        });
+      const res = await request(app).post('/v1/logs').set('X-API-Key', writeKey).send({
+        prompt_name: 'onboarding',
+        version_tag: '1.0.0',
+      });
 
       expect(res.status).toBe(202);
     });
@@ -324,6 +318,8 @@ describe('Full Lifecycle E2E', () => {
 
   describe('Audit Logs', () => {
     it('returns audit logs for admin scope', async () => {
+      await auditLogService.flush();
+
       const res = await request(app).get('/v1/audit-logs').set('X-API-Key', adminKey);
       expect(res.status).toBe(200);
       expect(res.body.items.length).toBeGreaterThan(0);
@@ -439,9 +435,7 @@ describe('Full Lifecycle E2E', () => {
 
       expect(span2.status).toBe(201);
 
-      const getRes = await request(app)
-        .get(`/v1/traces/${traceId}`)
-        .set('X-API-Key', readKey);
+      const getRes = await request(app).get(`/v1/traces/${traceId}`).set('X-API-Key', readKey);
 
       expect(getRes.status).toBe(200);
       expect(getRes.body.trace_id).toBe(traceId);
@@ -451,9 +445,7 @@ describe('Full Lifecycle E2E', () => {
     });
 
     it('returns 404 for missing trace', async () => {
-      const res = await request(app)
-        .get('/v1/traces/non-existent-trace')
-        .set('X-API-Key', readKey);
+      const res = await request(app).get('/v1/traces/non-existent-trace').set('X-API-Key', readKey);
       expect(res.status).toBe(404);
     });
   });
@@ -521,31 +513,23 @@ describe('Full Lifecycle E2E', () => {
       expect(createRes.body.name).toBe('production');
       expect(createRes.body.version_tag).toBe('1.0.0');
 
-      const listRes = await request(app)
-        .get('/v1/prompts/onboarding/labels')
-        .set('X-API-Key', readKey);
+      const listRes = await request(app).get('/v1/prompts/onboarding/labels').set('X-API-Key', readKey);
 
       expect(listRes.status).toBe(200);
       expect(listRes.body.items.length).toBe(1);
       expect(listRes.body.items[0].name).toBe('production');
 
-      const getRes = await request(app)
-        .get('/v1/prompts/onboarding/labels/production')
-        .set('X-API-Key', readKey);
+      const getRes = await request(app).get('/v1/prompts/onboarding/labels/production').set('X-API-Key', readKey);
 
       expect(getRes.status).toBe(200);
       expect(getRes.body.name).toBe('production');
       expect(getRes.body.version_tag).toBe('1.0.0');
 
-      const delRes = await request(app)
-        .delete('/v1/prompts/onboarding/labels/production')
-        .set('X-API-Key', writeKey);
+      const delRes = await request(app).delete('/v1/prompts/onboarding/labels/production').set('X-API-Key', writeKey);
 
       expect(delRes.status).toBe(204);
 
-      const afterList = await request(app)
-        .get('/v1/prompts/onboarding/labels')
-        .set('X-API-Key', readKey);
+      const afterList = await request(app).get('/v1/prompts/onboarding/labels').set('X-API-Key', readKey);
 
       expect(afterList.status).toBe(200);
       expect(afterList.body.items.length).toBe(0);
@@ -569,9 +553,7 @@ describe('Full Lifecycle E2E', () => {
     });
 
     it('returns 404 for missing label', async () => {
-      const res = await request(app)
-        .get('/v1/prompts/onboarding/labels/missing')
-        .set('X-API-Key', readKey);
+      const res = await request(app).get('/v1/prompts/onboarding/labels/missing').set('X-API-Key', readKey);
 
       expect(res.status).toBe(404);
     });

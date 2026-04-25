@@ -49,7 +49,10 @@ export class GithubDriver implements PromptDriver {
     if (!fs.existsSync(promptsDir)) return { items: [], total: 0 };
 
     const entries = fs.readdirSync(promptsDir, { withFileTypes: true });
-    const promptNames = entries.filter((e) => e.isDirectory()).map((e) => e.name).sort();
+    const promptNames = entries
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .sort();
 
     const total = promptNames.length;
     const start = (page - 1) * limit;
@@ -164,13 +167,7 @@ export class GithubDriver implements PromptDriver {
           withTransaction((db) => {
             db.prepare(
               'INSERT OR REPLACE INTO prompts (name, version_tag, commit_sha, driver, created_at) VALUES (?, ?, ?, ?, ?)',
-            ).run(
-              prompt.name,
-              prompt.version,
-              version.commit_sha,
-              'github',
-              version.created_at,
-            );
+            ).run(prompt.name, prompt.version, version.commit_sha, 'github', version.created_at);
           });
         } catch (dbError) {
           // Attempt to revert GitHub changes on DB failure
@@ -206,13 +203,18 @@ export class GithubDriver implements PromptDriver {
     throw lastError || new Error('Failed to create prompt after retries');
   }
 
-  async listVersions(name: string, page: number = 1, limit: number = 50): Promise<{ items: PromptVersion[]; total: number }> {
+  async listVersions(
+    name: string,
+    page: number = 1,
+    limit: number = 50,
+  ): Promise<{ items: PromptVersion[]; total: number }> {
     const db = getDb();
     const rows = db
       .prepare('SELECT * FROM prompts WHERE name = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
       .all(name, limit, (page - 1) * limit) as PromptVersion[];
 
-    const total = (db.prepare('SELECT COUNT(*) as count FROM prompts WHERE name = ?').get(name) as { count: number }).count;
+    const total = (db.prepare('SELECT COUNT(*) as count FROM prompts WHERE name = ?').get(name) as { count: number })
+      .count;
 
     return { items: rows, total };
   }

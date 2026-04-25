@@ -29,7 +29,10 @@ export class FilesystemDriver implements PromptDriver {
     return { items: paginated, total };
   }
 
-  async getPrompt(name: string, version?: string): Promise<{ content: PromptFile; version: PromptVersion } | undefined> {
+  async getPrompt(
+    name: string,
+    version?: string,
+  ): Promise<{ content: PromptFile; version: PromptVersion } | undefined> {
     const promptDir = path.join(this.basePath, name);
     if (!fs.existsSync(promptDir)) return undefined;
 
@@ -88,7 +91,11 @@ export class FilesystemDriver implements PromptDriver {
     return version;
   }
 
-  async listVersions(name: string, page: number = 1, limit: number = 50): Promise<{ items: PromptVersion[]; total: number }> {
+  async listVersions(
+    name: string,
+    page: number = 1,
+    limit: number = 50,
+  ): Promise<{ items: PromptVersion[]; total: number }> {
     const versions = this.getVersionFiles(name);
     const total = versions.length;
 

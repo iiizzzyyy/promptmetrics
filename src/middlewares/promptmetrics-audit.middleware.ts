@@ -1,20 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
-import { getDb } from '@models/promptmetrics-sqlite';
+import { auditLogService } from '@services/audit-log.service';
 
 export function auditLog(action: string) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const originalSend = res.send.bind(res);
-
-    res.send = function (body: unknown): Response {
-      res.send = originalSend;
-
+    res.on('finish', () => {
       if (res.statusCode >= 200 && res.statusCode < 300) {
         try {
           const apiKey = req.apiKey;
-          const db = getDb();
 
-          let promptName: string | null = null;
-          let versionTag: string | null = null;
+          let promptName: string | undefined;
+          let versionTag: string | undefined;
 
           if (req.params.name) {
             promptName = Array.isArray(req.params.name) ? req.params.name[0] : req.params.name;
@@ -29,22 +24,18 @@ export function auditLog(action: string) {
             versionTag = req.query.version as string;
           }
 
-          db.prepare(
-            'INSERT INTO audit_logs (action, prompt_name, version_tag, api_key_name, ip_address) VALUES (?, ?, ?, ?, ?)',
-          ).run(
+          auditLogService.enqueue({
             action,
-            promptName,
-            versionTag,
-            apiKey?.name || 'unknown',
-            req.ip || req.socket.remoteAddress || 'unknown',
-          );
+            prompt_name: promptName,
+            version_tag: versionTag,
+            api_key_name: apiKey?.name || 'unknown',
+            ip_address: req.ip || req.socket.remoteAddress || 'unknown',
+          });
         } catch (err) {
-          console.error('Failed to write audit log:', err);
+          console.error('Failed to enqueue audit log:', err);
         }
       }
-
-      return res.send(body);
-    };
+    });
 
     next();
   };

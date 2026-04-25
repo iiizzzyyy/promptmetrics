@@ -30,7 +30,9 @@ export class SQLiteStorage {
 
   async executed(): Promise<string[]> {
     this.ensureTable();
-    const rows = this.db.prepare(`SELECT ${this.columnName} FROM ${this.tableName} ORDER BY ${this.columnName}`).all() as Record<string, string>[];
+    const rows = this.db
+      .prepare(`SELECT ${this.columnName} FROM ${this.tableName} ORDER BY ${this.columnName}`)
+      .all() as Record<string, string>[];
     return rows.map((row) => row[this.columnName]);
   }
 

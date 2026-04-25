@@ -101,9 +101,7 @@ describe('Label API Integration', () => {
       '1.0.0',
     );
 
-    const res = await request(app)
-      .get('/v1/prompts/welcome/labels/production')
-      .set('X-API-Key', apiKey);
+    const res = await request(app).get('/v1/prompts/welcome/labels/production').set('X-API-Key', apiKey);
 
     expect(res.status).toBe(200);
     expect(res.body.name).toBe('production');
@@ -111,9 +109,7 @@ describe('Label API Integration', () => {
   });
 
   it('GET /v1/prompts/:name/labels/:label_name returns 404 for missing', async () => {
-    const res = await request(app)
-      .get('/v1/prompts/welcome/labels/missing')
-      .set('X-API-Key', apiKey);
+    const res = await request(app).get('/v1/prompts/welcome/labels/missing').set('X-API-Key', apiKey);
 
     expect(res.status).toBe(404);
   });
@@ -126,20 +122,18 @@ describe('Label API Integration', () => {
       '1.0.0',
     );
 
-    const res = await request(app)
-      .delete('/v1/prompts/welcome/labels/production')
-      .set('X-API-Key', apiKey);
+    const res = await request(app).delete('/v1/prompts/welcome/labels/production').set('X-API-Key', apiKey);
 
     expect(res.status).toBe(204);
 
-    const after = db.prepare('SELECT COUNT(*) as c FROM prompt_labels WHERE prompt_name = ? AND name = ?').get('welcome', 'production') as { c: number };
+    const after = db
+      .prepare('SELECT COUNT(*) as c FROM prompt_labels WHERE prompt_name = ? AND name = ?')
+      .get('welcome', 'production') as { c: number };
     expect(after.c).toBe(0);
   });
 
   it('DELETE /v1/prompts/:name/labels/:label_name returns 404 for missing', async () => {
-    const res = await request(app)
-      .delete('/v1/prompts/welcome/labels/missing')
-      .set('X-API-Key', apiKey);
+    const res = await request(app).delete('/v1/prompts/welcome/labels/missing').set('X-API-Key', apiKey);
 
     expect(res.status).toBe(404);
   });
