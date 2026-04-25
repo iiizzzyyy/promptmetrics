@@ -361,8 +361,8 @@
 
 ### Epic 3.6 -- Add OpenAPI Documentation
 
-- [ ] **3.6.1** Run: `npm install swagger-ui-express @types/swagger-ui-express`
-- [ ] **3.6.2** Create `docs/openapi.yaml` covering all v1 endpoints:
+- [x] **3.6.1** Run: `npm install swagger-ui-express @types/swagger-ui-express`
+- [x] **3.6.2** Create `docs/openapi.yaml` covering all v1 endpoints:
   - `/health`, `/health/deep`
   - `/v1/prompts` (GET, POST), `/v1/prompts/:name`, `/v1/prompts/:name/versions`
   - `/v1/logs` (POST)
@@ -370,9 +370,9 @@
   - `/v1/runs` (GET, POST), `/v1/runs/:run_id` (GET, PATCH)
   - `/v1/prompts/:name/labels` (GET, POST), `/v1/prompts/:name/labels/:label_name`
   - `/v1/audit-logs` (GET)
-- [ ] **3.6.3** In `src/app.ts`, add `app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec))`
-- [ ] **3.6.4** Integration test: `GET /docs` returns HTML; assert spec is valid with `swagger-parser`
-- [ ] **3.6.5** Commit: `git commit -m "docs: add OpenAPI spec and Swagger UI at /docs"`
+- [x] **3.6.3** In `src/app.ts`, add `app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec))`
+- [x] **3.6.4** Integration test: `GET /docs` returns HTML; assert spec is valid with `swagger-parser`
+- [x] **3.6.5** Commit: `git commit -m "docs: add OpenAPI spec and Swagger UI at /docs"`
 
 ---
 

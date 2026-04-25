@@ -77,9 +77,12 @@
 ## Epic 3.6 — Add OpenAPI Documentation
 
 ### After Task 3.6
-- **Status:** TBD
+- **Status:** PASS
+- **Date:** 2026-04-25
 - **Command:** `npm test`
-- **Notes:**
+- **Results:** 172 passed, 1 failed (pre-existing config failure)
+- **New tests:** `tests/integration/openapi.test.ts` — 2 tests covering /docs HTML and spec validation
+- **Commit:** `docs: add OpenAPI spec and Swagger UI at /docs`
 
 ---
 
