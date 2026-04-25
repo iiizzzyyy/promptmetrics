@@ -33,9 +33,9 @@ export interface CreateLogInput {
 }
 
 export class LogService {
-  createLog(input: CreateLogInput): LogEntry {
+  async createLog(input: CreateLogInput): Promise<LogEntry> {
     const db = getDb();
-    const result = db
+    const result = await db
       .prepare(
         `INSERT INTO logs (prompt_name, version_tag, metadata_json, provider, model, tokens_in, tokens_out, latency_ms, cost_usd, ollama_options, ollama_keep_alive, ollama_format)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,

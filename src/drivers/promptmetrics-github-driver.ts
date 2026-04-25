@@ -199,8 +199,8 @@ export class GithubDriver implements PromptDriver {
 
     // Update SQLite index inside a transaction
     try {
-      withTransaction((db) => {
-        db.prepare(
+      await withTransaction(async (db) => {
+        await db.prepare(
           'INSERT OR REPLACE INTO prompts (name, version_tag, commit_sha, driver, created_at) VALUES (?, ?, ?, ?, ?)',
         ).run(prompt.name, prompt.version, version.commit_sha, 'github', version.created_at);
       });
@@ -231,11 +231,11 @@ export class GithubDriver implements PromptDriver {
     limit: number = 50,
   ): Promise<{ items: PromptVersion[]; total: number }> {
     const db = getDb();
-    const rows = db
+    const rows = (await db
       .prepare('SELECT * FROM prompts WHERE name = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
-      .all(name, limit, (page - 1) * limit) as PromptVersion[];
+      .all(name, limit, (page - 1) * limit)) as PromptVersion[];
 
-    const total = (db.prepare('SELECT COUNT(*) as count FROM prompts WHERE name = ?').get(name) as { count: number })
+    const total = ((await db.prepare('SELECT COUNT(*) as count FROM prompts WHERE name = ?').get(name)) as { count: number })
       .count;
 
     return { items: rows, total };

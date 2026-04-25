@@ -122,6 +122,18 @@
 
 ---
 
+## Epic 4.1 — PostgreSQL Backend Support
+
+### After Task 4.1
+- **Status:** PASS
+- **Date:** 2026-04-25
+- **Command:** `npm test`
+- **Results:** 181 passed, 1 failed (pre-existing config failure)
+- **Notes:** Fixed `SqliteAdapter.transaction()` to not call the callback twice. Fixed `tests/unit/models/transaction.test.ts`, `tests/unit/migrations/migrator.test.ts`, and `tests/unit/sqlite.test.ts` to use async/await patterns compatible with `DatabaseAdapter` interface.
+- **Commit:** `feat: add PostgreSQL backend adapter`
+
+---
+
 ## Final Verification Checklist
 
 - [ ] `npm run build` succeeds with zero errors

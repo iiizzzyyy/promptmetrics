@@ -46,7 +46,7 @@ class AuditLogService {
 
     for (const entry of batch) {
       try {
-        stmt.run(
+        await stmt.run(
           entry.action,
           entry.prompt_name || null,
           entry.version_tag || null,

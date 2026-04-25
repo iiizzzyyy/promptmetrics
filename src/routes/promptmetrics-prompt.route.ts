@@ -46,12 +46,12 @@ export function createPromptRoutes(driver: PromptDriver): Router {
     controller.createPrompt(req, res),
   );
 
-  router.get('/v1/audit-logs', requireScope('admin'), validateQuery(paginationQuerySchema), (req, res) => {
+  router.get('/v1/audit-logs', requireScope('admin'), validateQuery(paginationQuerySchema), async (req, res) => {
     const db = getDb();
     const { page, limit, offset } = parsePagination(req.query);
 
-    const rows = db.prepare('SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT ? OFFSET ?').all(limit, offset);
-    const total = (db.prepare('SELECT COUNT(*) as count FROM audit_logs').get() as { count: number }).count;
+    const rows = (await db.prepare('SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT ? OFFSET ?').all(limit, offset)) as unknown[];
+    const total = ((await db.prepare('SELECT COUNT(*) as count FROM audit_logs').get()) as { count: number }).count;
 
     res.json(buildPaginatedResponse(rows, total, page, limit));
   });

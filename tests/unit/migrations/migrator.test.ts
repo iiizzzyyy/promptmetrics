@@ -11,12 +11,12 @@ describe('createMigrator', () => {
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
-    closeDb();
+    await closeDb();
     await initSchema();
   });
 
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
@@ -34,9 +34,9 @@ describe('createMigrator', () => {
     await migrator.up();
 
     const db = getDb();
-    const tables = db
+    const tables = (await db
       .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-      .all()
+      .all())
       .map((t: any) => t.name);
 
     expect(tables).toContain('prompts');

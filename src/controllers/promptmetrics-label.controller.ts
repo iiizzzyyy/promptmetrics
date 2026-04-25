@@ -13,7 +13,7 @@ export class LabelController {
       throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    const label = this.service.createLabel(promptName, value);
+    const label = await this.service.createLabel(promptName, value);
 
     res.status(201).json({
       prompt_name: label.prompt_name,
@@ -27,7 +27,7 @@ export class LabelController {
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
 
-    const result = this.service.listLabels(promptName, page, limit);
+    const result = await this.service.listLabels(promptName, page, limit);
     res.status(200).json(result);
   }
 
@@ -35,7 +35,7 @@ export class LabelController {
     const promptName = req.params.name as string;
     const labelName = req.params.label_name as string;
 
-    const label = this.service.getLabel(promptName, labelName);
+    const label = await this.service.getLabel(promptName, labelName);
 
     res.status(200).json({
       prompt_name: label.prompt_name,
@@ -49,7 +49,7 @@ export class LabelController {
     const promptName = req.params.name as string;
     const labelName = req.params.label_name as string;
 
-    this.service.deleteLabel(promptName, labelName);
+    await this.service.deleteLabel(promptName, labelName);
     res.status(204).send();
   }
 }

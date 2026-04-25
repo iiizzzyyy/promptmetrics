@@ -32,12 +32,12 @@ export interface UpdateRunInput {
 }
 
 export class RunService {
-  createRun(input: CreateRunInput): Run {
+  async createRun(input: CreateRunInput): Promise<Run> {
     const db = getDb();
     const runId = input.run_id || crypto.randomUUID();
 
     if (input.trace_id) {
-      const trace = db.prepare('SELECT trace_id FROM traces WHERE trace_id = ?').get(input.trace_id) as
+      const trace = (await db.prepare('SELECT trace_id FROM traces WHERE trace_id = ?').get(input.trace_id)) as
         | { trace_id: string }
         | undefined;
       if (!trace) {
@@ -45,7 +45,7 @@ export class RunService {
       }
     }
 
-    db.prepare(
+    await db.prepare(
       `INSERT INTO runs (run_id, workflow_name, status, input_json, output_json, trace_id, metadata_json)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
     ).run(
@@ -71,9 +71,9 @@ export class RunService {
     };
   }
 
-  getRun(runId: string): Run {
+  async getRun(runId: string): Promise<Run> {
     const db = getDb();
-    const run = db.prepare('SELECT * FROM runs WHERE run_id = ?').get(runId) as
+    const run = (await db.prepare('SELECT * FROM runs WHERE run_id = ?').get(runId)) as
       | {
           run_id: string;
           workflow_name: string;
@@ -104,9 +104,9 @@ export class RunService {
     };
   }
 
-  updateRun(runId: string, input: UpdateRunInput): { run_id: string; status: string } {
+  async updateRun(runId: string, input: UpdateRunInput): Promise<{ run_id: string; status: string }> {
     const db = getDb();
-    const existing = db.prepare('SELECT run_id FROM runs WHERE run_id = ?').get(runId) as
+    const existing = (await db.prepare('SELECT run_id FROM runs WHERE run_id = ?').get(runId)) as
       | { run_id: string }
       | undefined;
 
@@ -137,18 +137,18 @@ export class RunService {
     updates.push('updated_at = unixepoch()');
     params.push(runId);
 
-    db.prepare(`UPDATE runs SET ${updates.join(', ')} WHERE run_id = ?`).run(...params);
+    await db.prepare(`UPDATE runs SET ${updates.join(', ')} WHERE run_id = ?`).run(...params);
 
     return { run_id: runId, status: 'updated' };
   }
 
-  listRuns(page: number, limit: number): PaginatedResponse<Run> {
+  async listRuns(page: number, limit: number): Promise<PaginatedResponse<Run>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const total = (db.prepare('SELECT COUNT(*) as c FROM runs').get() as { c: number }).c;
-    const items = db
+    const total = ((await db.prepare('SELECT COUNT(*) as c FROM runs').get()) as { c: number }).c;
+    const items = (await db
       .prepare('SELECT * FROM runs ORDER BY created_at DESC LIMIT ? OFFSET ?')
-      .all(limit, offset) as Array<{
+      .all(limit, offset)) as Array<{
       run_id: string;
       workflow_name: string;
       status: string;

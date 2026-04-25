@@ -13,7 +13,7 @@ function getDbOrNull() {
 }
 
 export function rateLimitPerKey(windowMs = WINDOW_MS, maxRequests = DEFAULT_MAX) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const apiKeyName = req.apiKey?.name;
     if (!apiKeyName) {
       return next();
@@ -24,7 +24,7 @@ export function rateLimitPerKey(windowMs = WINDOW_MS, maxRequests = DEFAULT_MAX)
       return next();
     }
 
-    db.exec(`
+    await db.exec(`
       CREATE TABLE IF NOT EXISTS rate_limits (
         key TEXT PRIMARY KEY,
         window_start INTEGER NOT NULL,
@@ -35,12 +35,12 @@ export function rateLimitPerKey(windowMs = WINDOW_MS, maxRequests = DEFAULT_MAX)
     const now = Date.now();
     const windowStart = Math.floor(now / windowMs) * windowMs;
 
-    const row = db.prepare('SELECT window_start, count FROM rate_limits WHERE key = ?').get(apiKeyName) as
+    const row = (await db.prepare('SELECT window_start, count FROM rate_limits WHERE key = ?').get(apiKeyName)) as
       | { window_start: number; count: number }
       | undefined;
 
     if (!row || row.window_start < windowStart) {
-      db.prepare('INSERT OR REPLACE INTO rate_limits (key, window_start, count) VALUES (?, ?, ?)').run(
+      await db.prepare('INSERT OR REPLACE INTO rate_limits (key, window_start, count) VALUES (?, ?, ?)').run(
         apiKeyName,
         windowStart,
         1,
@@ -61,7 +61,7 @@ export function rateLimitPerKey(windowMs = WINDOW_MS, maxRequests = DEFAULT_MAX)
       return;
     }
 
-    db.prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ?').run(apiKeyName);
+    await db.prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ?').run(apiKeyName);
     res.setHeader('RateLimit-Limit', String(maxRequests));
     res.setHeader('RateLimit-Remaining', String(maxRequests - row.count - 1));
     res.setHeader('RateLimit-Reset', String(Math.ceil((row.window_start + windowMs) / 1000)));

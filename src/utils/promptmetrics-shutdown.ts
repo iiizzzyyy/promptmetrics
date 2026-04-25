@@ -27,7 +27,7 @@ export function setupGracefulShutdown(options: ShutdownOptions): void {
         await job();
       }
 
-      closeDb();
+      await closeDb();
       console.log('Database connection closed.');
 
       clearTimeout(timer);

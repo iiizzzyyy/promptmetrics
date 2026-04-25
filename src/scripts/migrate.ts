@@ -5,7 +5,7 @@ async function main(): Promise<void> {
     console.log('Running migrations...');
     await initSchema();
     console.log('Migrations complete.');
-    closeDb();
+    await closeDb();
     process.exit(0);
   } catch (error) {
     console.error('Migration failed:', error);

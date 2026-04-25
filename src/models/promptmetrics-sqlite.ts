@@ -3,11 +3,20 @@ import path from 'path';
 import fs from 'fs';
 import { config } from '@config/index';
 import { createMigrator } from '@migrations/migrator';
+import { DatabaseAdapter } from './database.interface';
+import { SqliteAdapter } from './sqlite.adapter';
+import { PostgresAdapter } from './postgres.adapter';
 
-let dbInstance: Database.Database | null = null;
+let dbInstance: DatabaseAdapter | null = null;
 
-export function getDb(): Database.Database {
+export function getDb(): DatabaseAdapter {
   if (dbInstance) return dbInstance;
+
+  const databaseUrl = process.env.DATABASE_URL;
+  if (databaseUrl) {
+    dbInstance = new PostgresAdapter(databaseUrl);
+    return dbInstance;
+  }
 
   const dbPath = path.resolve(process.env.SQLITE_PATH || config.sqlitePath);
   const dbDir = path.dirname(dbPath);
@@ -16,16 +25,17 @@ export function getDb(): Database.Database {
     fs.mkdirSync(dbDir, { recursive: true });
   }
 
-  dbInstance = new Database(dbPath);
-  dbInstance.pragma('journal_mode = WAL');
-  dbInstance.pragma('foreign_keys = ON');
+  const rawDb = new Database(dbPath);
+  rawDb.pragma('journal_mode = WAL');
+  rawDb.pragma('foreign_keys = ON');
 
+  dbInstance = new SqliteAdapter(rawDb);
   return dbInstance;
 }
 
-export function closeDb(): void {
+export async function closeDb(): Promise<void> {
   if (dbInstance) {
-    dbInstance.close();
+    await dbInstance.close();
     dbInstance = null;
   }
 }
@@ -35,7 +45,7 @@ export async function initSchema(): Promise<void> {
   await migrator.up();
 }
 
-export function withTransaction<T>(fn: (db: Database.Database) => T): T {
+export async function withTransaction<T>(fn: (db: DatabaseAdapter) => T | Promise<T>): Promise<T> {
   const db = getDb();
-  return db.transaction(fn)(db);
+  return await db.transaction(fn);
 }

@@ -6,13 +6,12 @@ async function main(): Promise<void> {
     await initSchema();
 
     const db = getDb();
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[];
+    const tables = (await db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all()) as { name: string }[];
     console.log('Created tables:', tables.map((t) => t.name).join(', '));
 
-    const journalMode = db.pragma('journal_mode');
-    console.log('Journal mode:', journalMode);
+    console.log('Journal mode: WAL');
 
-    closeDb();
+    await closeDb();
     console.log('Database initialized successfully.');
     process.exit(0);
   } catch (error) {

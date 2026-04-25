@@ -27,7 +27,7 @@ function parseArgs(argv: string[]): { name: string; scopes: string; expiresInDay
   return { name, scopes, expiresInDays };
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const { name, scopes, expiresInDays } = parseArgs(process.argv);
 
   const apiKey = `pm_${crypto.randomBytes(32).toString('hex')}`;
@@ -39,7 +39,7 @@ function main(): void {
     expiresAt = Math.floor(Date.now() / 1000) + expiresInDays * 24 * 60 * 60;
   }
 
-  db.prepare(
+  await db.prepare(
     'INSERT INTO api_keys (key_hash, name, scopes, expires_at) VALUES (?, ?, ?, ?)',
   ).run(keyHash, name, scopes, expiresAt ?? null);
 
@@ -56,4 +56,7 @@ function main(): void {
   process.exit(0);
 }
 
-main();
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

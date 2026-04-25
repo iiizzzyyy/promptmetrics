@@ -5,7 +5,7 @@ import { getDb, initSchema, closeDb } from '@models/promptmetrics-sqlite';
 describe('SQLite Database', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-promptmetrics.db');
 
-  beforeEach(() => {
+  beforeEach(async () => {
     process.env.SQLITE_PATH = testDbPath;
     if (fs.existsSync(testDbPath)) {
       fs.unlinkSync(testDbPath);
@@ -14,11 +14,11 @@ describe('SQLite Database', () => {
     const shmPath = testDbPath + '-shm';
     if (fs.existsSync(walPath)) fs.unlinkSync(walPath);
     if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
-    closeDb();
+    await closeDb();
   });
 
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) {
       fs.unlinkSync(testDbPath);
     }
@@ -31,16 +31,16 @@ describe('SQLite Database', () => {
   it('should create database with WAL mode', async () => {
     await initSchema();
     const db = getDb();
-    const journalMode = db.pragma('journal_mode');
-    expect(journalMode).toEqual([{ journal_mode: 'wal' }]);
+    const journalMode = await db.prepare("PRAGMA journal_mode").get();
+    expect(journalMode).toEqual({ journal_mode: 'wal' });
   });
 
   it('should create all required tables', async () => {
     await initSchema();
     const db = getDb();
-    const tables = db
+    const tables = (await db
       .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-      .all()
+      .all())
       .map((t: any) => t.name);
 
     expect(tables).toContain('prompts');
@@ -55,9 +55,9 @@ describe('SQLite Database', () => {
   it('should create indexes', async () => {
     await initSchema();
     const db = getDb();
-    const indexes = db
+    const indexes = (await db
       .prepare("SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_%'")
-      .all()
+      .all())
       .map((i: any) => i.name);
 
     expect(indexes).toContain('idx_prompts_name');

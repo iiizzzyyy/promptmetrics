@@ -390,27 +390,27 @@
 
 ### Epic 3.8 -- Per-API-Key Rate Limiting
 
-- [ ] **3.8.1** Create `src/middlewares/rate-limit-per-key.middleware.ts`:
+- [x] **3.8.1** Create `src/middlewares/rate-limit-per-key.middleware.ts`:
   - Read `req.apiKey.name` after auth middleware
   - Store counters in SQLite table `rate_limits` (key, window_start, count)
   - Sliding window: 60s per key, default 100 requests
-- [ ] **3.8.2** Replace global rate limit in `src/app.ts` with per-key middleware
-- [ ] **3.8.3** Integration test: two different API keys each have their own independent counters
-- [ ] **3.8.4** Integration test: exceed limit and receive 429 with `Retry-After` header
-- [ ] **3.8.5** Commit: `git commit -m "feat: add per-API-key rate limiting with sliding window"`
+- [x] **3.8.2** Replace global rate limit in `src/app.ts` with per-key middleware
+- [x] **3.8.3** Integration test: two different API keys each have their own independent counters
+- [x] **3.8.4** Integration test: exceed limit and receive 429 with `Retry-After` header
+- [x] **3.8.5** Commit: `git commit -m "feat: add per-API-key rate limiting with sliding window"`
 
 ---
 
 ### Epic 3.9 -- Key Expiration and Rotation
 
-- [ ] **3.9.1** Create migration `003_add_key_expiration.sql`:
+- [x] **3.9.1** Create migration `003_add_key_expiration.sql`:
   ```sql
   ALTER TABLE api_keys ADD COLUMN expires_at INTEGER;
   ```
-- [ ] **3.9.2** Update `src/middlewares/promptmetrics-auth.middleware.ts` to reject keys where `expires_at < now()`
-- [ ] **3.9.3** Update `src/scripts/generate-api-key.ts` to accept `--expires-in-days` flag
-- [ ] **3.9.4** Integration test: expired key returns 401 with message "API key expired"
-- [ ] **3.9.5** Commit: `git commit -m "feat: add API key expiration and rotation support"`
+- [x] **3.9.2** Update `src/middlewares/promptmetrics-auth.middleware.ts` to reject keys where `expires_at < now()`
+- [x] **3.9.3** Update `src/scripts/generate-api-key.ts` to accept `--expires-in-days` flag
+- [x] **3.9.4** Integration test: expired key returns 401 with message "API key expired"
+- [x] **3.9.5** Commit: `git commit -m "feat: add API key expiration and rotation support"`
 
 ---
 
@@ -421,14 +421,14 @@
 
 ### Epic 4.1 -- PostgreSQL Backend Support
 
-- [ ] **4.1.1** Create `src/models/database.interface.ts` with `DatabaseAdapter` interface
-- [ ] **4.1.2** Create `src/models/sqlite.adapter.ts` implementing the interface with `better-sqlite3`
-- [ ] **4.1.3** Create `src/models/postgres.adapter.ts` implementing the interface with `pg`
-- [ ] **4.1.4** Update `getDb()` to read `DATABASE_URL` env var and return the correct adapter
-- [ ] **4.1.5** Update migrations to run on PostgreSQL when configured
+- [x] **4.1.1** Create `src/models/database.interface.ts` with `DatabaseAdapter` interface
+- [x] **4.1.2** Create `src/models/sqlite.adapter.ts` implementing the interface with `better-sqlite3`
+- [x] **4.1.3** Create `src/models/postgres.adapter.ts` implementing the interface with `pg`
+- [x] **4.1.4** Update `getDb()` to read `DATABASE_URL` env var and return the correct adapter
+- [x] **4.1.5** Update migrations to run on PostgreSQL when configured
 - [ ] **4.1.6** Add `docker-compose.postgres.yml` for local testing
 - [ ] **4.1.7** CI: add PostgreSQL test job to `.github/workflows/ci.yml`
-- [ ] **4.1.8** Commit: `git commit -m "feat: add PostgreSQL backend adapter"`
+- [x] **4.1.8** Commit: `git commit -m "feat: add PostgreSQL backend adapter"`
 
 ---
 

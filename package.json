@@ -52,6 +52,7 @@
     "@types/mustache": "^4.2.6",
     "@types/node": "^24.6.0",
     "@types/opossum": "^8.1.9",
+    "@types/pg": "^8.20.0",
     "@types/supertest": "^6.0.3",
     "@types/swagger-ui-express": "^4.1.8",
     "@types/umzug": "^2.3.9",
@@ -89,6 +90,7 @@
     "lru-cache": "^11.3.5",
     "mustache": "^4.2.0",
     "opossum": "^5.0.1",
+    "pg": "^8.20.0",
     "simple-git": "^3.36.0",
     "swagger-ui-express": "^5.0.1",
     "umzug": "^3.8.2"

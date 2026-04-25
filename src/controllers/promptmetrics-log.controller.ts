@@ -13,7 +13,7 @@ export class LogController {
       throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    const logEntry = this.service.createLog(value);
+    const logEntry = await this.service.createLog(value);
 
     // Default: structured JSON to stdout
     console.log(JSON.stringify({ type: 'promptmetrics.log', ...logEntry }));

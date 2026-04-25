@@ -13,7 +13,7 @@ export class RunController {
       throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    const run = this.service.createRun(value);
+    const run = await this.service.createRun(value);
 
     res.status(201).json({
       run_id: run.run_id,
@@ -24,7 +24,7 @@ export class RunController {
 
   async getRun(req: Request, res: Response): Promise<void> {
     const runId = req.params.run_id as string;
-    const run = this.service.getRun(runId);
+    const run = await this.service.getRun(runId);
 
     res.status(200).json({
       run_id: run.run_id,
@@ -46,7 +46,7 @@ export class RunController {
       throw AppError.validationFailed(error.details.map((d) => d.message));
     }
 
-    const result = this.service.updateRun(runId, value);
+    const result = await this.service.updateRun(runId, value);
 
     if (result.status === 'unchanged') {
       res.status(200).json({ message: 'No changes' });
@@ -58,7 +58,7 @@ export class RunController {
 
   async listRuns(req: Request, res: Response): Promise<void> {
     const { page, limit } = parsePagination(req.query);
-    const result = this.service.listRuns(page, limit);
+    const result = await this.service.listRuns(page, limit);
     res.status(200).json(result);
   }
 }

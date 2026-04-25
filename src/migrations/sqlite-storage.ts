@@ -1,14 +1,14 @@
-import Database from 'better-sqlite3';
+import { DatabaseAdapter } from '../models/database.interface';
 
 export interface SQLiteStorageOptions {
-  db: Database.Database;
+  db: DatabaseAdapter;
   tableName?: string;
   columnName?: string;
   columnType?: string;
 }
 
 export class SQLiteStorage {
-  private db: Database.Database;
+  private db: DatabaseAdapter;
   private tableName: string;
   private columnName: string;
 
@@ -19,24 +19,22 @@ export class SQLiteStorage {
   }
 
   async logMigration({ name }: { name: string }): Promise<void> {
-    const stmt = this.db.prepare(`INSERT INTO ${this.tableName} (${this.columnName}) VALUES (?)`);
-    stmt.run(name);
+    await this.db.prepare(`INSERT INTO ${this.tableName} (${this.columnName}) VALUES (?)`).run(name);
   }
 
   async unlogMigration({ name }: { name: string }): Promise<void> {
-    const stmt = this.db.prepare(`DELETE FROM ${this.tableName} WHERE ${this.columnName} = ?`);
-    stmt.run(name);
+    await this.db.prepare(`DELETE FROM ${this.tableName} WHERE ${this.columnName} = ?`).run(name);
   }
 
   async executed(): Promise<string[]> {
-    this.ensureTable();
-    const rows = this.db
+    await this.ensureTable();
+    const rows = (await this.db
       .prepare(`SELECT ${this.columnName} FROM ${this.tableName} ORDER BY ${this.columnName}`)
-      .all() as Record<string, string>[];
+      .all()) as Record<string, string>[];
     return rows.map((row) => row[this.columnName]);
   }
 
-  private ensureTable(): void {
-    this.db.exec(`CREATE TABLE IF NOT EXISTS ${this.tableName} (${this.columnName} TEXT PRIMARY KEY)`);
+  private async ensureTable(): Promise<void> {
+    await this.db.exec(`CREATE TABLE IF NOT EXISTS ${this.tableName} (${this.columnName} TEXT PRIMARY KEY)`);
   }
 }

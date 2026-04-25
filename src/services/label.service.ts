@@ -15,9 +15,9 @@ export interface CreateLabelInput {
 }
 
 export class LabelService {
-  createLabel(promptName: string, input: CreateLabelInput): Label {
+  async createLabel(promptName: string, input: CreateLabelInput): Promise<Label> {
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       `INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)
        ON CONFLICT(prompt_name, name) DO UPDATE SET version_tag = excluded.version_tag`,
     ).run(promptName, input.name, input.version_tag);
@@ -30,15 +30,15 @@ export class LabelService {
     };
   }
 
-  listLabels(promptName: string, page: number, limit: number): PaginatedResponse<Label> {
+  async listLabels(promptName: string, page: number, limit: number): Promise<PaginatedResponse<Label>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
     const total = (
-      db.prepare('SELECT COUNT(*) as c FROM prompt_labels WHERE prompt_name = ?').get(promptName) as { c: number }
+      (await db.prepare('SELECT COUNT(*) as c FROM prompt_labels WHERE prompt_name = ?').get(promptName)) as { c: number }
     ).c;
-    const items = db
+    const items = (await db
       .prepare('SELECT * FROM prompt_labels WHERE prompt_name = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
-      .all(promptName, limit, offset) as Array<{
+      .all(promptName, limit, offset)) as Array<{
       prompt_name: string;
       name: string;
       version_tag: string;
@@ -58,11 +58,11 @@ export class LabelService {
     );
   }
 
-  getLabel(promptName: string, labelName: string): Label {
+  async getLabel(promptName: string, labelName: string): Promise<Label> {
     const db = getDb();
-    const label = db
+    const label = (await db
       .prepare('SELECT * FROM prompt_labels WHERE prompt_name = ? AND name = ?')
-      .get(promptName, labelName) as
+      .get(promptName, labelName)) as
       | { prompt_name: string; name: string; version_tag: string; created_at: number }
       | undefined;
 
@@ -78,9 +78,9 @@ export class LabelService {
     };
   }
 
-  deleteLabel(promptName: string, labelName: string): void {
+  async deleteLabel(promptName: string, labelName: string): Promise<void> {
     const db = getDb();
-    const result = db
+    const result = await db
       .prepare('DELETE FROM prompt_labels WHERE prompt_name = ? AND name = ?')
       .run(promptName, labelName);
 
