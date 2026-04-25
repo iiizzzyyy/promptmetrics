@@ -8,6 +8,7 @@ RUN npm ci
 
 COPY tsconfig.json ./
 COPY src/ ./src/
+COPY migrations/ ./migrations/
 RUN npm run build
 
 # Runtime stage
@@ -21,6 +22,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/migrations ./migrations
 
 ENV NODE_ENV=production
 ENV PORT=3000
