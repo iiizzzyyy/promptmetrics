@@ -57,14 +57,20 @@
 ## Epic 3.5 — Add LRU Cache for Prompt Lookups
 
 ### After Task 3.5.1 (Cache Service)
-- **Status:** TBD
+- **Status:** PASS
+- **Date:** 2026-04-25
 - **Command:** `npm test`
-- **Notes:**
+- **Results:** 168 passed, 1 failed (pre-existing config failure)
+- **New tests:** `tests/unit/services/cache.service.test.ts` — 7 tests covering hits, misses, TTL, eviction, invalidation
+- **Commit:** `feat: add LRU cache service for prompt lookups`
 
 ### After Task 3.5.2 (PromptService Integration)
-- **Status:** TBD
+- **Status:** PASS
+- **Date:** 2026-04-25
 - **Command:** `npm test`
-- **Notes:**
+- **Results:** 170 passed, 1 failed (pre-existing config failure)
+- **New tests:** `tests/integration/prompts.test.ts` — 2 tests covering cache hit detection and createPrompt invalidation
+- **Commit:** `feat: integrate LRU cache into PromptService`
 
 ---
 

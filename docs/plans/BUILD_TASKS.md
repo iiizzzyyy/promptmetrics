@@ -335,8 +335,8 @@
 ### Epic 3.5 -- Add LRU Cache for Prompt Lookups
 
 #### Task 3.5.1 -- Install and configure lru-cache
-- [ ] **3.5.1.1** Run: `npm install lru-cache`
-- [ ] **3.5.1.2** Create `src/services/cache.service.ts`:
+- [x] **3.5.1.1** Run: `npm install lru-cache`
+- [x] **3.5.1.2** Create `src/services/cache.service.ts`:
   ```ts
   export const promptCache = new LRUCache({
     max: 500,
@@ -347,15 +347,15 @@
     return version ? `prompt:${name}:${version}` : `prompt:${name}:latest`;
   }
   ```
-- [ ] **3.5.1.3** Unit tests for cache hits, misses, and TTL expiration
-- [ ] **3.5.1.4** Commit: `git commit -m "feat: add LRU cache service for prompt lookups"`
+- [x] **3.5.1.3** Unit tests for cache hits, misses, and TTL expiration
+- [x] **3.5.1.4** Commit: `git commit -m "feat: add LRU cache service for prompt lookups"`
 
 #### Task 3.5.2 -- Integrate cache into PromptService
-- [ ] **3.5.2.1** In `PromptService.getPrompt()`, check cache before driver; store result after driver call
-- [ ] **3.5.2.2** In `PromptService.createPrompt()`, invalidate cache entries for the prompt name
-- [ ] **3.5.2.3** Integration test: first request hits driver, second request hits cache
-- [ ] **3.5.2.4** Integration test: after `createPrompt()`, subsequent `getPrompt()` returns new version (not stale cache)
-- [ ] **3.5.2.5** Commit: `git commit -m "feat: integrate LRU cache into PromptService"`
+- [x] **3.5.2.1** In `PromptService.getPrompt()`, check cache before driver; store result after driver call
+- [x] **3.5.2.2** In `PromptService.createPrompt()`, invalidate cache entries for the prompt name
+- [x] **3.5.2.3** Integration test: first request hits driver, second request hits cache
+- [x] **3.5.2.4** Integration test: after `createPrompt()`, subsequent `getPrompt()` returns new version (not stale cache)
+- [x] **3.5.2.5** Commit: `git commit -m "feat: integrate LRU cache into PromptService"`
 
 ---
 
