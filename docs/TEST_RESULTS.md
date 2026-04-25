@@ -194,6 +194,19 @@
 
 ---
 
+## Epic 4.7 — S3-Compatible Storage Driver
+
+### After Task 4.7
+- **Status:** PASS
+- **Date:** 2026-04-25
+- **Command:** `npm test`
+- **Results:** 194 passed, 1 failed (pre-existing config failure)
+- **New tests:** `tests/unit/s3-driver.test.ts` — 5 tests covering list, get, create, listVersions, search
+- **New files:** `src/drivers/promptmetrics-s3-driver.ts` (S3Driver implementing PromptDriver), updated `src/config/index.ts` and `src/drivers/promptmetrics-driver.factory.ts` to support `s3` driver
+- **Commit:** `feat: add S3-compatible storage driver`
+
+---
+
 ## Final Verification Checklist
 
 - [ ] `npm run build` succeeds with zero errors

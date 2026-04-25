@@ -494,11 +494,11 @@
 
 ### Epic 4.7 -- S3-Compatible Storage Driver
 
-- [ ] **4.7.1** Run: `npm install @aws-sdk/client-s3`
-- [ ] **4.7.2** Create `src/drivers/promptmetrics-s3-driver.ts` implementing `PromptDriver`
-- [ ] **4.7.3** Add `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` env vars
-- [ ] **4.7.4** Unit tests with `aws-sdk-client-mock`
-- [ ] **4.7.5** Commit: `git commit -m "feat: add S3-compatible storage driver"`
+- [x] **4.7.1** Run: `npm install @aws-sdk/client-s3`
+- [x] **4.7.2** Create `src/drivers/promptmetrics-s3-driver.ts` implementing `PromptDriver`
+- [x] **4.7.3** Add `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` env vars
+- [x] **4.7.4** Unit tests with `aws-sdk-client-mock`
+- [x] **4.7.5** Commit: `git commit -m "feat: add S3-compatible storage driver"`
 
 ---
 

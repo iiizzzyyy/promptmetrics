@@ -29,7 +29,7 @@ export const config = {
   port: getEnvInt('PORT', 3000),
   nodeEnv: getEnv('NODE_ENV', false, 'development') as string,
   apiKeySalt: getEnv('API_KEY_SALT', true) as string,
-  driver: getEnv('DRIVER', false, 'filesystem') as 'filesystem' | 'github',
+  driver: getEnv('DRIVER', false, 'filesystem') as 'filesystem' | 'github' | 's3',
   sqlitePath: getEnv('SQLITE_PATH', false, './data/promptmetrics.db') as string,
   githubRepo: getEnv('GITHUB_REPO') as string | undefined,
   githubToken: getEnv('GITHUB_TOKEN') as string | undefined,
