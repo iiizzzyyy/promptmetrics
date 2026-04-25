@@ -5,12 +5,14 @@ import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
 import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
+import { promptCache } from '@services/cache.service';
 
 describe('Prompt API Integration', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-integration.db');
   const testPromptsPath = path.resolve(__dirname, '../../data/test-integration-prompts');
   let app: ReturnType<typeof createApp>;
   let apiKey: string;
+  let driver: FilesystemDriver;
 
   beforeAll(async () => {
     process.env.SQLITE_PATH = testDbPath;
@@ -34,7 +36,12 @@ describe('Prompt API Integration', () => {
       'read,write',
     );
 
-    app = createApp(new FilesystemDriver(testPromptsPath));
+    driver = new FilesystemDriver(testPromptsPath);
+    app = createApp(driver);
+  });
+
+  beforeEach(() => {
+    promptCache.clear();
   });
 
   afterAll(() => {
@@ -152,5 +159,56 @@ describe('Prompt API Integration', () => {
 
     expect(res.status).toBe(202);
     expect(res.body.status).toBe('accepted');
+  });
+
+  it('second GET of same prompt should hit cache', async () => {
+    const spy = jest.spyOn(driver, 'getPrompt');
+
+    const res1 = await request(app).get('/v1/prompts/welcome?render=false').set('X-API-Key', apiKey);
+    expect(res1.status).toBe(200);
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    const res2 = await request(app).get('/v1/prompts/welcome?render=false').set('X-API-Key', apiKey);
+    expect(res2.status).toBe(200);
+    // Cache hit: driver should not be called again
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    spy.mockRestore();
+  });
+
+  it('createPrompt should invalidate cache so subsequent get returns new version', async () => {
+    // Create v1
+    await request(app)
+      .post('/v1/prompts')
+      .set('X-API-Key', apiKey)
+      .send({
+        name: 'cache-invalidate-test',
+        version: '1.0.0',
+        messages: [{ role: 'user', content: 'v1' }],
+      });
+
+    // GET v1 (caches it)
+    const res1 = await request(app)
+      .get('/v1/prompts/cache-invalidate-test?render=false')
+      .set('X-API-Key', apiKey);
+    expect(res1.status).toBe(200);
+    expect(res1.body.content.messages[0].content).toBe('v1');
+
+    // Create v2
+    await request(app)
+      .post('/v1/prompts')
+      .set('X-API-Key', apiKey)
+      .send({
+        name: 'cache-invalidate-test',
+        version: '2.0.0',
+        messages: [{ role: 'user', content: 'v2' }],
+      });
+
+    // GET latest should return v2, not stale cached v1
+    const res2 = await request(app)
+      .get('/v1/prompts/cache-invalidate-test?render=false')
+      .set('X-API-Key', apiKey);
+    expect(res2.status).toBe(200);
+    expect(res2.body.content.messages[0].content).toBe('v2');
   });
 });

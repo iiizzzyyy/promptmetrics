@@ -2,6 +2,7 @@ import mustache from 'mustache';
 import { AppError } from '@errors/app.error';
 import { PromptDriver, PromptFile, PromptVersion } from '@drivers/promptmetrics-driver.interface';
 import { parsePagination, buildPaginatedResponse, PaginatedResponse } from '@utils/pagination';
+import { promptCache, cacheKey, invalidatePrompt } from '@services/cache.service';
 
 export class PromptService {
   constructor(private driver: PromptDriver) {}
@@ -24,12 +25,26 @@ export class PromptService {
     variables?: Record<string, string>,
     shouldRender = true,
   ): Promise<{ content: PromptFile; version: PromptVersion }> {
-    const result = await this.driver.getPrompt(name, version);
-    if (!result) {
-      throw AppError.notFound('Prompt');
+    const key = cacheKey(name, version);
+    const cached = promptCache.get(key);
+
+    let rawContent: PromptFile;
+    let promptVersion: PromptVersion;
+
+    if (cached) {
+      rawContent = cached.content;
+      promptVersion = cached.version;
+    } else {
+      const result = await this.driver.getPrompt(name, version);
+      if (!result) {
+        throw AppError.notFound('Prompt');
+      }
+      rawContent = result.content;
+      promptVersion = result.version;
+      promptCache.set(key, { content: rawContent, version: promptVersion });
     }
 
-    let content = result.content;
+    let content = rawContent;
 
     if (shouldRender) {
       const requiredVars = Object.entries(content.variables || {}).filter(
@@ -51,7 +66,7 @@ export class PromptService {
       }
     }
 
-    return { content, version: result.version };
+    return { content, version: promptVersion };
   }
 
   async listVersions(name: string, page: number, limit: number): Promise<PaginatedResponse<PromptVersion>> {
@@ -60,6 +75,8 @@ export class PromptService {
   }
 
   async createPrompt(prompt: PromptFile): Promise<PromptVersion> {
-    return this.driver.createPrompt(prompt);
+    const result = await this.driver.createPrompt(prompt);
+    invalidatePrompt(prompt.name);
+    return result;
   }
 }
