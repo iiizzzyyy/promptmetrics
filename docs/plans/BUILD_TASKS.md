@@ -456,13 +456,13 @@
 
 ### Epic 4.4 -- Web UI Dashboard
 
-- [ ] **4.4.1** Scaffold Next.js app in `ui/` with `create-next-app`
-- [ ] **4.4.2** Install Tailwind CSS and shadcn/ui
-- [ ] **4.4.3** Create pages: `/prompts`, `/prompts/:name`, `/logs`, `/traces`, `/runs`, `/labels`, `/settings`
-- [ ] **4.4.4** Create API client using generated OpenAPI types
-- [ ] **4.4.5** Add auth context for API key input
-- [ ] **4.4.6** Add E2E tests with Playwright in `ui/e2e/`
-- [ ] **4.4.7** Commit: `git commit -m "feat: add Next.js web UI dashboard"`
+- [x] **4.4.1** Scaffold Next.js app in `ui/` with `create-next-app`
+- [x] **4.4.2** Install Tailwind CSS and shadcn/ui
+- [x] **4.4.3** Create pages: `/prompts`, `/prompts/:name`, `/logs`, `/traces`, `/runs`, `/labels`, `/settings`
+- [x] **4.4.4** Create API client using generated OpenAPI types
+- [x] **4.4.5** Add auth context for API key input
+- [x] **4.4.6** Add E2E tests with Playwright in `ui/e2e/`
+- [x] **4.4.7** Commit: `git commit -m "feat: add Next.js web UI dashboard"`
 
 ---
 

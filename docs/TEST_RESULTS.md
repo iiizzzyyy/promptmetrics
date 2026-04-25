@@ -158,6 +158,18 @@
 
 ---
 
+## Epic 4.4 — Web UI Dashboard
+
+### After Task 4.4
+- **Status:** PASS
+- **Date:** 2026-04-25
+- **Command:** `npm test` + `cd ui && npm run build`
+- **Results:** 184 passed, 1 failed (pre-existing config failure). UI builds successfully with zero TypeScript errors.
+- **New files:** `ui/src/lib/api.ts` (typed API client), `ui/src/lib/auth.tsx` (API key context), `ui/src/components/Sidebar.tsx`, `ui/src/components/ApiKeyInput.tsx`, page components for `/prompts`, `/prompts/[name]`, `/logs`, `/traces`, `/runs`, `/labels`, `/settings`, `ui/e2e/dashboard.spec.ts` (Playwright E2E tests), `ui/playwright.config.ts`
+- **Commit:** `feat: add Next.js web UI dashboard`
+
+---
+
 ## Final Verification Checklist
 
 - [ ] `npm run build` succeeds with zero errors
