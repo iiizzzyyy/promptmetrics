@@ -468,13 +468,13 @@
 
 ### Epic 4.5 -- Python SDK
 
-- [ ] **4.5.1** Create `clients/python/` directory
-- [ ] **4.5.2** Create `client.py` with `PromptMetrics` class
-- [ ] **4.5.3** Implement `.prompts.list()`, `.prompts.get()`, `.prompts.create()`
-- [ ] **4.5.4** Implement `.logs.create()`, `.traces.create()`, `.runs.create()`
-- [ ] **4.5.5** Add `setup.py` and `pyproject.toml`
-- [ ] **4.5.6** Add pytest tests with `responses` or `httpx` mock transport
-- [ ] **4.5.7** Commit: `git commit -m "feat: add Python SDK client"`
+- [x] **4.5.1** Create `clients/python/` directory
+- [x] **4.5.2** Create `client.py` with `PromptMetrics` class
+- [x] **4.5.3** Implement `.prompts.list()`, `.prompts.get()`, `.prompts.create()`
+- [x] **4.5.4** Implement `.logs.create()`, `.traces.create()`, `.runs.create()`
+- [x] **4.5.5** Add `setup.py` and `pyproject.toml`
+- [x] **4.5.6** Add pytest tests with `responses` or `httpx` mock transport
+- [x] **4.5.7** Commit: `git commit -m "feat: add Python SDK client"`
 
 ---
 

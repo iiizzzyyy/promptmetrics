@@ -170,6 +170,18 @@
 
 ---
 
+## Epic 4.5 — Python SDK
+
+### After Task 4.5
+- **Status:** PASS
+- **Date:** 2026-04-25
+- **Command:** `cd clients/python && python -m pytest tests/ -v`
+- **Results:** 7 passed, 0 failed
+- **New files:** `clients/python/promptmetrics/client.py` (PromptMetrics class with prompts/logs/traces/runs/labels resources), `clients/python/setup.py`, `clients/python/pyproject.toml`, `clients/python/tests/test_client.py`
+- **Commit:** `feat: add Python SDK client`
+
+---
+
 ## Final Verification Checklist
 
 - [ ] `npm run build` succeeds with zero errors
