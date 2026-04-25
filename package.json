@@ -4,8 +4,8 @@
   "description": "Lightweight, self-hosted prompt registry with versioning, metadata logging, evaluations, and multi-tenant observability",
   "main": "dist/server.js",
   "bin": {
-    "promptmetrics-server": "./dist/server.js",
-    "promptmetrics": "./dist/cli/promptmetrics-cli.js"
+    "promptmetrics-server": "dist/server.js",
+    "promptmetrics": "dist/cli/promptmetrics-cli.js"
   },
   "scripts": {
     "start": "node dist/server.js",
