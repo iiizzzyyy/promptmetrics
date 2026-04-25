@@ -8,11 +8,20 @@ All configuration is done via environment variables. There is no config file.
 |----------|----------|---------|-------------|
 | `PORT` | No | `3000` | HTTP server port |
 | `API_KEY_SALT` | **Yes** | — | Salt for hashing API keys (generate a random string) |
-| `DRIVER` | No | `filesystem` | Storage driver: `filesystem` or `github` |
+| `DRIVER` | No | `filesystem` | Storage driver: `filesystem`, `github`, or `s3` |
 | `SQLITE_PATH` | No | `./data/promptmetrics.db` | Path to the SQLite database file |
 | `GITHUB_REPO` | If `DRIVER=github` | — | Repository in `owner/repo` format |
 | `GITHUB_TOKEN` | If `DRIVER=github` | — | GitHub PAT or GitHub App installation token |
 | `GITHUB_SYNC_INTERVAL_MS` | No | `60000` | Interval between background `git fetch` calls (milliseconds) |
+| `GITHUB_WEBHOOK_SECRET` | No | — | Secret for GitHub webhook push events |
+| `S3_BUCKET` | If `DRIVER=s3` | — | S3 bucket name |
+| `S3_REGION` | If `DRIVER=s3` | — | AWS region |
+| `S3_ACCESS_KEY` | If `DRIVER=s3` | — | AWS access key |
+| `S3_SECRET_KEY` | If `DRIVER=s3` | — | AWS secret key |
+| `S3_ENDPOINT` | No | — | Custom S3-compatible endpoint |
+| `S3_PREFIX` | No | — | Key prefix for prompt objects |
+| `REDIS_URL` | No | — | Redis connection URL for caching and rate limiting |
+| `DATABASE_URL` | No | — | PostgreSQL connection URL (falls back to SQLite) |
 | `OTEL_ENABLED` | No | `false` | Enable OpenTelemetry tracing and metrics |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | If `OTEL_ENABLED=true` | — | OTLP collector URL (e.g., `http://localhost:4318/v1/traces`) |
 

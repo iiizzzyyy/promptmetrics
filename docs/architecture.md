@@ -79,6 +79,8 @@ The clone is bare (no working tree) to save disk space. The `git show` command r
 | `spans` | Tracks individual steps within a trace: `span_id`, `parent_id`, `name`, `status`, `start_time`, `end_time`, `metadata_json` |
 | `runs` | Tracks end-to-end workflow executions: `run_id`, `workflow_name`, `status`, `input_json`, `output_json`, `trace_id`, `metadata_json`, `created_at`, `updated_at` |
 | `prompt_labels` | Tags prompt versions with environment labels: `prompt_name`, `name`, `version_tag`, `created_at`. UNIQUE on (`prompt_name`, `name`) |
+| `evaluations` | Tracks evaluation suites: `id`, `name`, `description`, `prompt_name`, `version_tag`, `criteria_json`, `workspace_id`, `created_at` |
+| `evaluation_results` | Stores individual scores: `id`, `evaluation_id`, `run_id`, `score`, `metadata_json`, `workspace_id`, `created_at` |
 
 **Mode:** WAL (Write-Ahead Logging) enables concurrent readers and a single writer without locks blocking reads.
 
@@ -202,6 +204,52 @@ PromptMetrics is designed for single-node deployment. SQLite WAL mode handles co
 - Replacing the local bare clone with a shared git cache or object store
 - These changes are documented as a future migration path, not current requirements.
 
+## Evaluations
+
+The evaluations system lets teams define quality checks for prompts and record scores over time.
+
+**Create an Evaluation:**
+1. Client sends `POST /v1/evaluations` with `name`, `prompt_name`, optional `version_tag`, `description`, and `criteria`
+2. Auth middleware validates the API key and checks `write` scope
+3. Controller validates the body via Joi schema
+4. Row inserted into SQLite `evaluations` table
+5. Response returns `201 Created` with evaluation metadata
+
+**Add a Result:**
+1. Client sends `POST /v1/evaluations/:id/results` with `run_id`, `score`, and `metadata`
+2. Controller validates the body and verifies the evaluation exists
+3. Row inserted into SQLite `evaluation_results` table with foreign key to `evaluations.id`
+4. Response returns `201 Created`
+
+**Delete an Evaluation:**
+1. Client sends `DELETE /v1/evaluations/:id`
+2. Controller performs a cascading delete: results are removed first, then the evaluation
+3. Response returns `204 No Content`
+
+## Additional Systems
+
+### Redis Integration
+When `REDIS_URL` is configured, PromptMetrics uses Redis for:
+- **LRU Cache** — Prompt lookups are cached with TTL-based eviction
+- **Rate Limiting** — Per-API-key sliding window counters with atomic increments via `MULTI/EXEC`
+
+If Redis is unavailable, the system falls back to in-memory LRU cache and SQLite-based rate limiting.
+
+### PostgreSQL Backend
+Set `DATABASE_URL` to use PostgreSQL instead of SQLite. The `DatabaseAdapter` interface abstracts database operations, with SQLite and PostgreSQL implementations. All SQL is compatible with both backends.
+
+### S3 Storage Driver
+Set `DRIVER=s3` to store prompt JSON as objects in S3 with keys like `prompts/{name}/{version}.json`. Supports custom endpoints for S3-compatible stores (MinIO, etc.).
+
+### Multi-Tenancy
+All tables include a `workspace_id` column. The `tenantMiddleware` reads the `X-Workspace-Id` header and attaches it to `req.workspaceId`. API keys are scoped to workspaces. If no header is provided, the `default` workspace is used.
+
+### Circuit Breaker
+GitHub API calls are wrapped in an Opossum circuit breaker with exponential backoff on 429 responses. This prevents cascading failures when GitHub's API is rate-limiting.
+
+### Async Audit Log Queue
+The `AuditLogService` batches audit entries in memory and flushes them to SQLite asynchronously via `setImmediate`. This keeps the request path fast while ensuring durable audit records.
+
 ## Security
 
 - API keys are never stored in plain text
@@ -209,3 +257,5 @@ PromptMetrics is designed for single-node deployment. SQLite WAL mode handles co
 - GitHub tokens are never exposed to clients
 - Metadata values are validated for length and type to prevent log injection
 - No user input is executed as code (no `eval`, no dynamic requires)
+- Prompt names are sanitized to prevent path traversal
+- SQL identifiers are whitelisted before interpolation

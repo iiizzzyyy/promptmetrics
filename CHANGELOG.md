@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-04-25
+
+### Security
+
+- **fix(path-traversal):** Sanitize prompt names in `FilesystemDriver` and `GithubDriver` to prevent directory escape via `../` sequences. `validateName()` rejects names containing path separators and validates resolved paths stay within the base directory.
+- **fix(validation):** Add Joi input validation to `EvaluationController`. All evaluation and result creation payloads are now validated before reaching the service layer.
+- **fix(race-condition):** Wrap SQLite rate limiter read-and-update logic in `db.transaction()` to prevent concurrent requests from bursting past the configured limit.
+- **fix(webhook):** Remove `GITHUB_TOKEN` fallback for webhook secret verification. The handler now fails closed (returns 500) if `GITHUB_WEBHOOK_SECRET` is not explicitly configured.
+- **fix(logging):** Remove sensitive `console.log(JSON.stringify(...logEntry))` in `LogController` that leaked LLM metadata to stdout.
+- **fix(sql-injection):** Validate `tableName` and `columnName` against a strict regex whitelist (`/^[a-z_][a-z0-9_]*$/i`) in `SQLiteStorage` before interpolating into SQL.
+
+### Added
+
+- **Evaluation Framework** — Create, score, and manage prompt evaluations via REST API (`POST /v1/evaluations`, `GET /v1/evaluations/:id`, `POST /v1/evaluations/:id/results`).
+- **Python SDK** — `clients/python/` package with `PromptMetrics` class supporting prompts, logs, traces, runs, and labels.
+- **Web UI Dashboard** — Next.js dashboard in `ui/` with pages for prompts, logs, traces, runs, labels, and settings. Includes typed API client and API key auth context.
+- **GitHub Webhook Support** — `POST /webhooks/github` endpoint verifies `X-Hub-Signature-256` and triggers immediate sync on push events.
+- **Redis Integration** — LRU cache and rate limiter backed by Redis when `REDIS_URL` is configured. Falls back to in-memory LRU cache and SQLite rate limiting.
+- **PostgreSQL Backend** — `DatabaseAdapter` interface with SQLite and PostgreSQL implementations. Set `DATABASE_URL` to use PostgreSQL instead of SQLite.
+- **S3-Compatible Storage Driver** — Store prompt JSON as objects in S3 with keys like `prompts/{name}/{version}.json`.
+- **Multi-Tenancy** — Workspace isolation via `X-Workspace-Id` header. All tables include `workspace_id` and API keys are scoped to workspaces.
+- **Circuit Breaker** — GitHub API calls wrapped in Opossum circuit breaker with exponential backoff on 429 responses.
+- **Per-API-Key Rate Limiting** — Sliding window rate limits with independent counters per API key. Returns `429` with `Retry-After` header.
+- **API Key Expiration** — `expires_at` column on `api_keys` table. Expired keys are rejected with "API key expired" message.
+- **OpenAPI Documentation** — Swagger UI served at `/docs` with full spec in `docs/openapi.yaml`.
+- **LRU Cache for Prompt Lookups** — `CacheService` with TTL-based eviction and invalidation on prompt creation.
+- **Database Transactions** — `withTransaction()` helper wraps multi-step operations with automatic rollback on failure.
+- **Migration System** — `umzug`-based migration runner with numbered SQL files in `migrations/`.
+- **Async Audit Log Queue** — `AuditLogService` batches audit entries and flushes to SQLite asynchronously.
+
+### Changed
+
+- `DRIVER` environment variable now supports `filesystem`, `github`, or `s3`.
+- `EvaluationController` standardized on throwing `AppError` instead of manual `try/catch` with `next(err)`.
+- `express@5.2.1` handles async errors natively; route handlers no longer need manual error forwarding.
+
 ## [1.0.0] - 2026-04-22
 
 ### Added

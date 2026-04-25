@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: PromptMetrics API
   description: Lightweight, self-hosted prompt registry with GitHub-backed versioning and metadata logging.
-  version: 1.0.0
+  version: 1.0.1
   contact:
     name: PromptMetrics Support
 servers:
@@ -465,6 +465,132 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /v1/evaluations:
+    get:
+      summary: List evaluations
+      description: Returns a paginated list of evaluations.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated list of evaluations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEvaluationList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: Create an evaluation
+      description: Creates a new evaluation suite.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEvaluationRequest'
+      responses:
+        '201':
+          description: Evaluation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/evaluations/{id}:
+    get:
+      summary: Get an evaluation
+      description: Retrieves an evaluation by ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Evaluation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete an evaluation
+      description: Deletes an evaluation and cascades its results.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Evaluation deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/evaluations/{id}/results:
+    get:
+      summary: List evaluation results
+      description: Returns a paginated list of results for an evaluation.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated list of results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEvaluationResultList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: Add an evaluation result
+      description: Adds a scored result to an evaluation.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEvaluationResultRequest'
+      responses:
+        '201':
+          description: Result created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationResultResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /v1/audit-logs:
     get:
@@ -1032,6 +1158,112 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AuditLogEntry'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    CreateEvaluationRequest:
+      type: object
+      required: [name, prompt_name]
+      properties:
+        name:
+          type: string
+          maxLength: 128
+        description:
+          type: string
+          maxLength: 512
+        prompt_name:
+          type: string
+          maxLength: 128
+        version_tag:
+          type: string
+          maxLength: 64
+        criteria:
+          type: object
+          additionalProperties: true
+
+    EvaluationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        prompt_name:
+          type: string
+        version_tag:
+          type: string
+        criteria:
+          type: object
+        created_at:
+          type: integer
+
+    PaginatedEvaluationList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluationResponse'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    CreateEvaluationResultRequest:
+      type: object
+      required: [score]
+      properties:
+        run_id:
+          type: string
+          maxLength: 128
+        score:
+          type: number
+          minimum: 0
+          maximum: 1
+        metadata:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+                maxLength: 1024
+              - type: number
+              - type: boolean
+
+    EvaluationResultResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        evaluation_id:
+          type: string
+        run_id:
+          type: string
+        score:
+          type: number
+        metadata:
+          type: object
+        created_at:
+          type: integer
+
+    PaginatedEvaluationResultList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluationResultResponse'
         total:
           type: integer
         page:

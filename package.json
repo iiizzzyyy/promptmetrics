@@ -1,7 +1,7 @@
 {
   "name": "promptmetrics",
-  "version": "1.0.0",
-  "description": "Lightweight, self-hosted prompt registry with GitHub-backed versioning and metadata logging",
+  "version": "1.0.1",
+  "description": "Lightweight, self-hosted prompt registry with versioning, metadata logging, evaluations, and multi-tenant observability",
   "main": "dist/server.js",
   "bin": {
     "promptmetrics-server": "./dist/server.js",
@@ -34,9 +34,13 @@
   "license": "MIT",
   "files": [
     "dist/",
+    "migrations/",
+    "docs/",
+    "clients/node/",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "SECURITY.md"
   ],
   "engines": {
     "node": ">=20.0.0"

@@ -13,6 +13,7 @@ PromptMetrics solves three hard problems in LLM application development without 
 1. **Prompt Versioning** — Store, version, and retrieve prompts via a REST API or CLI. Every change is a commit with full history, branching, and rollback.
 2. **Metadata Logging** — Log structured metadata about every LLM request (model, tokens, latency, cost, custom tags) to stdout JSON or OpenTelemetry.
 3. **Agent Telemetry** — Track agent loops with traces and spans, workflow runs with input/output, and tag prompt versions with environment labels — all without external APM tools.
+4. **Evaluations** — Create, score, and manage prompt evaluations to track quality, latency, and accuracy over time.
 
 No UI. No database for prompt content. No vendor lock-in.
 
@@ -53,14 +54,19 @@ No UI. No database for prompt content. No vendor lock-in.
 ## Features
 
 - **Git-Native Versioning** — Prompt content lives in Git (local filesystem or GitHub). Every version is immutable and traceable.
-- **Hybrid Storage** — SQLite indexes metadata for sub-millisecond queries; Git stores content for auditability.
+- **Hybrid Storage** — SQLite indexes metadata for sub-millisecond queries; Git stores content for auditability. PostgreSQL and S3 backends also supported.
 - **Template Rendering** — Mustache-style variable substitution in prompts (`Hello {{name}}!`).
 - **Structured Logging** — Log LLM metadata (model, tokens, latency, cost) with validated key-value tags.
 - **Agent Telemetry** — Built-in traces, spans, and workflow runs without Jaeger, Zipkin, or DataDog.
+- **Evaluations** — Create evaluation suites, record scores, and track prompt quality metrics over time.
 - **Environment Labels** — Tag prompt versions with labels like `production` or `v2-test` and resolve them at runtime.
-- **API Key Auth** — HMAC-SHA256 hashed keys with scoped permissions (`read`, `write`, `admin`).
+- **API Key Auth** — HMAC-SHA256 hashed keys with scoped permissions (`read`, `write`, `admin`) and optional expiration.
+- **Per-API-Key Rate Limiting** — Sliding window rate limits with Redis or SQLite backends.
+- **Multi-Tenancy** — Workspace isolation via `X-Workspace-Id` header.
 - **OpenTelemetry Export** — Optional OTLP export for operators who already have an observability stack.
-- **Node.js SDK & CLI** — First-class client libraries for programmatic access.
+- **Web UI Dashboard** — Next.js dashboard for browsing prompts, logs, traces, runs, labels, and settings.
+- **Node.js & Python SDKs** — First-class client libraries for programmatic access.
+- **GitHub Webhooks** — Immediate sync on push events via webhook endpoint.
 
 ---
 
@@ -235,8 +241,11 @@ All configuration is environment-variable driven. No config files required for t
 | `S3_ENDPOINT` | No | — | Custom S3-compatible endpoint |
 | `S3_PREFIX` | No | — | Key prefix for prompt objects |
 | `REDIS_URL` | No | — | Redis connection URL for caching and rate limiting |
+| `DATABASE_URL` | No | — | PostgreSQL connection URL (falls back to SQLite) |
+| `REDIS_URL` | No | — | Redis connection URL for caching and rate limiting |
 | `OTEL_ENABLED` | No | `false` | Enable OpenTelemetry |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | If OTEL=true | — | OTLP collector URL |
+| `GITHUB_WEBHOOK_SECRET` | No | — | Secret for GitHub webhook push events |
 
 See [docs/configuration.md](docs/configuration.md) for advanced configuration.
 
@@ -272,6 +281,14 @@ Multi-tenancy: Pass `X-Workspace-Id` header to scope all data. API keys are vali
 ### Prompt Labels
 - `POST /v1/prompts/:name/labels` — Tag a version
 - `GET /v1/prompts/:name/labels/:label_name` — Resolve label to version
+
+### Evaluations
+- `POST /v1/evaluations` — Create an evaluation
+- `GET /v1/evaluations` — List evaluations
+- `GET /v1/evaluations/:id` — Get an evaluation
+- `POST /v1/evaluations/:id/results` — Add a result
+- `GET /v1/evaluations/:id/results` — List results
+- `DELETE /v1/evaluations/:id` — Delete an evaluation
 
 ### Audit
 - `GET /v1/audit-logs` — Query audit logs (admin scope)

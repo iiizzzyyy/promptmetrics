@@ -464,6 +464,132 @@ Remove a label from a prompt.
 
 **Response:** `204 No Content`
 
+### Evaluations
+
+#### POST /v1/evaluations
+Create an evaluation.
+
+**Request Body:**
+```json
+{
+  "name": "accuracy-check",
+  "description": "Check output accuracy",
+  "prompt_name": "welcome",
+  "version_tag": "1.0.0",
+  "criteria": { "min_score": 0.8 }
+}
+```
+
+- `name` is required.
+- `prompt_name` is required.
+- `version_tag`, `description`, and `criteria` are optional.
+
+**Response:** `201 Created`
+```json
+{
+  "id": "eval-uuid",
+  "name": "accuracy-check",
+  "description": "Check output accuracy",
+  "prompt_name": "welcome",
+  "version_tag": "1.0.0",
+  "criteria": { "min_score": 0.8 },
+  "created_at": 1776849966
+}
+```
+
+#### GET /v1/evaluations
+List all evaluations.
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "id": "eval-uuid",
+      "name": "accuracy-check",
+      "prompt_name": "welcome",
+      "version_tag": "1.0.0",
+      "created_at": 1776849966
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 50,
+  "totalPages": 1
+}
+```
+
+#### GET /v1/evaluations/:id
+Get a single evaluation.
+
+**Response:**
+```json
+{
+  "id": "eval-uuid",
+  "name": "accuracy-check",
+  "description": "Check output accuracy",
+  "prompt_name": "welcome",
+  "version_tag": "1.0.0",
+  "criteria": { "min_score": 0.8 },
+  "created_at": 1776849966
+}
+```
+
+#### POST /v1/evaluations/:id/results
+Add a result to an evaluation.
+
+**Request Body:**
+```json
+{
+  "run_id": "run-1",
+  "score": 0.95,
+  "metadata": { "judge": "gpt-4" }
+}
+```
+
+- `score` is required.
+- `run_id` and `metadata` are optional.
+
+**Response:** `201 Created`
+```json
+{
+  "id": "result-uuid",
+  "evaluation_id": "eval-uuid",
+  "run_id": "run-1",
+  "score": 0.95,
+  "metadata": { "judge": "gpt-4" },
+  "created_at": 1776849966
+}
+```
+
+#### GET /v1/evaluations/:id/results
+List results for an evaluation.
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "id": "result-uuid",
+      "evaluation_id": "eval-uuid",
+      "run_id": "run-1",
+      "score": 0.95,
+      "metadata": { "judge": "gpt-4" },
+      "created_at": 1776849966
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 50,
+  "totalPages": 1
+}
+```
+
+#### DELETE /v1/evaluations/:id
+Delete an evaluation and cascade its results.
+
+**Response:** `204 No Content`
+
 ### Audit Logs
 
 #### GET /v1/audit-logs
