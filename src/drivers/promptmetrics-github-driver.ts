@@ -2,15 +2,18 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import { simpleGit } from 'simple-git';
+import CircuitBreaker from 'opossum';
 import { PromptDriver, PromptFile, PromptVersion } from './promptmetrics-driver.interface';
 import { config } from '@config/index';
 import { getDb, withTransaction } from '@models/promptmetrics-sqlite';
+import { createCircuitBreaker } from '@services/circuit-breaker.service';
 
 export class GithubDriver implements PromptDriver {
   private readonly clonePath: string;
   private readonly repo: string;
   private readonly token: string;
   private readonly apiBase = 'https://api.github.com';
+  private readonly createContentBreaker: CircuitBreaker;
 
   constructor() {
     if (!config.githubRepo || !config.githubToken) {
@@ -19,6 +22,14 @@ export class GithubDriver implements PromptDriver {
     this.repo = config.githubRepo;
     this.token = config.githubToken;
     this.clonePath = path.resolve('./data/github-clone');
+    this.createContentBreaker = createCircuitBreaker(
+      this.createGithubContent.bind(this),
+      {
+        errorThresholdPercentage: 50,
+        resetTimeout: 30000,
+        volumeThreshold: 5,
+      },
+    );
   }
 
   private getAuthHeaders(): Record<string, string> {
@@ -114,6 +125,54 @@ export class GithubDriver implements PromptDriver {
     }
   }
 
+  private async createGithubContent(
+    filePath: string,
+    encodedContent: string,
+    existingSha: string | undefined,
+    tagName: string,
+  ): Promise<void> {
+    const url = `${this.apiBase}/repos/${this.repo}/contents/${filePath}`;
+
+    // Exponential backoff retry
+    let lastError: Error | undefined;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await axios.put(
+          url,
+          {
+            message: `Create/Update prompt: ${filePath}`,
+            content: encodedContent,
+            ...(existingSha ? { sha: existingSha } : {}),
+          },
+          { headers: this.getAuthHeaders() },
+        );
+
+        // Create tag
+        await axios.post(
+          `${this.apiBase}/repos/${this.repo}/git/refs`,
+          {
+            ref: `refs/tags/${tagName}`,
+            sha: (await this.getLatestSha()) || 'HEAD',
+          },
+          { headers: this.getAuthHeaders() },
+        );
+
+        return;
+      } catch (err) {
+        lastError = err as Error;
+        const status = (err as { response?: { status?: number } }).response?.status;
+        if (status === 429) {
+          const delay = Math.pow(2, attempt) * 1000;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    throw lastError || new Error('Failed to create GitHub content after retries');
+  }
+
   async createPrompt(prompt: PromptFile): Promise<PromptVersion> {
     const filePath = `prompts/${prompt.name}/${prompt.version}.json`;
     const content = JSON.stringify(prompt, null, 2);
@@ -131,76 +190,42 @@ export class GithubDriver implements PromptDriver {
       // File doesn't exist, which is fine for create
     }
 
-    // Exponential backoff retry
-    let lastError: Error | undefined;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    // Use circuit breaker for GitHub content creation
+    await this.createContentBreaker.fire(filePath, encodedContent, existingSha, tagName);
+
+    const version: PromptVersion = {
+      name: prompt.name,
+      version_tag: prompt.version,
+      commit_sha: (await this.getLatestSha()) || undefined,
+      created_at: Math.floor(Date.now() / 1000),
+    };
+
+    // Update SQLite index inside a transaction
+    try {
+      withTransaction((db) => {
+        db.prepare(
+          'INSERT OR REPLACE INTO prompts (name, version_tag, commit_sha, driver, created_at) VALUES (?, ?, ?, ?, ?)',
+        ).run(prompt.name, prompt.version, version.commit_sha, 'github', version.created_at);
+      });
+    } catch (dbError) {
+      // Attempt to revert GitHub changes on DB failure
       try {
-        await axios.put(
-          url,
-          {
-            message: `Create/Update prompt: ${prompt.name} v${prompt.version}`,
-            content: encodedContent,
-            ...(existingSha ? { sha: existingSha } : {}),
+        await axios.request({
+          method: 'DELETE',
+          url: `${this.apiBase}/repos/${this.repo}/contents/${filePath}`,
+          headers: this.getAuthHeaders(),
+          data: {
+            message: `Revert prompt: ${prompt.name} v${prompt.version}`,
+            sha: existingSha || (await this.getLatestSha()) || '',
           },
-          { headers: this.getAuthHeaders() },
-        );
-
-        // Create tag
-        await axios.post(
-          `${this.apiBase}/repos/${this.repo}/git/refs`,
-          {
-            ref: `refs/tags/${tagName}`,
-            sha: (await this.getLatestSha()) || 'HEAD',
-          },
-          { headers: this.getAuthHeaders() },
-        );
-
-        const version: PromptVersion = {
-          name: prompt.name,
-          version_tag: prompt.version,
-          commit_sha: (await this.getLatestSha()) || undefined,
-          created_at: Math.floor(Date.now() / 1000),
-        };
-
-        // Update SQLite index inside a transaction
-        try {
-          withTransaction((db) => {
-            db.prepare(
-              'INSERT OR REPLACE INTO prompts (name, version_tag, commit_sha, driver, created_at) VALUES (?, ?, ?, ?, ?)',
-            ).run(prompt.name, prompt.version, version.commit_sha, 'github', version.created_at);
-          });
-        } catch (dbError) {
-          // Attempt to revert GitHub changes on DB failure
-          try {
-            await axios.request({
-              method: 'DELETE',
-              url: `${this.apiBase}/repos/${this.repo}/contents/${filePath}`,
-              headers: this.getAuthHeaders(),
-              data: {
-                message: `Revert prompt: ${prompt.name} v${prompt.version}`,
-                sha: existingSha || (await this.getLatestSha()) || '',
-              },
-            });
-          } catch {
-            // Best-effort revert; original error is what matters
-          }
-          throw dbError;
-        }
-
-        return version;
-      } catch (err) {
-        lastError = err as Error;
-        const status = (err as { response?: { status?: number } }).response?.status;
-        if (status === 429) {
-          const delay = Math.pow(2, attempt) * 1000;
-          await new Promise((resolve) => setTimeout(resolve, delay));
-          continue;
-        }
-        throw err;
+        });
+      } catch {
+        // Best-effort revert; original error is what matters
       }
+      throw dbError;
     }
 
-    throw lastError || new Error('Failed to create prompt after retries');
+    return version;
   }
 
   async listVersions(
