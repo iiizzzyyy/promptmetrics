@@ -2,7 +2,7 @@ import mustache from 'mustache';
 import { AppError } from '@errors/app.error';
 import { PromptDriver, PromptFile, PromptVersion } from '@drivers/promptmetrics-driver.interface';
 import { parsePagination, buildPaginatedResponse, PaginatedResponse } from '@utils/pagination';
-import { promptCache, cacheKey, invalidatePrompt } from '@services/cache.service';
+import { getCachedPrompt, cacheKey, setCachedPrompt, invalidatePrompt } from '@services/cache.service';
 
 export class PromptService {
   constructor(private driver: PromptDriver) {}
@@ -36,7 +36,7 @@ export class PromptService {
     shouldRender = true,
   ): Promise<{ content: PromptFile; version: PromptVersion }> {
     const key = cacheKey(name, version);
-    const cached = promptCache.get(key);
+    const cached = await getCachedPrompt(key);
 
     let rawContent: PromptFile;
     let promptVersion: PromptVersion;
@@ -51,7 +51,7 @@ export class PromptService {
       }
       rawContent = result.content;
       promptVersion = result.version;
-      promptCache.set(key, { content: rawContent, version: promptVersion });
+      await setCachedPrompt(key, { content: rawContent, version: promptVersion });
     }
 
     let content = rawContent;
@@ -86,7 +86,7 @@ export class PromptService {
 
   async createPrompt(prompt: PromptFile): Promise<PromptVersion> {
     const result = await this.driver.createPrompt(prompt);
-    invalidatePrompt(prompt.name);
+    await invalidatePrompt(prompt.name);
     return result;
   }
 }

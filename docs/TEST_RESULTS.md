@@ -134,6 +134,18 @@
 
 ---
 
+## Epic 4.2 — Redis Integration
+
+### After Task 4.2
+- **Status:** PASS
+- **Date:** 2026-04-25
+- **Command:** `npm test`
+- **Results:** 180 passed, 1 failed (pre-existing config failure)
+- **Notes:** Added `src/services/redis.service.ts` with `getRedisClient()`, `isRedisEnabled()`, and `closeRedis()`. Updated `CacheService` to use Redis `GET`/`SETEX` when `REDIS_URL` is set, falling back to LRUCache. Updated rate limiter to use Redis `INCR`/`EXPIRE` with atomic pipeline when available. Added `docker-compose.redis.yml` for local testing.
+- **Commit:** `feat: add Redis support for caching and rate limiting`
+
+---
+
 ## Final Verification Checklist
 
 - [ ] `npm run build` succeeds with zero errors

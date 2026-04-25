@@ -5,7 +5,7 @@ import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
 import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
-import { promptCache } from '@services/cache.service';
+import { clearCache } from '@services/cache.service';
 
 describe('Prompt API Integration', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-integration.db');
@@ -40,8 +40,8 @@ describe('Prompt API Integration', () => {
     app = createApp(driver);
   });
 
-  beforeEach(() => {
-    promptCache.clear();
+  beforeEach(async () => {
+    await clearCache();
   });
 
   afterAll(() => {

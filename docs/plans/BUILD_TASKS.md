@@ -434,12 +434,12 @@
 
 ### Epic 4.2 -- Redis Integration
 
-- [ ] **4.2.1** Run: `npm install ioredis`
-- [ ] **4.2.2** Create `src/services/redis.service.ts`
-- [ ] **4.2.3** Update `CacheService` to use Redis when `REDIS_URL` is set
-- [ ] **4.2.4** Update rate limiter to use Redis counters when available
-- [ ] **4.2.5** Add `docker-compose.redis.yml`
-- [ ] **4.2.6** Commit: `git commit -m "feat: add Redis support for caching and rate limiting"`
+- [x] **4.2.1** Run: `npm install ioredis`
+- [x] **4.2.2** Create `src/services/redis.service.ts`
+- [x] **4.2.3** Update `CacheService` to use Redis when `REDIS_URL` is set
+- [x] **4.2.4** Update rate limiter to use Redis counters when available
+- [x] **4.2.5** Add `docker-compose.redis.yml`
+- [x] **4.2.6** Commit: `git commit -m "feat: add Redis support for caching and rate limiting"`
 
 ---
 
