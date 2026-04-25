@@ -1,0 +1,1083 @@
+openapi: 3.0.3
+info:
+  title: PromptMetrics API
+  description: Lightweight, self-hosted prompt registry with GitHub-backed versioning and metadata logging.
+  version: 1.0.0
+  contact:
+    name: PromptMetrics Support
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns a simple health status.
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+  /health/deep:
+    get:
+      summary: Deep health check
+      description: Performs a deep health check including SQLite and driver connectivity.
+      security: []
+      responses:
+        '200':
+          description: All checks passed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeepHealthStatus'
+        '503':
+          description: One or more checks failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeepHealthStatus'
+
+  /v1/prompts:
+    get:
+      summary: List prompts
+      description: Returns a paginated list of prompt names.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: q
+          in: query
+          description: Search query string
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated list of prompts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPromptList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: Create a prompt
+      description: Creates a new prompt version.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePromptRequest'
+      responses:
+        '201':
+          description: Prompt created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptVersion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/prompts/{name}:
+    get:
+      summary: Get a prompt
+      description: Retrieves a prompt by name. Optionally specify a version or request rendering with variables.
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: query
+          description: Specific version tag (semantic version)
+          schema:
+            type: string
+        - name: render
+          in: query
+          description: Set to 'false' to skip Mustache variable rendering
+          schema:
+            type: string
+            enum: ['false']
+        - name: variables
+          in: query
+          description: Variables for Mustache rendering (when render is not false)
+          schema:
+            type: object
+            additionalProperties:
+              type: string
+      responses:
+        '200':
+          description: Prompt content and version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/prompts/{name}/versions:
+    get:
+      summary: List prompt versions
+      description: Returns a paginated list of versions for a given prompt.
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated list of versions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedVersionList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/logs:
+    post:
+      summary: Create a log entry
+      description: Logs prompt execution metadata (tokens, latency, cost, etc.).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLogRequest'
+      responses:
+        '202':
+          description: Log accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogAcceptedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/traces:
+    post:
+      summary: Create a trace
+      description: Creates a new execution trace for observability.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTraceRequest'
+      responses:
+        '201':
+          description: Trace created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TraceCreatedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/traces/{trace_id}:
+    get:
+      summary: Get a trace
+      description: Retrieves a trace by ID, including its spans.
+      parameters:
+        - name: trace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Trace details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TraceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/traces/{trace_id}/spans:
+    post:
+      summary: Create a span
+      description: Adds a span to an existing trace.
+      parameters:
+        - name: trace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSpanRequest'
+      responses:
+        '201':
+          description: Span created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpanCreatedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/traces/{trace_id}/spans/{span_id}:
+    get:
+      summary: Get a span
+      description: Retrieves a specific span within a trace.
+      parameters:
+        - name: trace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: span_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Span details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpanResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/runs:
+    get:
+      summary: List runs
+      description: Returns a paginated list of workflow runs.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated list of runs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRunList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: Create a run
+      description: Creates a new workflow run.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRunRequest'
+      responses:
+        '201':
+          description: Run created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunCreatedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/runs/{run_id}:
+    get:
+      summary: Get a run
+      description: Retrieves a workflow run by ID.
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Run details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: Update a run
+      description: Updates status, output, or metadata of an existing run.
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRunRequest'
+      responses:
+        '200':
+          description: Run updated (or no changes)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunUpdatedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/prompts/{name}/labels:
+    get:
+      summary: List labels
+      description: Returns a paginated list of labels for a prompt.
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated list of labels
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLabelList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: Create a label
+      description: Creates a named label pointing to a specific prompt version.
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLabelRequest'
+      responses:
+        '201':
+          description: Label created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/prompts/{name}/labels/{label_name}:
+    get:
+      summary: Get a label
+      description: Retrieves a specific label for a prompt.
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: label_name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Label details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete a label
+      description: Removes a label from a prompt.
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: label_name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Label deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/audit-logs:
+    get:
+      summary: List audit logs
+      description: Returns a paginated list of audit log entries. Requires admin scope.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated list of audit logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuditLogList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: Page number (1-based)
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    LimitParam:
+      name: limit
+      in: query
+      description: Items per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+
+    DeepHealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+
+    PromptMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant]
+        content:
+          type: string
+        name:
+          type: string
+
+    PromptVariable:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [string, number, boolean, array, object]
+        required:
+          type: boolean
+        default: {}
+
+    ModelConfig:
+      type: object
+      properties:
+        model:
+          type: string
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+        max_tokens:
+          type: integer
+          minimum: 1
+        top_p:
+          type: number
+          minimum: 0
+          maximum: 1
+        frequency_penalty:
+          type: number
+          minimum: -2
+          maximum: 2
+        presence_penalty:
+          type: number
+          minimum: -2
+          maximum: 2
+
+    OllamaConfig:
+      type: object
+      properties:
+        options:
+          type: object
+          additionalProperties: true
+        keep_alive:
+          type: string
+        format:
+          type: string
+
+    CreatePromptRequest:
+      type: object
+      required: [name, version, messages]
+      properties:
+        name:
+          type: string
+          pattern: '^[a-zA-Z0-9-_]+$'
+          maxLength: 128
+        version:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/PromptMessage'
+          minItems: 1
+        variables:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/PromptVariable'
+        model_config:
+          $ref: '#/components/schemas/ModelConfig'
+        ollama:
+          $ref: '#/components/schemas/OllamaConfig'
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 64
+          maxItems: 20
+
+    PromptVersion:
+      type: object
+      properties:
+        name:
+          type: string
+        version_tag:
+          type: string
+        commit_sha:
+          type: string
+        fs_path:
+          type: string
+        created_at:
+          type: integer
+        author:
+          type: string
+
+    PromptResponse:
+      type: object
+      properties:
+        content:
+          type: object
+          properties:
+            name:
+              type: string
+            version:
+              type: string
+            messages:
+              type: array
+              items:
+                $ref: '#/components/schemas/PromptMessage'
+            variables:
+              type: object
+              additionalProperties:
+                $ref: '#/components/schemas/PromptVariable'
+            model_config:
+              $ref: '#/components/schemas/ModelConfig'
+            ollama:
+              $ref: '#/components/schemas/OllamaConfig'
+            tags:
+              type: array
+              items:
+                type: string
+        version:
+          $ref: '#/components/schemas/PromptVersion'
+
+    PaginatedPromptList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    PaginatedVersionList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PromptVersion'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    CreateLogRequest:
+      type: object
+      required: [prompt_name, version_tag]
+      properties:
+        prompt_name:
+          type: string
+          maxLength: 128
+        version_tag:
+          type: string
+          maxLength: 64
+        provider:
+          type: string
+          maxLength: 64
+        model:
+          type: string
+          maxLength: 128
+        tokens_in:
+          type: integer
+          minimum: 0
+        tokens_out:
+          type: integer
+          minimum: 0
+        latency_ms:
+          type: integer
+          minimum: 0
+        cost_usd:
+          type: number
+          minimum: 0
+        ollama_options:
+          type: object
+        ollama_keep_alive:
+          type: string
+          maxLength: 16
+        ollama_format: {}
+        metadata:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+                maxLength: 1024
+              - type: number
+              - type: boolean
+
+    LogAcceptedResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+
+    CreateTraceRequest:
+      type: object
+      properties:
+        trace_id:
+          type: string
+          format: uuid
+        prompt_name:
+          type: string
+          maxLength: 128
+        version_tag:
+          type: string
+          maxLength: 64
+        metadata:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+                maxLength: 1024
+              - type: number
+              - type: boolean
+
+    TraceCreatedResponse:
+      type: object
+      properties:
+        trace_id:
+          type: string
+        prompt_name:
+          type: string
+        version_tag:
+          type: string
+        status:
+          type: string
+
+    TraceResponse:
+      type: object
+      properties:
+        trace_id:
+          type: string
+        prompt_name:
+          type: string
+        version_tag:
+          type: string
+        metadata:
+          type: object
+        created_at:
+          type: integer
+        spans:
+          type: array
+          items:
+            type: object
+
+    CreateSpanRequest:
+      type: object
+      required: [name, status]
+      properties:
+        span_id:
+          type: string
+          format: uuid
+        parent_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 256
+        status:
+          type: string
+          enum: [ok, error]
+        start_time:
+          type: integer
+          minimum: 0
+        end_time:
+          type: integer
+          minimum: 0
+        metadata:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+                maxLength: 1024
+              - type: number
+              - type: boolean
+
+    SpanCreatedResponse:
+      type: object
+      properties:
+        trace_id:
+          type: string
+        span_id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+
+    SpanResponse:
+      type: object
+      properties:
+        span_id:
+          type: string
+        parent_id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+        start_time:
+          type: integer
+        end_time:
+          type: integer
+        metadata:
+          type: object
+        created_at:
+          type: integer
+
+    CreateRunRequest:
+      type: object
+      required: [workflow_name]
+      properties:
+        run_id:
+          type: string
+          format: uuid
+        workflow_name:
+          type: string
+          maxLength: 128
+        status:
+          type: string
+          enum: [running, completed, failed]
+        input:
+          type: object
+        output:
+          type: object
+        trace_id:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+                maxLength: 1024
+              - type: number
+              - type: boolean
+
+    RunCreatedResponse:
+      type: object
+      properties:
+        run_id:
+          type: string
+        workflow_name:
+          type: string
+        status:
+          type: string
+
+    RunResponse:
+      type: object
+      properties:
+        run_id:
+          type: string
+        workflow_name:
+          type: string
+        status:
+          type: string
+        input:
+          type: object
+        output:
+          type: object
+        trace_id:
+          type: string
+        metadata:
+          type: object
+        created_at:
+          type: integer
+        updated_at:
+          type: integer
+
+    UpdateRunRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [running, completed, failed]
+        output:
+          type: object
+        metadata:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+                maxLength: 1024
+              - type: number
+              - type: boolean
+
+    RunUpdatedResponse:
+      type: object
+      properties:
+        run_id:
+          type: string
+        status:
+          type: string
+
+    PaginatedRunList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunResponse'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    CreateLabelRequest:
+      type: object
+      required: [name, version_tag]
+      properties:
+        name:
+          type: string
+          maxLength: 128
+          pattern: '^[a-zA-Z0-9_.-]+$'
+        version_tag:
+          type: string
+          maxLength: 64
+
+    LabelResponse:
+      type: object
+      properties:
+        prompt_name:
+          type: string
+        name:
+          type: string
+        version_tag:
+          type: string
+        created_at:
+          type: integer
+
+    PaginatedLabelList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabelResponse'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    AuditLogEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        action:
+          type: string
+        prompt_name:
+          type: string
+        version_tag:
+          type: string
+        api_key_name:
+          type: string
+        ip_address:
+          type: string
+        timestamp:
+          type: integer
+
+    PaginatedAuditLogList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLogEntry'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
+
+  responses:
+    BadRequest:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Missing or invalid API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Forbidden:
+      description: Insufficient scope
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

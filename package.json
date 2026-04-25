@@ -52,6 +52,7 @@
     "@types/mustache": "^4.2.6",
     "@types/node": "^24.6.0",
     "@types/supertest": "^6.0.3",
+    "@types/swagger-ui-express": "^4.1.8",
     "@types/umzug": "^2.3.9",
     "@typescript-eslint/eslint-plugin": "^8.44.1",
     "@typescript-eslint/parser": "^8.44.1",
@@ -60,6 +61,7 @@
     "nock": "^14.0.0",
     "prettier": "^3.5.3",
     "supertest": "^7.1.0",
+    "swagger-parser": "^10.0.3",
     "ts-jest": "^29.3.0",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.16",
@@ -86,6 +88,7 @@
     "lru-cache": "^11.3.5",
     "mustache": "^4.2.0",
     "simple-git": "^3.36.0",
+    "swagger-ui-express": "^5.0.1",
     "umzug": "^3.8.2"
   }
 }

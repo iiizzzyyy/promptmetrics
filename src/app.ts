@@ -4,6 +4,10 @@ import hpp from 'hpp';
 import cors from 'cors';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+import swaggerUi from 'swagger-ui-express';
+import yaml from 'js-yaml';
+import fs from 'fs';
+import path from 'path';
 import { PromptDriver } from '@drivers/promptmetrics-driver.interface';
 import { createDriver } from '@drivers/promptmetrics-driver.factory';
 import { createPromptRoutes } from '@routes/promptmetrics-prompt.route';
@@ -36,6 +40,12 @@ export function createApp(driver?: PromptDriver): Application {
     }),
   );
   app.use(express.json({ limit: '10mb' }));
+
+  const openapiPath = path.resolve(__dirname, '../docs/openapi.yaml');
+  if (fs.existsSync(openapiPath)) {
+    const openapiSpec = yaml.load(fs.readFileSync(openapiPath, 'utf8')) as object;
+    app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
+  }
 
   app.use('/', createPromptRoutes(driver));
   app.use('/', createLogRoutes());
