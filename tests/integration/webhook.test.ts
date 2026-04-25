@@ -95,4 +95,20 @@ describe('GitHub Webhook', () => {
     expect(res.status).toBe(200);
     expect(res.body.message).toBe('Sync triggered');
   });
+
+  it('should return 500 when webhook secret is not configured', async () => {
+    delete process.env.GITHUB_WEBHOOK_SECRET;
+    const freshDriver = new FilesystemDriver(testPromptsPath + '-fresh');
+    const freshApp = createApp(freshDriver);
+
+    const payload = JSON.stringify({ ref: 'refs/heads/main' });
+    const res = await request(freshApp)
+      .post('/webhooks/github')
+      .set('X-GitHub-Event', 'push')
+      .set('Content-Type', 'application/json')
+      .send(payload);
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe('Webhook secret not configured');
+  });
 });

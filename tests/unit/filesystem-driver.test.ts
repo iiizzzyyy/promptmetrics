@@ -126,4 +126,18 @@ describe('FilesystemDriver', () => {
     });
     expect(result.version_tag).toBe('1.0.0');
   });
+
+  it('should reject path traversal in getPrompt', async () => {
+    await expect(driver.getPrompt('../../../etc/passwd')).rejects.toThrow('Invalid prompt name');
+  });
+
+  it('should reject path traversal in createPrompt', async () => {
+    await expect(driver.createPrompt({ ...samplePrompt, name: '../../../tmp/evil' })).rejects.toThrow(
+      'Invalid prompt name',
+    );
+  });
+
+  it('should reject path traversal in listVersions', async () => {
+    await expect(driver.listVersions('foo/../bar')).rejects.toThrow('Invalid prompt name');
+  });
 });

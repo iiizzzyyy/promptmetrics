@@ -91,6 +91,28 @@ describe('Evaluations API', () => {
     expect(listRes.body.items.length).toBe(1);
   });
 
+  it('should reject invalid evaluation payload with 422', async () => {
+    const res = await request(app).post('/v1/evaluations').set('X-API-Key', apiKey).send({
+      description: 'missing name and prompt_name',
+    });
+    expect(res.status).toBe(422);
+    expect(res.body.code).toBe('VALIDATION_FAILED');
+  });
+
+  it('should reject invalid result payload with 422', async () => {
+    const createRes = await request(app).post('/v1/evaluations').set('X-API-Key', apiKey).send({
+      name: 'validation-test',
+      prompt_name: 'hello',
+    });
+    const evalId = createRes.body.id;
+
+    const res = await request(app).post(`/v1/evaluations/${evalId}/results`).set('X-API-Key', apiKey).send({
+      score: 'not-a-number',
+    });
+    expect(res.status).toBe(422);
+    expect(res.body.code).toBe('VALIDATION_FAILED');
+  });
+
   it('should delete an evaluation and cascade results', async () => {
     const createRes = await request(app).post('/v1/evaluations').set('X-API-Key', apiKey).send({
       name: 'temp-check',

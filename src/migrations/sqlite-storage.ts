@@ -16,6 +16,14 @@ export class SQLiteStorage {
     this.db = options.db;
     this.tableName = options.tableName || 'migrations';
     this.columnName = options.columnName || 'name';
+
+    const validIdentifier = /^[a-z_][a-z0-9_]*$/i;
+    if (!validIdentifier.test(this.tableName)) {
+      throw new Error(`Invalid table name: ${this.tableName}`);
+    }
+    if (!validIdentifier.test(this.columnName)) {
+      throw new Error(`Invalid column name: ${this.columnName}`);
+    }
   }
 
   async logMigration({ name }: { name: string }): Promise<void> {

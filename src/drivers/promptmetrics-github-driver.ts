@@ -67,6 +67,17 @@ export class GithubDriver implements PromptDriver {
     return { items: promptNames.slice(start, start + limit), total };
   }
 
+  private validateName(name: string): void {
+    if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+      throw new Error('Invalid prompt name: path traversal detected');
+    }
+    const resolved = path.resolve(this.clonePath, 'prompts', name);
+    const promptsDir = path.resolve(this.clonePath, 'prompts');
+    if (!resolved.startsWith(promptsDir + path.sep)) {
+      throw new Error('Invalid prompt name: path traversal detected');
+    }
+  }
+
   private semverCompare(a: string, b: string): number {
     const pa = a.split('.').map(Number);
     const pb = b.split('.').map(Number);
@@ -82,6 +93,7 @@ export class GithubDriver implements PromptDriver {
     name: string,
     version?: string,
   ): Promise<{ content: PromptFile; version: PromptVersion } | undefined> {
+    this.validateName(name);
     this.ensureCloned();
 
     const promptDir = path.join(this.clonePath, 'prompts', name);

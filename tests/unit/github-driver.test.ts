@@ -122,4 +122,19 @@ describe('GithubDriver', () => {
     expect(result.name).toBe('welcome');
     expect(result.version_tag).toBe('1.0.0');
   });
+
+  it('should reject path traversal in getPrompt', async () => {
+    process.env.DRIVER = 'github';
+    process.env.GITHUB_REPO = 'test-org/test-repo';
+    process.env.GITHUB_TOKEN = 'test-token';
+    process.env.API_KEY_SALT = 'test-salt';
+
+    let driver: GithubDriver;
+    jest.isolateModules(() => {
+      const { GithubDriver: GH } = require('@drivers/promptmetrics-github-driver');
+      driver = new GH();
+    });
+
+    await expect(driver!.getPrompt('../../../etc/passwd')).rejects.toThrow('Invalid prompt name');
+  });
 });

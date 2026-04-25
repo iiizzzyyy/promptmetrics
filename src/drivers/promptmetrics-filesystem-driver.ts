@@ -13,6 +13,16 @@ export class FilesystemDriver implements PromptDriver {
     }
   }
 
+  private validateName(name: string): void {
+    if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+      throw new Error('Invalid prompt name: path traversal detected');
+    }
+    const resolved = path.resolve(this.basePath, name);
+    if (!resolved.startsWith(this.basePath + path.sep)) {
+      throw new Error('Invalid prompt name: path traversal detected');
+    }
+  }
+
   async listPrompts(page: number = 1, limit: number = 50): Promise<{ items: string[]; total: number }> {
     if (!fs.existsSync(this.basePath)) return { items: [], total: 0 };
 
@@ -33,6 +43,7 @@ export class FilesystemDriver implements PromptDriver {
     name: string,
     version?: string,
   ): Promise<{ content: PromptFile; version: PromptVersion } | undefined> {
+    this.validateName(name);
     const promptDir = path.join(this.basePath, name);
     if (!fs.existsSync(promptDir)) return undefined;
 
@@ -66,6 +77,7 @@ export class FilesystemDriver implements PromptDriver {
   }
 
   async createPrompt(prompt: PromptFile): Promise<PromptVersion> {
+    this.validateName(prompt.name);
     const promptDir = path.join(this.basePath, prompt.name);
     if (!fs.existsSync(promptDir)) {
       fs.mkdirSync(promptDir, { recursive: true });
@@ -98,6 +110,7 @@ export class FilesystemDriver implements PromptDriver {
     page: number = 1,
     limit: number = 50,
   ): Promise<{ items: PromptVersion[]; total: number }> {
+    this.validateName(name);
     const versions = this.getVersionFiles(name);
     const total = versions.length;
 
@@ -129,6 +142,7 @@ export class FilesystemDriver implements PromptDriver {
   }
 
   private getVersionFiles(name: string): string[] {
+    this.validateName(name);
     const promptDir = path.join(this.basePath, name);
     if (!fs.existsSync(promptDir)) return [];
 

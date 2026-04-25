@@ -13,7 +13,7 @@ function verifySignature(payload: string, signature: string, secret: string): bo
 
 export function createWebhookRoutes(driver: PromptDriver): Router {
   const router = Router();
-  const secret = process.env.GITHUB_WEBHOOK_SECRET || process.env.GITHUB_TOKEN;
+  const secret = process.env.GITHUB_WEBHOOK_SECRET;
 
   router.post('/webhooks/github', async (req: Request, res: Response): Promise<void> => {
     if (!secret) {

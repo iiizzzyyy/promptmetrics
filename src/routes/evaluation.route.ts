@@ -12,15 +12,15 @@ export function createEvaluationRoutes(): Router {
   router.use(authenticateApiKey);
   router.use(rateLimitPerKey());
 
-  router.post('/v1/evaluations', (req, res, next) => controller.createEvaluation(req, res, next));
-  router.get('/v1/evaluations', validateQuery(paginationQuerySchema), (req, res, next) =>
-    controller.listEvaluations(req, res, next),
+  router.post('/v1/evaluations', (req, res) => controller.createEvaluation(req, res));
+  router.get('/v1/evaluations', validateQuery(paginationQuerySchema), (req, res) =>
+    controller.listEvaluations(req, res),
   );
-  router.get('/v1/evaluations/:id', (req, res, next) => controller.getEvaluation(req, res, next));
-  router.delete('/v1/evaluations/:id', (req, res, next) => controller.deleteEvaluation(req, res, next));
-  router.post('/v1/evaluations/:id/results', (req, res, next) => controller.createResult(req, res, next));
-  router.get('/v1/evaluations/:id/results', validateQuery(paginationQuerySchema), (req, res, next) =>
-    controller.listResults(req, res, next),
+  router.get('/v1/evaluations/:id', (req, res) => controller.getEvaluation(req, res));
+  router.delete('/v1/evaluations/:id', (req, res) => controller.deleteEvaluation(req, res));
+  router.post('/v1/evaluations/:id/results', (req, res) => controller.createResult(req, res));
+  router.get('/v1/evaluations/:id/results', validateQuery(paginationQuerySchema), (req, res) =>
+    controller.listResults(req, res),
   );
 
   return router;

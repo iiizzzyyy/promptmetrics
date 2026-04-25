@@ -16,8 +16,6 @@ export class LogController {
     const workspaceId = req.workspaceId || 'default';
     const logEntry = await this.service.createLog(value, workspaceId);
 
-    console.log(JSON.stringify({ type: 'promptmetrics.log', ...logEntry }));
-
     if (value.metadata) {
       logMetadata(value.metadata);
     }

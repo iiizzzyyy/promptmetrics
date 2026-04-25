@@ -73,35 +73,37 @@ async function checkSqliteRateLimit(
   const now = Date.now();
   const windowStart = Math.floor(now / windowMs) * windowMs;
 
-  const row = (await db.prepare('SELECT window_start, count FROM rate_limits WHERE key = ?').get(apiKeyName)) as
-    | { window_start: number; count: number }
-    | undefined;
+  return db.transaction<boolean>((txDb) => {
+    const row = txDb.prepare('SELECT window_start, count FROM rate_limits WHERE key = ?').get(apiKeyName) as
+      | { window_start: number; count: number }
+      | undefined;
 
-  if (!row || row.window_start < windowStart) {
-    await db
-      .prepare('INSERT OR REPLACE INTO rate_limits (key, window_start, count) VALUES (?, ?, ?)')
-      .run(apiKeyName, windowStart, 1);
+    if (!row || row.window_start < windowStart) {
+      txDb
+        .prepare('INSERT OR REPLACE INTO rate_limits (key, window_start, count) VALUES (?, ?, ?)')
+        .run(apiKeyName, windowStart, 1);
+      res.setHeader('RateLimit-Limit', String(maxRequests));
+      res.setHeader('RateLimit-Remaining', String(maxRequests - 1));
+      res.setHeader('RateLimit-Reset', String(Math.ceil((windowStart + windowMs) / 1000)));
+      return false;
+    }
+
+    if (row.count >= maxRequests) {
+      const retryAfter = Math.ceil((row.window_start + windowMs - now) / 1000);
+      res.setHeader('Retry-After', String(retryAfter));
+      res.status(429).json({
+        error: 'Rate limit exceeded',
+        code: 'RATE_LIMIT_EXCEEDED',
+      });
+      return true;
+    }
+
+    txDb.prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ?').run(apiKeyName);
     res.setHeader('RateLimit-Limit', String(maxRequests));
-    res.setHeader('RateLimit-Remaining', String(maxRequests - 1));
-    res.setHeader('RateLimit-Reset', String(Math.ceil((windowStart + windowMs) / 1000)));
+    res.setHeader('RateLimit-Remaining', String(maxRequests - row.count - 1));
+    res.setHeader('RateLimit-Reset', String(Math.ceil((row.window_start + windowMs) / 1000)));
     return false;
-  }
-
-  if (row.count >= maxRequests) {
-    const retryAfter = Math.ceil((row.window_start + windowMs - now) / 1000);
-    res.setHeader('Retry-After', String(retryAfter));
-    res.status(429).json({
-      error: 'Rate limit exceeded',
-      code: 'RATE_LIMIT_EXCEEDED',
-    });
-    return true;
-  }
-
-  await db.prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ?').run(apiKeyName);
-  res.setHeader('RateLimit-Limit', String(maxRequests));
-  res.setHeader('RateLimit-Remaining', String(maxRequests - row.count - 1));
-  res.setHeader('RateLimit-Reset', String(Math.ceil((row.window_start + windowMs) / 1000)));
-  return false;
+  });
 }
 
 export function rateLimitPerKey(windowMs = WINDOW_MS, maxRequests = DEFAULT_MAX) {

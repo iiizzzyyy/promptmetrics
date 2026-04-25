@@ -231,6 +231,33 @@
 
 ---
 
+## Security Blocker Fixes (Post-Review)
+
+### After All Blocker Fixes
+- **Status:** PASS
+- **Date:** 2026-04-25
+- **Command:** `npm test`
+- **Results:** 212 passed, 0 failed
+- **New tests:**
+  - `tests/unit/filesystem-driver.test.ts` — 3 tests for path traversal rejection
+  - `tests/unit/github-driver.test.ts` — 1 test for path traversal rejection
+  - `tests/integration/evaluations.test.ts` — 2 tests for 422 validation errors
+  - `tests/integration/webhook.test.ts` — 1 test for missing webhook secret
+  - `tests/unit/migrations/sqlite-storage.test.ts` — 3 tests for identifier validation
+
+### Fix Summary
+| # | Blocker | File(s) | Resolution |
+|---|---------|---------|------------|
+| 1 | Path traversal in FilesystemDriver | `src/drivers/promptmetrics-filesystem-driver.ts` | Added `validateName()` with `..` and path prefix checks |
+| 2 | Path traversal in GithubDriver | `src/drivers/promptmetrics-github-driver.ts` | Added `validateName()` with `..` and path prefix checks |
+| 3 | Missing input validation in EvaluationController | `src/controllers/promptmetrics-evaluation.controller.ts`, `src/validation-schemas/promptmetrics-evaluation.schema.ts` | Added Joi schemas for `createEvaluation` and `createResult`; standardized on throwing `AppError` |
+| 4 | Race condition in SQLite rate limiter | `src/middlewares/rate-limit-per-key.middleware.ts` | Wrapped read-and-update in `db.transaction()` |
+| 5 | Webhook secret fallback to GITHUB_TOKEN | `src/routes/webhook.route.ts` | Removed `\|\| process.env.GITHUB_TOKEN`; fail closed |
+| 6 | Sensitive data logged to stdout | `src/controllers/promptmetrics-log.controller.ts` | Removed `console.log(JSON.stringify(...logEntry))` |
+| 7 | SQL injection pattern in migration storage | `src/migrations/sqlite-storage.ts` | Added regex whitelist for `tableName` and `columnName` |
+
+---
+
 ## Final Verification Checklist
 
 - [x] `npm run build` succeeds with zero errors
