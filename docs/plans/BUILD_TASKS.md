@@ -378,13 +378,13 @@
 
 ### Epic 3.7 -- Circuit Breaker for GitHub API
 
-- [ ] **3.7.1** Run: `npm install opossum`
-- [ ] **3.7.2** Create `src/services/circuit-breaker.service.ts`:
+- [x] **3.7.1** Run: `npm install opossum`
+- [x] **3.7.2** Create `src/services/circuit-breaker.service.ts`:
   - Factory function that wraps async functions with `opossum`
   - Config: `errorThresholdPercentage: 50`, `resetTimeout: 30000`, `volumeThreshold: 5`
-- [ ] **3.7.3** Wrap `GithubDriver.createPrompt()` GitHub API calls with circuit breaker
-- [ ] **3.7.4** Unit tests: mock failures, verify OPEN, HALF_OPEN, CLOSED state transitions
-- [ ] **3.7.5** Commit: `git commit -m "feat: add circuit breaker for GitHub API calls"`
+- [x] **3.7.3** Wrap `GithubDriver.createPrompt()` GitHub API calls with circuit breaker
+- [x] **3.7.4** Unit tests: mock failures, verify OPEN, HALF_OPEN, CLOSED state transitions
+- [x] **3.7.5** Commit: `git commit -m "feat: add circuit breaker for GitHub API calls"`
 
 ---
 
