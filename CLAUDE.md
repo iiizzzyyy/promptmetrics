@@ -47,11 +47,12 @@ npm run api-key:generate       # Generate an API key
 
 PromptMetrics uses a two-tier storage architecture that spans multiple files:
 
-1. **Prompt content** lives in Git (GitHub or local filesystem). The `PromptDriver` interface (`src/drivers/promptmetrics-driver.interface.ts`) abstracts this. There are two implementations:
+1. **Prompt content** lives in Git (GitHub, local filesystem, or S3). The `PromptDriver` interface (`src/drivers/promptmetrics-driver.interface.ts`) abstracts this. There are three implementations:
    - `FilesystemDriver` — stores JSON files at `./prompts/{name}/{version}.json`
    - `GithubDriver` — uses GitHub Contents API + a local bare clone at `./data/github-clone` (synced via background `GitSyncJob`)
+   - `S3Driver` — stores prompt JSON as objects in S3 with keys like `prompts/{name}/{version}.json`
 
-2. **Metadata** lives in SQLite (`better-sqlite3` with WAL mode). The `getDb()` singleton (`src/models/promptmetrics-sqlite.ts`) provides the connection. Schema is initialized via `initSchema()` with inline `CREATE TABLE` and `PRAGMA table_info`-based migrations.
+2. **Metadata** lives in SQLite (`better-sqlite3` with WAL mode) or PostgreSQL. The `getDb()` singleton (`src/models/promptmetrics-sqlite.ts`) provides the connection. Schema is managed via `umzug` migration runner (`src/migrations/migrator.ts`) with numbered SQL files in `migrations/`.
 
 **Key implication:** The `prompts` table in SQLite is an *index* — it stores `name`, `version_tag`, `commit_sha`, and `driver`, but the actual prompt JSON content is read from Git/filesystem by the driver. When creating a prompt, the driver writes content to the storage backend AND inserts a row into SQLite. These two operations are NOT wrapped in a transaction.
 
@@ -66,15 +67,16 @@ PromptMetrics uses a two-tier storage architecture that spans multiple files:
 
 ### Authentication & Authorization
 
-- `authenticateApiKey` middleware (`src/middlewares/promptmetrics-auth.middleware.ts`) reads `X-API-Key` header, HMAC-SHA256 hashes it with `API_KEY_SALT`, and looks up the hash in SQLite. Valid keys have `name` and `scopes` attached to `req.apiKey`.
+- `authenticateApiKey` middleware (`src/middlewares/promptmetrics-auth.middleware.ts`) reads `X-API-Key` header, HMAC-SHA256 hashes it with `API_KEY_SALT`, and looks up the hash in SQLite. Valid keys have `name`, `scopes`, and `workspace_id` attached to `req.apiKey`.
 - `requireScope(scope)` returns middleware that checks `req.apiKey.scopes` and returns 403 if missing.
-- `auditLog(action)` monkey-patches `res.send` to write successful mutations to the `audit_logs` table. Be careful when adding other middleware that also patches `res.send`.
+- `auditLog(action)` uses `res.on('finish')` to enqueue audit entries to an async batch writer (`AuditLogService`).
+- `tenantMiddleware` reads `X-Workspace-Id` header and attaches it to `req.workspaceId`. All services scope queries by `workspace_id`.
 
 ### Request Flow (Prompts)
 
 1. Route (`src/routes/promptmetrics-prompt.route.ts`) receives the driver.
 2. `PromptController` methods handle HTTP concerns (pagination params, query parsing) then delegate to the driver.
-3. `getPrompt` also performs Mustache-style variable substitution on `system` and `user` role messages (custom regex, not the `mustache` library despite it being a dependency).
+3. `getPrompt` performs Mustache variable substitution on `system` and `user` role messages via the `mustache` library. The result is cached in an LRU cache (or Redis when `REDIS_URL` is set).
 4. Validation is done via Joi schemas in `src/validation-schemas/` and returns 422 with a `details` array.
 
 ---
@@ -101,6 +103,6 @@ PromptMetrics uses a two-tier storage architecture that spans multiple files:
 
 1. **Driver pattern for storage:** All prompt read/write operations go through the `PromptDriver` interface. When adding a new storage backend, implement this interface and add a case in `promptmetrics-driver.factory.ts`.
 2. **Synchronous SQLite:** `better-sqlite3` is synchronous. Controllers call `db.prepare().all()` and block the event loop. This is intentional but means heavy DB operations will stall the server.
-3. **No service layer:** Controllers talk directly to drivers and SQLite. There is no intermediate service/abstraction layer between routes and storage.
-4. **No ORM:** All SQL is hand-written in controllers and drivers. There are no models or repositories beyond the `getDb()` connection manager.
-5. **Schema migrations are manual:** New columns are added via `PRAGMA table_info` checks in `initSchema()`. There is no formal migration runner.
+3. **Service layer exists:** `PromptService`, `LogService`, `TraceService`, `RunService`, `LabelService`, and `EvaluationService` encapsulate business logic. Controllers are thin and delegate to services.
+4. **No ORM:** All SQL is hand-written in services and drivers. There are no models or repositories beyond the `getDb()` connection manager.
+5. **Schema migrations via umzug:** Numbered SQL files in `migrations/` are applied by `umzug` on startup.

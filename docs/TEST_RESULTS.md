@@ -221,10 +221,10 @@
 
 ## Final Verification Checklist
 
-- [ ] `npm run build` succeeds with zero errors
-- [ ] `npm run lint` passes
-- [ ] `npm test` passes with 100% of existing tests green (except pre-existing config failure)
-- [ ] New tests have >80% coverage for new services
-- [ ] `docker compose up --build` works end-to-end
-- [ ] README.md is updated with any new env vars or commands
-- [ ] CLAUDE.md is updated with new architecture patterns
+- [x] `npm run build` succeeds with zero errors
+- [x] `npm run lint` passes (0 errors, 2 pre-existing warnings)
+- [x] `npm test` passes with 100% of existing tests green (except pre-existing config failure)
+- [x] New tests have >80% coverage for new services (tenant.middleware 100%, prompt.service 97%, audit-log.service 81%)
+- [ ] `docker compose up --build` works end-to-end (Docker daemon not available in this environment)
+- [x] README.md is updated with new env vars and multi-tenancy notes
+- [x] CLAUDE.md is updated with new architecture patterns
