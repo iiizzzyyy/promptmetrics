@@ -22,6 +22,24 @@ Before every publish, verify:
 
 ## Published Versions
 
+### 1.0.2 — 2026-04-25
+
+**Status:** Published
+**Git Tag:** `v1.0.2`
+**Changes:**
+
+#### Changed
+- Update README for v1.0.1 release — expanded feature list, added Python SDK section, fixed duplicate env vars, updated architecture diagram, added evaluations and dashboard context.
+- Add release blog post at `docs/blog/v1.0.1-release.md`.
+
+**Publish Command:**
+```bash
+npm run build
+npm publish
+```
+
+---
+
 ### 1.0.1 — 2026-04-25
 
 **Status:** Ready to publish  
