@@ -426,8 +426,8 @@
 - [x] **4.1.3** Create `src/models/postgres.adapter.ts` implementing the interface with `pg`
 - [x] **4.1.4** Update `getDb()` to read `DATABASE_URL` env var and return the correct adapter
 - [x] **4.1.5** Update migrations to run on PostgreSQL when configured
-- [ ] **4.1.6** Add `docker-compose.postgres.yml` for local testing
-- [ ] **4.1.7** CI: add PostgreSQL test job to `.github/workflows/ci.yml`
+- [x] **4.1.6** Add `docker-compose.postgres.yml` for local testing
+- [x] **4.1.7** CI: add PostgreSQL test job to `.github/workflows/ci.yml`
 - [x] **4.1.8** Commit: `git commit -m "feat: add PostgreSQL backend adapter"`
 
 ---
