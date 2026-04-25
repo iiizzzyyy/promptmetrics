@@ -19,11 +19,15 @@ export function authenticateApiKey(req: Request, _res: Response, next: NextFunct
   const db = getDb();
 
   const row = db.prepare('SELECT * FROM api_keys WHERE key_hash = ?').get(keyHash) as
-    | { name: string; scopes: string; last_used_at: number | null }
+    | { name: string; scopes: string; last_used_at: number | null; expires_at: number | null }
     | undefined;
 
   if (!row) {
     throw AppError.unauthorized('Invalid API key');
+  }
+
+  if (row.expires_at !== null && row.expires_at !== undefined && row.expires_at < Math.floor(Date.now() / 1000)) {
+    throw AppError.unauthorized('API key expired');
   }
 
   db.prepare('UPDATE api_keys SET last_used_at = ? WHERE key_hash = ?').run(

@@ -188,9 +188,7 @@ describe('Prompt API Integration', () => {
       });
 
     // GET v1 (caches it)
-    const res1 = await request(app)
-      .get('/v1/prompts/cache-invalidate-test?render=false')
-      .set('X-API-Key', apiKey);
+    const res1 = await request(app).get('/v1/prompts/cache-invalidate-test?render=false').set('X-API-Key', apiKey);
     expect(res1.status).toBe(200);
     expect(res1.body.content.messages[0].content).toBe('v1');
 
@@ -205,9 +203,7 @@ describe('Prompt API Integration', () => {
       });
 
     // GET latest should return v2, not stale cached v1
-    const res2 = await request(app)
-      .get('/v1/prompts/cache-invalidate-test?render=false')
-      .set('X-API-Key', apiKey);
+    const res2 = await request(app).get('/v1/prompts/cache-invalidate-test?render=false').set('X-API-Key', apiKey);
     expect(res2.status).toBe(200);
     expect(res2.body.content.messages[0].content).toBe('v2');
   });

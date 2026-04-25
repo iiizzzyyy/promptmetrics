@@ -12,11 +12,21 @@ export class PromptService {
       const items = await this.driver.search(query);
       const { offset } = parsePagination({ page, limit });
       const paginated = items.slice(offset, offset + limit);
-      return buildPaginatedResponse(paginated.map((name) => ({ name })), items.length, page, limit);
+      return buildPaginatedResponse(
+        paginated.map((name) => ({ name })),
+        items.length,
+        page,
+        limit,
+      );
     }
 
     const result = await this.driver.listPrompts(page, limit);
-    return buildPaginatedResponse(result.items.map((name) => ({ name })), result.total, page, limit);
+    return buildPaginatedResponse(
+      result.items.map((name) => ({ name })),
+      result.total,
+      page,
+      limit,
+    );
   }
 
   async getPrompt(
@@ -47,9 +57,9 @@ export class PromptService {
     let content = rawContent;
 
     if (shouldRender) {
-      const requiredVars = Object.entries(content.variables || {}).filter(
-        ([, def]) => (def as { required?: boolean }).required,
-      ).map(([key]) => key);
+      const requiredVars = Object.entries(content.variables || {})
+        .filter(([, def]) => (def as { required?: boolean }).required)
+        .map(([key]) => key);
       const providedVars = variables ? Object.keys(variables) : [];
       const missing = requiredVars.filter((v) => !providedVars.includes(v));
       if (missing.length > 0) {

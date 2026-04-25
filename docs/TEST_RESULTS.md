@@ -113,9 +113,12 @@
 ## Epic 3.9 — Key Expiration and Rotation
 
 ### After Task 3.9
-- **Status:** TBD
+- **Status:** PASS
+- **Date:** 2026-04-25
 - **Command:** `npm test`
-- **Notes:**
+- **Results:** 181 passed, 1 failed (pre-existing config failure)
+- **New tests:** `tests/integration/auth.test.ts` — 2 tests covering valid key access and expired key rejection with "API key expired" message
+- **Commit:** `feat: add API key expiration and rotation support`
 
 ---
 

@@ -22,14 +22,11 @@ export class GithubDriver implements PromptDriver {
     this.repo = config.githubRepo;
     this.token = config.githubToken;
     this.clonePath = path.resolve('./data/github-clone');
-    this.createContentBreaker = createCircuitBreaker(
-      this.createGithubContent.bind(this),
-      {
-        errorThresholdPercentage: 50,
-        resetTimeout: 30000,
-        volumeThreshold: 5,
-      },
-    );
+    this.createContentBreaker = createCircuitBreaker(this.createGithubContent.bind(this), {
+      errorThresholdPercentage: 50,
+      resetTimeout: 30000,
+      volumeThreshold: 5,
+    });
   }
 
   private getAuthHeaders(): Record<string, string> {

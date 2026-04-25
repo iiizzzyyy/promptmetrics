@@ -35,9 +35,9 @@ export function rateLimitPerKey(windowMs = WINDOW_MS, maxRequests = DEFAULT_MAX)
     const now = Date.now();
     const windowStart = Math.floor(now / windowMs) * windowMs;
 
-    const row = db
-      .prepare('SELECT window_start, count FROM rate_limits WHERE key = ?')
-      .get(apiKeyName) as { window_start: number; count: number } | undefined;
+    const row = db.prepare('SELECT window_start, count FROM rate_limits WHERE key = ?').get(apiKeyName) as
+      | { window_start: number; count: number }
+      | undefined;
 
     if (!row || row.window_start < windowStart) {
       db.prepare('INSERT OR REPLACE INTO rate_limits (key, window_start, count) VALUES (?, ?, ?)').run(

@@ -35,18 +35,22 @@ export function createPromptRoutes(driver: PromptDriver): Router {
   router.use(rateLimitPerKey());
 
   router.get('/v1/prompts', validateQuery(paginationQuerySchema), (req, res) => controller.listPrompts(req, res));
-  router.get('/v1/prompts/search', validateQuery(paginationQuerySchema), (req, res) => controller.listPrompts(req, res));
+  router.get('/v1/prompts/search', validateQuery(paginationQuerySchema), (req, res) =>
+    controller.listPrompts(req, res),
+  );
   router.get('/v1/prompts/:name', (req, res) => controller.getPrompt(req, res));
-  router.get('/v1/prompts/:name/versions', validateQuery(paginationQuerySchema), (req, res) => controller.listVersions(req, res));
-  router.post('/v1/prompts', requireScope('write'), auditLog('create_prompt'), (req, res) => controller.createPrompt(req, res));
+  router.get('/v1/prompts/:name/versions', validateQuery(paginationQuerySchema), (req, res) =>
+    controller.listVersions(req, res),
+  );
+  router.post('/v1/prompts', requireScope('write'), auditLog('create_prompt'), (req, res) =>
+    controller.createPrompt(req, res),
+  );
 
   router.get('/v1/audit-logs', requireScope('admin'), validateQuery(paginationQuerySchema), (req, res) => {
     const db = getDb();
     const { page, limit, offset } = parsePagination(req.query);
 
-    const rows = db
-      .prepare('SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT ? OFFSET ?')
-      .all(limit, offset);
+    const rows = db.prepare('SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT ? OFFSET ?').all(limit, offset);
     const total = (db.prepare('SELECT COUNT(*) as count FROM audit_logs').get() as { count: number }).count;
 
     res.json(buildPaginatedResponse(rows, total, page, limit));
