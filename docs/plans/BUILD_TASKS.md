@@ -312,23 +312,23 @@
 ### Epic 3.4 -- Implement Async Audit Log Queue
 
 #### Task 3.4.1 -- Create in-memory audit log queue
-- [ ] **3.4.1.1** Create `src/services/audit-log.service.ts`:
+- [x] **3.4.1.1** Create `src/services/audit-log.service.ts`:
   - In-memory array buffer (max 100 entries)
   - `enqueue(entry)` pushes to buffer
   - `flush()` writes batch to SQLite via `INSERT`
   - Auto-flush interval (5s) and shutdown hook
-- [ ] **3.4.1.2** Unit tests for batching, flush, and shutdown behavior
-- [ ] **3.4.1.3** Commit: `git commit -m "feat: add async audit log queue service"`
+- [x] **3.4.1.2** Unit tests for batching, flush, and shutdown behavior
+- [x] **3.4.1.3** Commit: `git commit -m "feat: add async audit log queue service"`
 
 #### Task 3.4.2 -- Replace monkey-patched res.send with event-based audit logging
-- [ ] **3.4.2.1** Rewrite `src/middlewares/promptmetrics-audit.middleware.ts`:
+- [x] **3.4.2.1** Rewrite `src/middlewares/promptmetrics-audit.middleware.ts`:
   - Remove `res.send` monkey patch
   - Use `res.on('finish', () => { ... })` to capture response status
   - Call `AuditLogService.enqueue(...)` instead of direct SQLite INSERT
-- [ ] **3.4.2.2** Update `src/app.ts` to register the new audit middleware
-- [ ] **3.4.2.3** Add shutdown hook in `src/utils/promptmetrics-shutdown.ts` to call `AuditLogService.flush()`
-- [ ] **3.4.2.4** Integration tests: verify audit logs are captured for mutations; verify no `res.send` patching
-- [ ] **3.4.2.5** Commit: `git commit -m "refactor: replace res.send monkey-patch with event-based async audit logging"`
+- [x] **3.4.2.2** Update `src/app.ts` to register the new audit middleware
+- [x] **3.4.2.3** Add shutdown hook in `src/utils/promptmetrics-shutdown.ts` to call `AuditLogService.flush()`
+- [x] **3.4.2.4** Integration tests: verify audit logs are captured for mutations; verify no `res.send` patching
+- [x] **3.4.2.5** Commit: `git commit -m "refactor: replace res.send monkey-patch with event-based async audit logging"`
 
 ---
 
