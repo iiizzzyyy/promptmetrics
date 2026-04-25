@@ -6,16 +6,16 @@
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
 
-> Lightweight, self-hosted prompt registry with GitHub-backed versioning and metadata logging for LLM observability.
+> Lightweight, self-hosted prompt registry with Git-backed versioning, metadata logging, and evaluations for LLM observability.
 
-PromptMetrics solves three hard problems in LLM application development without adding operational complexity:
+PromptMetrics solves four hard problems in LLM application development without adding operational complexity:
 
 1. **Prompt Versioning** — Store, version, and retrieve prompts via a REST API or CLI. Every change is a commit with full history, branching, and rollback.
 2. **Metadata Logging** — Log structured metadata about every LLM request (model, tokens, latency, cost, custom tags) to stdout JSON or OpenTelemetry.
 3. **Agent Telemetry** — Track agent loops with traces and spans, workflow runs with input/output, and tag prompt versions with environment labels — all without external APM tools.
 4. **Evaluations** — Create, score, and manage prompt evaluations to track quality, latency, and accuracy over time.
 
-No UI. No database for prompt content. No vendor lock-in.
+Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database. Optional Web UI Dashboard included.
 
 ---
 
@@ -25,8 +25,8 @@ No UI. No database for prompt content. No vendor lock-in.
 - [Features](#features)
 - [Architecture](#architecture)
 - [Quickstart](#quickstart)
-  - [Docker Compose](#option-a-docker-compose-recommended)
-  - [npm Global Install](#option-b-npm-global-install)
+  - [npm Global Install](#option-a-npm-global-install-fastest)
+  - [Docker Compose](#option-b-docker-compose)
   - [From Source](#option-c-from-source)
 - [Configuration](#configuration)
 - [API Overview](#api-overview)
@@ -47,6 +47,8 @@ No UI. No database for prompt content. No vendor lock-in.
 | LLM observability | Ad-hoc logging, no structure | Structured metadata with cost, latency, token tracking |
 | Agent debugging | Black box execution | Traces, spans, and runs with full timeline |
 | Environment management | Hardcoded version strings | Label-based resolution (`production`, `staging`) |
+| Evaluations | Manual prompt quality checks | Structured evaluation suites with scoring and history |
+| Dashboard | No central UI for prompt ops | Optional Next.js dashboard for prompts, logs, traces, runs, labels, and settings |
 | Operational cost | Managed SaaS fees, data egress | Self-hosted, single-node, zero external deps |
 
 ---
@@ -67,30 +69,34 @@ No UI. No database for prompt content. No vendor lock-in.
 - **Web UI Dashboard** — Next.js dashboard for browsing prompts, logs, traces, runs, labels, and settings.
 - **Node.js & Python SDKs** — First-class client libraries for programmatic access.
 - **GitHub Webhooks** — Immediate sync on push events via webhook endpoint.
+- **Circuit Breaker** — GitHub API calls wrapped in an Opossum circuit breaker with exponential backoff on 429 responses.
+- **Migration System** — `umzug`-based migration runner with numbered SQL files in `migrations/`.
+- **Async Audit Log Queue** — `AuditLogService` batches audit entries and flushes to SQLite asynchronously.
 
 ---
 
 ## Architecture
 
 ```
-+-------------+      +-----------------+      +------------------+
-|  API / CLI  |----->|   Express App   |----->|  SQLite (WAL)    |
-+-------------+      +-----------------+      |  - prompts index |
-       |                                        |  - api_keys      |
-       |                                        |  - logs          |
-       v                                        |  - audit_logs    |
-+-------------+      +-----------------+      |  - traces        |
-|   OTel      |      |  Storage Driver |----->|  - spans         |
-|  (opt-in)   |      |  - filesystem   |      |  - runs          |
-+-------------+      |  - github       |      |  - labels        |
-                     +-----------------+      +------------------+
-                                       |
-                                       v
-                                    +------------------+
-                                    |   Git / Files    |
-                                    |  - content       |
-                                    |  - history       |
-                                    +------------------+
++-------------+      +-----------------+      +-----------------------+
+|  API / CLI  |----->|   Express App   |----->|  SQLite / PostgreSQL  |
++-------------+      +-----------------+      |  - prompts index      |
+       |                   |                   |  - api_keys           |
+       |                   |                   |  - logs               |
+       v                   v                   |  - audit_logs         |
++-------------+      +-----------------+      |  - traces             |
+|   OTel      |      |  Storage Driver |      |  - spans              |
+|  (opt-in)   |      |  - filesystem   |      |  - runs               |
++-------------+      |  - github       |      |  - labels             |
+|   Redis     |      |  - s3           |      |  - evaluations        |
+|  (opt-in)   |      +-----------------+      +-----------------------+
++-------------+            |
+                             v
+                      +------------------+
+                      |   Git / Files    |
+                      |  - content       |
+                      |  - history       |
+                      +------------------+
 ```
 
 **Design principles:**
@@ -241,11 +247,8 @@ All configuration is environment-variable driven. No config files required for t
 | `S3_ENDPOINT` | No | — | Custom S3-compatible endpoint |
 | `S3_PREFIX` | No | — | Key prefix for prompt objects |
 | `REDIS_URL` | No | — | Redis connection URL for caching and rate limiting |
-| `DATABASE_URL` | No | — | PostgreSQL connection URL (falls back to SQLite) |
-| `REDIS_URL` | No | — | Redis connection URL for caching and rate limiting |
 | `OTEL_ENABLED` | No | `false` | Enable OpenTelemetry |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | If OTEL=true | — | OTLP collector URL |
-| `GITHUB_WEBHOOK_SECRET` | No | — | Secret for GitHub webhook push events |
 
 See [docs/configuration.md](docs/configuration.md) for advanced configuration.
 
@@ -355,6 +358,43 @@ await client.logs.create({
   latency_ms: 500,
   cost_usd: 0.001,
 });
+```
+
+### Python
+
+```python
+from promptmetrics import PromptMetrics
+
+client = PromptMetrics(
+    base_url="http://localhost:3000",
+    api_key="pm_xxxxxxxx",
+)
+
+# Create a prompt
+client.prompts.create({
+    "name": "welcome",
+    "version": "1.0.0",
+    "messages": [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello {{name}}!"},
+    ],
+    "variables": {"name": {"type": "string", "required": True}},
+})
+
+# Retrieve and render
+rendered = client.prompts.get("welcome", variables={"name": "Alice"})
+
+# Log metadata
+client.logs.create({
+    "prompt_name": "welcome",
+    "version_tag": "1.0.0",
+    "provider": "openai",
+    "model": "gpt-4o",
+    "tokens_in": 10,
+    "tokens_out": 20,
+    "latency_ms": 500,
+    "cost_usd": 0.001,
+})
 ```
 
 See [docs/sdk.md](docs/sdk.md) for full documentation.
