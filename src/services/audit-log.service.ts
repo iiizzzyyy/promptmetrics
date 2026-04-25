@@ -46,7 +46,13 @@ class AuditLogService {
 
     for (const entry of batch) {
       try {
-        stmt.run(entry.action, entry.prompt_name || null, entry.version_tag || null, entry.api_key_name, entry.ip_address);
+        stmt.run(
+          entry.action,
+          entry.prompt_name || null,
+          entry.version_tag || null,
+          entry.api_key_name,
+          entry.ip_address,
+        );
       } catch (err) {
         console.error('Failed to write audit log entry:', err);
       }

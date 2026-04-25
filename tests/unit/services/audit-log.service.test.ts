@@ -29,7 +29,10 @@ describe('AuditLogService', () => {
     await auditLogService.flush();
 
     const db = getDb();
-    const rows = db.prepare('SELECT * FROM audit_logs WHERE action = ?').all('test_action') as { action: string; api_key_name: string }[];
+    const rows = db.prepare('SELECT * FROM audit_logs WHERE action = ?').all('test_action') as {
+      action: string;
+      api_key_name: string;
+    }[];
     expect(rows.length).toBe(1);
     expect(rows[0].action).toBe('test_action');
     expect(rows[0].api_key_name).toBe('test-key');
