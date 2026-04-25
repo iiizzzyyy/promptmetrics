@@ -31,13 +31,19 @@ describe('Multi-Tenancy Integration', () => {
     workspaceAKey = 'pm_workspace_a_key';
     workspaceBKey = 'pm_workspace_b_key';
 
-    db.prepare(
-      'INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)',
-    ).run(hashApiKey(workspaceAKey), 'workspace-a-key', 'read,write', 'workspace-a');
+    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
+      hashApiKey(workspaceAKey),
+      'workspace-a-key',
+      'read,write',
+      'workspace-a',
+    );
 
-    db.prepare(
-      'INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)',
-    ).run(hashApiKey(workspaceBKey), 'workspace-b-key', 'read,write', 'workspace-b');
+    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
+      hashApiKey(workspaceBKey),
+      'workspace-b-key',
+      'read,write',
+      'workspace-b',
+    );
 
     driver = new FilesystemDriver(testPromptsPath);
     app = createApp(driver);
@@ -106,7 +112,9 @@ describe('Multi-Tenancy Integration', () => {
     expect(resA.status).toBe(202);
 
     const db = getDb();
-    const logA = db.prepare('SELECT workspace_id FROM logs WHERE prompt_name = ?').get('tenant-prompt') as { workspace_id: string };
+    const logA = db.prepare('SELECT workspace_id FROM logs WHERE prompt_name = ?').get('tenant-prompt') as {
+      workspace_id: string;
+    };
     expect(logA.workspace_id).toBe('workspace-a');
   });
 

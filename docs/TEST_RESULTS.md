@@ -28,11 +28,23 @@
 | Passed | 161 |
 | Failed | 1 |
 
-### Known Pre-existing Failure
+### Known Pre-existing Failure (RESOLVED)
 
-- **tests/unit/config.test.ts:24** — `expect(freshConfig.driver).toBe('filesystem')` returns `'github'`.
-  - This is **not related to any build task**. It appears to be a stale test that does not match current default configuration.
-  - **Resolution:** Will be reviewed during Final Verification Checklist.
+- **tests/unit/config.test.ts:24** — `expect(freshConfig.driver).toBe('filesystem')` returned `'github'` because `dotenv.config()` re-loaded `.env` inside `jest.isolateModules`, overriding the deleted `process.env.DRIVER`.
+  - **Resolution:** Mocked `dotenv` inside the `jest.isolateModules` block so `.env` is not re-read, allowing the `getEnv('DRIVER', false, 'filesystem')` default to take effect.
+
+---
+
+## Final Baseline (after all Epics + config fix)
+
+**Date:** 2026-04-25
+**Command:** `npm test`
+
+| Metric | Value |
+|--------|-------|
+| Test Suites | 30 passed |
+| Tests | 202 passed |
+| Failed | 0 |
 
 ### Phase 3 Epic-by-Epic Results
 
@@ -223,7 +235,7 @@
 
 - [x] `npm run build` succeeds with zero errors
 - [x] `npm run lint` passes (0 errors, 2 pre-existing warnings)
-- [x] `npm test` passes with 100% of existing tests green (except pre-existing config failure)
+- [x] `npm test` passes with 100% of existing tests green (202 passed, 0 failed)
 - [x] New tests have >80% coverage for new services (tenant.middleware 100%, prompt.service 97%, audit-log.service 81%)
 - [ ] `docker compose up --build` works end-to-end (Docker daemon not available in this environment)
 - [x] README.md is updated with new env vars and multi-tenancy notes

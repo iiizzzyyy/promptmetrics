@@ -38,17 +38,19 @@ export interface CreateEvaluationResultInput {
 export class EvaluationService {
   async createEvaluation(input: CreateEvaluationInput, workspaceId: string = 'default'): Promise<Evaluation> {
     const db = getDb();
-    const result = await db.prepare(
-      `INSERT INTO evaluations (name, description, prompt_name, version_tag, criteria_json, workspace_id)
+    const result = await db
+      .prepare(
+        `INSERT INTO evaluations (name, description, prompt_name, version_tag, criteria_json, workspace_id)
        VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(
-      input.name,
-      input.description ?? null,
-      input.prompt_name,
-      input.version_tag ?? null,
-      input.criteria ? JSON.stringify(input.criteria) : null,
-      workspaceId,
-    );
+      )
+      .run(
+        input.name,
+        input.description ?? null,
+        input.prompt_name,
+        input.version_tag ?? null,
+        input.criteria ? JSON.stringify(input.criteria) : null,
+        workspaceId,
+      );
 
     return {
       id: Number(result.lastInsertRowid),
@@ -61,10 +63,18 @@ export class EvaluationService {
     };
   }
 
-  async listEvaluations(page: number, limit: number, workspaceId: string = 'default'): Promise<PaginatedResponse<Evaluation>> {
+  async listEvaluations(
+    page: number,
+    limit: number,
+    workspaceId: string = 'default',
+  ): Promise<PaginatedResponse<Evaluation>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const total = ((await db.prepare('SELECT COUNT(*) as c FROM evaluations WHERE workspace_id = ?').get(workspaceId)) as { c: number }).c;
+    const total = (
+      (await db.prepare('SELECT COUNT(*) as c FROM evaluations WHERE workspace_id = ?').get(workspaceId)) as {
+        c: number;
+      }
+    ).c;
     const items = (await db
       .prepare('SELECT * FROM evaluations WHERE workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
       .all(workspaceId, limit, offset)) as Array<{
@@ -95,7 +105,9 @@ export class EvaluationService {
 
   async getEvaluation(id: number, workspaceId: string = 'default'): Promise<Evaluation> {
     const db = getDb();
-    const evaluation = (await db.prepare('SELECT * FROM evaluations WHERE id = ? AND workspace_id = ?').get(id, workspaceId)) as
+    const evaluation = (await db
+      .prepare('SELECT * FROM evaluations WHERE id = ? AND workspace_id = ?')
+      .get(id, workspaceId)) as
       | {
           id: number;
           name: string;
@@ -124,25 +136,33 @@ export class EvaluationService {
 
   async deleteEvaluation(id: number, workspaceId: string = 'default'): Promise<void> {
     const db = getDb();
-    await db.prepare('DELETE FROM evaluation_results WHERE evaluation_id = ? AND workspace_id = ?').run(id, workspaceId);
+    await db
+      .prepare('DELETE FROM evaluation_results WHERE evaluation_id = ? AND workspace_id = ?')
+      .run(id, workspaceId);
     const result = await db.prepare('DELETE FROM evaluations WHERE id = ? AND workspace_id = ?').run(id, workspaceId);
     if (result.changes === 0) {
       throw AppError.notFound('Evaluation');
     }
   }
 
-  async createResult(evaluationId: number, input: CreateEvaluationResultInput, workspaceId: string = 'default'): Promise<EvaluationResult> {
+  async createResult(
+    evaluationId: number,
+    input: CreateEvaluationResultInput,
+    workspaceId: string = 'default',
+  ): Promise<EvaluationResult> {
     const db = getDb();
-    const result = await db.prepare(
-      `INSERT INTO evaluation_results (evaluation_id, run_id, score, metadata_json, workspace_id)
+    const result = await db
+      .prepare(
+        `INSERT INTO evaluation_results (evaluation_id, run_id, score, metadata_json, workspace_id)
        VALUES (?, ?, ?, ?, ?)`,
-    ).run(
-      evaluationId,
-      input.run_id ?? null,
-      input.score ?? null,
-      input.metadata ? JSON.stringify(input.metadata) : null,
-      workspaceId,
-    );
+      )
+      .run(
+        evaluationId,
+        input.run_id ?? null,
+        input.score ?? null,
+        input.metadata ? JSON.stringify(input.metadata) : null,
+        workspaceId,
+      );
 
     return {
       id: Number(result.lastInsertRowid),
@@ -154,12 +174,23 @@ export class EvaluationService {
     };
   }
 
-  async listResults(evaluationId: number, page: number, limit: number, workspaceId: string = 'default'): Promise<PaginatedResponse<EvaluationResult>> {
+  async listResults(
+    evaluationId: number,
+    page: number,
+    limit: number,
+    workspaceId: string = 'default',
+  ): Promise<PaginatedResponse<EvaluationResult>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const total = ((await db.prepare('SELECT COUNT(*) as c FROM evaluation_results WHERE evaluation_id = ? AND workspace_id = ?').get(evaluationId, workspaceId)) as { c: number }).c;
+    const total = (
+      (await db
+        .prepare('SELECT COUNT(*) as c FROM evaluation_results WHERE evaluation_id = ? AND workspace_id = ?')
+        .get(evaluationId, workspaceId)) as { c: number }
+    ).c;
     const items = (await db
-      .prepare('SELECT * FROM evaluation_results WHERE evaluation_id = ? AND workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
+      .prepare(
+        'SELECT * FROM evaluation_results WHERE evaluation_id = ? AND workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      )
       .all(evaluationId, workspaceId, limit, offset)) as Array<{
       id: number;
       evaluation_id: number;

@@ -29,11 +29,9 @@ describe('GitHub Webhook', () => {
     await initSchema();
     const db = getDb();
     const keyHash = hashApiKey('pm_test_webhook_key');
-    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
-      keyHash,
-      'webhook-test',
-      'read,write',
-    );
+    await db
+      .prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)')
+      .run(keyHash, 'webhook-test', 'read,write');
     apiKey = 'pm_test_webhook_key';
   });
 

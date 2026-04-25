@@ -39,9 +39,9 @@ async function main(): Promise<void> {
     expiresAt = Math.floor(Date.now() / 1000) + expiresInDays * 24 * 60 * 60;
   }
 
-  await db.prepare(
-    'INSERT INTO api_keys (key_hash, name, scopes, expires_at) VALUES (?, ?, ?, ?)',
-  ).run(keyHash, name, scopes, expiresAt ?? null);
+  await db
+    .prepare('INSERT INTO api_keys (key_hash, name, scopes, expires_at) VALUES (?, ?, ?, ?)')
+    .run(keyHash, name, scopes, expiresAt ?? null);
 
   console.log('\n=== Generated API Key ===');
   console.log('Name:', name);

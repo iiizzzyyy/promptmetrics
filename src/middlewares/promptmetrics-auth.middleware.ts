@@ -35,10 +35,9 @@ export async function authenticateApiKey(req: Request, _res: Response, next: Nex
     throw AppError.unauthorized('API key does not belong to this workspace');
   }
 
-  await db.prepare('UPDATE api_keys SET last_used_at = ? WHERE key_hash = ?').run(
-    Math.floor(Date.now() / 1000),
-    keyHash,
-  );
+  await db
+    .prepare('UPDATE api_keys SET last_used_at = ? WHERE key_hash = ?')
+    .run(Math.floor(Date.now() / 1000), keyHash);
 
   req.apiKey = {
     name: row.name,

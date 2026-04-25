@@ -27,7 +27,9 @@ describe('withTransaction', () => {
     });
 
     const db = getDb();
-    const row = (await db.prepare('SELECT value FROM config WHERE key = ?').get('foo')) as { value: string } | undefined;
+    const row = (await db.prepare('SELECT value FROM config WHERE key = ?').get('foo')) as
+      | { value: string }
+      | undefined;
     expect(row?.value).toBe('bar');
   });
 

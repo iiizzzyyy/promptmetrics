@@ -6,6 +6,7 @@ describe('Config', () => {
   beforeEach(() => {
     jest.resetModules();
     process.env = { ...originalEnv };
+    delete process.env.DRIVER;
   });
 
   afterAll(() => {
@@ -18,6 +19,7 @@ describe('Config', () => {
     delete process.env.NODE_ENV;
 
     jest.isolateModules(() => {
+      jest.mock('dotenv', () => ({ config: jest.fn() }));
       const { config: freshConfig } = require('@config/index');
       expect(freshConfig.port).toBe(3000);
       expect(freshConfig.nodeEnv).toBe('development');

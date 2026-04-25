@@ -51,8 +51,14 @@ export function createPromptRoutes(driver: PromptDriver): Router {
     const { page, limit, offset } = parsePagination(req.query);
     const workspaceId = req.workspaceId || 'default';
 
-    const rows = (await db.prepare('SELECT * FROM audit_logs WHERE workspace_id = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?').all(workspaceId, limit, offset)) as unknown[];
-    const total = ((await db.prepare('SELECT COUNT(*) as count FROM audit_logs WHERE workspace_id = ?').get(workspaceId)) as { count: number }).count;
+    const rows = (await db
+      .prepare('SELECT * FROM audit_logs WHERE workspace_id = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?')
+      .all(workspaceId, limit, offset)) as unknown[];
+    const total = (
+      (await db.prepare('SELECT COUNT(*) as count FROM audit_logs WHERE workspace_id = ?').get(workspaceId)) as {
+        count: number;
+      }
+    ).count;
 
     res.json(buildPaginatedResponse(rows, total, page, limit));
   });

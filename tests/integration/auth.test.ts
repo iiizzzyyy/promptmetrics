@@ -32,9 +32,12 @@ describe('Auth Integration', () => {
       'read,write',
     );
 
-    db.prepare(
-      'INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, expires_at) VALUES (?, ?, ?, ?)',
-    ).run(hashApiKey(expiredKey), 'expired-key', 'read,write', Math.floor(Date.now() / 1000) - 1);
+    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, expires_at) VALUES (?, ?, ?, ?)').run(
+      hashApiKey(expiredKey),
+      'expired-key',
+      'read,write',
+      Math.floor(Date.now() / 1000) - 1,
+    );
 
     app = createApp();
   });

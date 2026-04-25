@@ -1,6 +1,12 @@
 import { S3Driver } from '@drivers/promptmetrics-s3-driver';
 import { mockClient } from 'aws-sdk-client-mock';
-import { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  ListObjectsV2Command,
+  GetObjectCommand,
+  PutObjectCommand,
+  HeadObjectCommand,
+} from '@aws-sdk/client-s3';
 
 const s3Mock = mockClient(S3Client);
 
@@ -34,8 +40,7 @@ describe('S3Driver', () => {
 
   it('should get a prompt by version', async () => {
     const mockBody = {
-      transformToString: async () =>
-        JSON.stringify({ name: 'hello', version: '1.0.0', messages: [] }),
+      transformToString: async () => JSON.stringify({ name: 'hello', version: '1.0.0', messages: [] }),
     };
 
     s3Mock.on(GetObjectCommand).resolves({ Body: mockBody as unknown as any });

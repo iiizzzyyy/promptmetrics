@@ -31,17 +31,16 @@ describe('SQLite Database', () => {
   it('should create database with WAL mode', async () => {
     await initSchema();
     const db = getDb();
-    const journalMode = await db.prepare("PRAGMA journal_mode").get();
+    const journalMode = await db.prepare('PRAGMA journal_mode').get();
     expect(journalMode).toEqual({ journal_mode: 'wal' });
   });
 
   it('should create all required tables', async () => {
     await initSchema();
     const db = getDb();
-    const tables = (await db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-      .all())
-      .map((t: any) => t.name);
+    const tables = (await db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all()).map(
+      (t: any) => t.name,
+    );
 
     expect(tables).toContain('prompts');
     expect(tables).toContain('api_keys');
@@ -55,10 +54,9 @@ describe('SQLite Database', () => {
   it('should create indexes', async () => {
     await initSchema();
     const db = getDb();
-    const indexes = (await db
-      .prepare("SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_%'")
-      .all())
-      .map((i: any) => i.name);
+    const indexes = (
+      await db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_%'").all()
+    ).map((i: any) => i.name);
 
     expect(indexes).toContain('idx_prompts_name');
     expect(indexes).toContain('idx_logs_prompt');

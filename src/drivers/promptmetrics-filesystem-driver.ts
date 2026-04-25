@@ -83,9 +83,11 @@ export class FilesystemDriver implements PromptDriver {
     };
 
     await withTransaction(async (db) => {
-      await db.prepare(
-        'INSERT OR REPLACE INTO prompts (name, version_tag, fs_path, driver, created_at) VALUES (?, ?, ?, ?, ?)',
-      ).run(prompt.name, prompt.version, filePath, 'filesystem', version.created_at);
+      await db
+        .prepare(
+          'INSERT OR REPLACE INTO prompts (name, version_tag, fs_path, driver, created_at) VALUES (?, ?, ?, ?, ?)',
+        )
+        .run(prompt.name, prompt.version, filePath, 'filesystem', version.created_at);
     });
 
     return version;

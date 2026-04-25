@@ -8,7 +8,12 @@ import { getDb } from '@models/promptmetrics-sqlite';
 export class PromptService {
   constructor(private driver: PromptDriver) {}
 
-  async listPrompts(workspaceId: string, page: number, limit: number, query?: string): Promise<PaginatedResponse<{ name: string }>> {
+  async listPrompts(
+    workspaceId: string,
+    page: number,
+    limit: number,
+    query?: string,
+  ): Promise<PaginatedResponse<{ name: string }>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
 
@@ -26,7 +31,9 @@ export class PromptService {
       return buildPaginatedResponse(paginated, total, page, limit);
     }
 
-    const totalRow = (await db.prepare('SELECT COUNT(DISTINCT name) as c FROM prompts WHERE workspace_id = ?').get(workspaceId)) as { c: number };
+    const totalRow = (await db
+      .prepare('SELECT COUNT(DISTINCT name) as c FROM prompts WHERE workspace_id = ?')
+      .get(workspaceId)) as { c: number };
     const total = totalRow.c;
     const rows = (await db
       .prepare('SELECT DISTINCT name FROM prompts WHERE workspace_id = ? ORDER BY name LIMIT ? OFFSET ?')
@@ -43,9 +50,9 @@ export class PromptService {
     shouldRender = true,
   ): Promise<{ content: PromptFile; version: PromptVersion }> {
     const db = getDb();
-    const membership = (await db.prepare('SELECT 1 FROM prompts WHERE name = ? AND workspace_id = ? LIMIT 1').get(name, workspaceId)) as
-      | { 1: number }
-      | undefined;
+    const membership = (await db
+      .prepare('SELECT 1 FROM prompts WHERE name = ? AND workspace_id = ? LIMIT 1')
+      .get(name, workspaceId)) as { 1: number } | undefined;
     if (!membership) {
       throw AppError.notFound('Prompt');
     }
@@ -94,10 +101,17 @@ export class PromptService {
     return { content, version: promptVersion };
   }
 
-  async listVersions(workspaceId: string, name: string, page: number, limit: number): Promise<PaginatedResponse<PromptVersion>> {
+  async listVersions(
+    workspaceId: string,
+    name: string,
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResponse<PromptVersion>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const totalRow = (await db.prepare('SELECT COUNT(*) as c FROM prompts WHERE name = ? AND workspace_id = ?').get(name, workspaceId)) as { c: number };
+    const totalRow = (await db
+      .prepare('SELECT COUNT(*) as c FROM prompts WHERE name = ? AND workspace_id = ?')
+      .get(name, workspaceId)) as { c: number };
     const total = totalRow.c;
     const rows = (await db
       .prepare('SELECT * FROM prompts WHERE name = ? AND workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
@@ -109,7 +123,9 @@ export class PromptService {
   async createPrompt(workspaceId: string, prompt: PromptFile): Promise<PromptVersion> {
     const result = await this.driver.createPrompt(prompt);
     const db = getDb();
-    await db.prepare('UPDATE prompts SET workspace_id = ? WHERE name = ? AND version_tag = ?').run(workspaceId, prompt.name, prompt.version);
+    await db
+      .prepare('UPDATE prompts SET workspace_id = ? WHERE name = ? AND version_tag = ?')
+      .run(workspaceId, prompt.name, prompt.version);
     await invalidatePrompt(workspaceId, prompt.name);
     return result;
   }

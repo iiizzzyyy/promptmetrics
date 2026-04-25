@@ -17,10 +17,12 @@ export interface CreateLabelInput {
 export class LabelService {
   async createLabel(promptName: string, input: CreateLabelInput, workspaceId: string = 'default'): Promise<Label> {
     const db = getDb();
-    await db.prepare(
-      `INSERT INTO prompt_labels (prompt_name, name, version_tag, workspace_id) VALUES (?, ?, ?, ?)
+    await db
+      .prepare(
+        `INSERT INTO prompt_labels (prompt_name, name, version_tag, workspace_id) VALUES (?, ?, ?, ?)
        ON CONFLICT(prompt_name, name) DO UPDATE SET version_tag = excluded.version_tag`,
-    ).run(promptName, input.name, input.version_tag, workspaceId);
+      )
+      .run(promptName, input.name, input.version_tag, workspaceId);
 
     return {
       prompt_name: promptName,
@@ -30,14 +32,23 @@ export class LabelService {
     };
   }
 
-  async listLabels(promptName: string, page: number, limit: number, workspaceId: string = 'default'): Promise<PaginatedResponse<Label>> {
+  async listLabels(
+    promptName: string,
+    page: number,
+    limit: number,
+    workspaceId: string = 'default',
+  ): Promise<PaginatedResponse<Label>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
     const total = (
-      (await db.prepare('SELECT COUNT(*) as c FROM prompt_labels WHERE prompt_name = ? AND workspace_id = ?').get(promptName, workspaceId)) as { c: number }
+      (await db
+        .prepare('SELECT COUNT(*) as c FROM prompt_labels WHERE prompt_name = ? AND workspace_id = ?')
+        .get(promptName, workspaceId)) as { c: number }
     ).c;
     const items = (await db
-      .prepare('SELECT * FROM prompt_labels WHERE prompt_name = ? AND workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
+      .prepare(
+        'SELECT * FROM prompt_labels WHERE prompt_name = ? AND workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      )
       .all(promptName, workspaceId, limit, offset)) as Array<{
       prompt_name: string;
       name: string;

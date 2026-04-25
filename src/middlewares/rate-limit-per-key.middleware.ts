@@ -78,11 +78,9 @@ async function checkSqliteRateLimit(
     | undefined;
 
   if (!row || row.window_start < windowStart) {
-    await db.prepare('INSERT OR REPLACE INTO rate_limits (key, window_start, count) VALUES (?, ?, ?)').run(
-      apiKeyName,
-      windowStart,
-      1,
-    );
+    await db
+      .prepare('INSERT OR REPLACE INTO rate_limits (key, window_start, count) VALUES (?, ?, ?)')
+      .run(apiKeyName, windowStart, 1);
     res.setHeader('RateLimit-Limit', String(maxRequests));
     res.setHeader('RateLimit-Remaining', String(maxRequests - 1));
     res.setHeader('RateLimit-Reset', String(Math.ceil((windowStart + windowMs) / 1000)));

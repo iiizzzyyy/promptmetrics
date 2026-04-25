@@ -35,18 +35,13 @@ export class S3Driver implements PromptDriver {
     this.client = new S3Client({
       region,
       endpoint,
-      credentials:
-        accessKeyId && secretAccessKey
-          ? { accessKeyId, secretAccessKey }
-          : undefined,
+      credentials: accessKeyId && secretAccessKey ? { accessKeyId, secretAccessKey } : undefined,
       forcePathStyle: !!endpoint,
     });
   }
 
   private key(name: string, version?: string): string {
-    return version
-      ? `${this.prefix}${name}/${version}.json`
-      : `${this.prefix}${name}/`;
+    return version ? `${this.prefix}${name}/${version}.json` : `${this.prefix}${name}/`;
   }
 
   async listPrompts(page: number = 1, limit: number = 50): Promise<{ items: string[]; total: number }> {
@@ -112,9 +107,9 @@ export class S3Driver implements PromptDriver {
     };
 
     await withTransaction(async (db) => {
-      await db.prepare(
-        'INSERT OR REPLACE INTO prompts (name, version_tag, driver, created_at) VALUES (?, ?, ?, ?)',
-      ).run(prompt.name, prompt.version, 's3', version.created_at);
+      await db
+        .prepare('INSERT OR REPLACE INTO prompts (name, version_tag, driver, created_at) VALUES (?, ?, ?, ?)')
+        .run(prompt.name, prompt.version, 's3', version.created_at);
     });
 
     return version;

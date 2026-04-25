@@ -1,7 +1,11 @@
 export interface PreparedStatement {
   all(...params: unknown[]): unknown[] | Promise<unknown[]>;
   get(...params: unknown[]): unknown | Promise<unknown | undefined>;
-  run(...params: unknown[]): { lastInsertRowid: number | bigint; changes: number } | Promise<{ lastInsertRowid: number | bigint; changes: number }>;
+  run(
+    ...params: unknown[]
+  ):
+    | { lastInsertRowid: number | bigint; changes: number }
+    | Promise<{ lastInsertRowid: number | bigint; changes: number }>;
 }
 
 export interface DatabaseAdapter {

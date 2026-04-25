@@ -34,10 +34,9 @@ describe('createMigrator', () => {
     await migrator.up();
 
     const db = getDb();
-    const tables = (await db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-      .all())
-      .map((t: any) => t.name);
+    const tables = (await db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all()).map(
+      (t: any) => t.name,
+    );
 
     expect(tables).toContain('prompts');
     expect(tables).toContain('api_keys');

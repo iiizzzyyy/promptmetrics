@@ -49,40 +49,30 @@ describe('Evaluations API', () => {
   });
 
   it('should list evaluations', async () => {
-    const res = await request(app)
-      .get('/v1/evaluations')
-      .set('X-API-Key', apiKey);
+    const res = await request(app).get('/v1/evaluations').set('X-API-Key', apiKey);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.items)).toBe(true);
     expect(res.body.items.length).toBeGreaterThanOrEqual(1);
   });
 
   it('should get an evaluation by id', async () => {
-    const createRes = await request(app)
-      .post('/v1/evaluations')
-      .set('X-API-Key', apiKey)
-      .send({
-        name: 'latency-check',
-        prompt_name: 'hello',
-      });
+    const createRes = await request(app).post('/v1/evaluations').set('X-API-Key', apiKey).send({
+      name: 'latency-check',
+      prompt_name: 'hello',
+    });
     const id = createRes.body.id;
 
-    const res = await request(app)
-      .get(`/v1/evaluations/${id}`)
-      .set('X-API-Key', apiKey);
+    const res = await request(app).get(`/v1/evaluations/${id}`).set('X-API-Key', apiKey);
     expect(res.status).toBe(200);
     expect(res.body.id).toBe(id);
     expect(res.body.name).toBe('latency-check');
   });
 
   it('should create and list evaluation results', async () => {
-    const createRes = await request(app)
-      .post('/v1/evaluations')
-      .set('X-API-Key', apiKey)
-      .send({
-        name: 'score-check',
-        prompt_name: 'hello',
-      });
+    const createRes = await request(app).post('/v1/evaluations').set('X-API-Key', apiKey).send({
+      name: 'score-check',
+      prompt_name: 'hello',
+    });
     const evalId = createRes.body.id;
 
     const resultRes = await request(app)
@@ -96,31 +86,22 @@ describe('Evaluations API', () => {
     expect(resultRes.status).toBe(201);
     expect(resultRes.body.score).toBe(0.95);
 
-    const listRes = await request(app)
-      .get(`/v1/evaluations/${evalId}/results`)
-      .set('X-API-Key', apiKey);
+    const listRes = await request(app).get(`/v1/evaluations/${evalId}/results`).set('X-API-Key', apiKey);
     expect(listRes.status).toBe(200);
     expect(listRes.body.items.length).toBe(1);
   });
 
   it('should delete an evaluation and cascade results', async () => {
-    const createRes = await request(app)
-      .post('/v1/evaluations')
-      .set('X-API-Key', apiKey)
-      .send({
-        name: 'temp-check',
-        prompt_name: 'hello',
-      });
+    const createRes = await request(app).post('/v1/evaluations').set('X-API-Key', apiKey).send({
+      name: 'temp-check',
+      prompt_name: 'hello',
+    });
     const evalId = createRes.body.id;
 
-    const delRes = await request(app)
-      .delete(`/v1/evaluations/${evalId}`)
-      .set('X-API-Key', apiKey);
+    const delRes = await request(app).delete(`/v1/evaluations/${evalId}`).set('X-API-Key', apiKey);
     expect(delRes.status).toBe(204);
 
-    const getRes = await request(app)
-      .get(`/v1/evaluations/${evalId}`)
-      .set('X-API-Key', apiKey);
+    const getRes = await request(app).get(`/v1/evaluations/${evalId}`).set('X-API-Key', apiKey);
     expect(getRes.status).toBe(404);
   });
 });

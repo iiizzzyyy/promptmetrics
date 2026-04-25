@@ -25,10 +25,13 @@ export class PromptController {
     let variables: Record<string, string> | undefined;
     const rawVars = req.query.variables;
     if (rawVars && typeof rawVars === 'object' && !Array.isArray(rawVars)) {
-      variables = Object.entries(rawVars).reduce((acc, [key, value]) => {
-        acc[key] = String(value);
-        return acc;
-      }, {} as Record<string, string>);
+      variables = Object.entries(rawVars).reduce(
+        (acc, [key, value]) => {
+          acc[key] = String(value);
+          return acc;
+        },
+        {} as Record<string, string>,
+      );
     }
 
     if (req.body && req.body.variables && typeof req.body.variables === 'object') {
