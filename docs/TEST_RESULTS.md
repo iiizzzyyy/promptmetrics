@@ -146,6 +146,18 @@
 
 ---
 
+## Epic 4.3 — GitHub Webhook Support
+
+### After Task 4.3
+- **Status:** PASS
+- **Date:** 2026-04-25
+- **Command:** `npm test`
+- **Results:** 184 passed, 1 failed (pre-existing config failure)
+- **New tests:** `tests/integration/webhook.test.ts` — 4 tests covering missing signature, invalid signature, non-push event, and valid push event triggering sync
+- **Commit:** `feat: add GitHub webhook endpoint for instant sync`
+
+---
+
 ## Final Verification Checklist
 
 - [ ] `npm run build` succeeds with zero errors

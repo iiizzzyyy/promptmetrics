@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import hpp from 'hpp';
 import cors from 'cors';
 import compression from 'compression';
+import { raw } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import yaml from 'js-yaml';
 import fs from 'fs';
@@ -14,6 +15,7 @@ import { createLogRoutes } from '@routes/promptmetrics-log.route';
 import { createTraceRoutes } from '@routes/promptmetrics-trace.route';
 import { createRunRoutes } from '@routes/promptmetrics-run.route';
 import { createLabelRoutes } from '@routes/promptmetrics-label.route';
+import { createWebhookRoutes } from '@routes/webhook.route';
 import { requestIdMiddleware } from '@middlewares/promptmetrics-request-id.middleware';
 import { errorHandlerMiddleware } from '@middlewares/promptmetrics-error-handler.middleware';
 
@@ -29,6 +31,7 @@ export function createApp(driver?: PromptDriver): Application {
   app.use(hpp());
   app.use(cors());
   app.use(compression());
+  app.use('/webhooks', raw({ type: 'application/json' }));
   app.use(express.json({ limit: '10mb' }));
 
   const openapiPath = path.resolve(__dirname, '../docs/openapi.yaml');
@@ -37,6 +40,7 @@ export function createApp(driver?: PromptDriver): Application {
     app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
   }
 
+  app.use('/', createWebhookRoutes(driver));
   app.use('/', createPromptRoutes(driver));
   app.use('/', createLogRoutes());
   app.use('/', createTraceRoutes());

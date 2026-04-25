@@ -21,11 +21,13 @@ async function main(): Promise<void> {
   const app = createApp(driver);
   const server = http.createServer(app);
 
-  // Start git sync job for github driver
+  // Start git sync job for github driver (skip polling when webhooks are configured)
   const gitSyncJob = new GitSyncJob(driver, config.githubSyncIntervalMs);
-  if (config.driver === 'github') {
+  if (config.driver === 'github' && !process.env.GITHUB_WEBHOOK_SECRET) {
     gitSyncJob.start();
     console.log(`Git sync job started (interval: ${config.githubSyncIntervalMs}ms)`);
+  } else if (config.driver === 'github' && process.env.GITHUB_WEBHOOK_SECRET) {
+    console.log('Git sync job skipped: GITHUB_WEBHOOK_SECRET is configured (using webhooks)');
   }
 
   setupGracefulShutdown({

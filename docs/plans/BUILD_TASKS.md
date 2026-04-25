@@ -445,12 +445,12 @@
 
 ### Epic 4.3 -- GitHub Webhook Support
 
-- [ ] **4.3.1** Create `src/routes/webhook.route.ts` with `POST /webhooks/github`
-- [ ] **4.3.2** Verify webhook signature using `X-Hub-Signature-256` and `GITHUB_TOKEN`
-- [ ] **4.3.3** Trigger `driver.sync()` on valid push events
-- [ ] **4.3.4** Make `GitSyncJob` conditional: skip polling when `GITHUB_WEBHOOK_SECRET` is configured
-- [ ] **4.3.5** Integration test with mocked GitHub webhook payload
-- [ ] **4.3.6** Commit: `git commit -m "feat: add GitHub webhook endpoint for instant sync"`
+- [x] **4.3.1** Create `src/routes/webhook.route.ts` with `POST /webhooks/github`
+- [x] **4.3.2** Verify webhook signature using `X-Hub-Signature-256` and `GITHUB_TOKEN`
+- [x] **4.3.3** Trigger `driver.sync()` on valid push events
+- [x] **4.3.4** Make `GitSyncJob` conditional: skip polling when `GITHUB_WEBHOOK_SECRET` is configured
+- [x] **4.3.5** Integration test with mocked GitHub webhook payload
+- [x] **4.3.6** Commit: `git commit -m "feat: add GitHub webhook endpoint for instant sync"`
 
 ---
 
