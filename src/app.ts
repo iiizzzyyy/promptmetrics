@@ -16,6 +16,7 @@ import { createTraceRoutes } from '@routes/promptmetrics-trace.route';
 import { createRunRoutes } from '@routes/promptmetrics-run.route';
 import { createLabelRoutes } from '@routes/promptmetrics-label.route';
 import { createWebhookRoutes } from '@routes/webhook.route';
+import { createEvaluationRoutes } from '@routes/evaluation.route';
 import { requestIdMiddleware } from '@middlewares/promptmetrics-request-id.middleware';
 import { errorHandlerMiddleware } from '@middlewares/promptmetrics-error-handler.middleware';
 
@@ -46,6 +47,7 @@ export function createApp(driver?: PromptDriver): Application {
   app.use('/', createTraceRoutes());
   app.use('/', createRunRoutes());
   app.use('/', createLabelRoutes());
+  app.use('/', createEvaluationRoutes());
 
   app.use(errorHandlerMiddleware);
 

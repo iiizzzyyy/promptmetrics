@@ -182,6 +182,18 @@
 
 ---
 
+## Epic 4.6 — Prompt Evaluation Framework
+
+### After Task 4.6
+- **Status:** PASS
+- **Date:** 2026-04-25
+- **Command:** `npm test`
+- **Results:** 189 passed, 1 failed (pre-existing config failure)
+- **New tests:** `tests/integration/evaluations.test.ts` — 5 tests covering create, list, get, results CRUD, and delete with cascade
+- **Commit:** `feat: add prompt evaluation framework`
+
+---
+
 ## Final Verification Checklist
 
 - [ ] `npm run build` succeeds with zero errors

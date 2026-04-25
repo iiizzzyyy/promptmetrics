@@ -480,15 +480,15 @@
 
 ### Epic 4.6 -- Prompt Evaluation Framework
 
-- [ ] **4.6.1** Create migration `004_add_evaluations.sql`:
+- [x] **4.6.1** Create migration `004_add_evaluations.sql`:
   ```sql
   CREATE TABLE evaluations (...);
   CREATE TABLE evaluation_results (...);
   ```
-- [ ] **4.6.2** Create `src/services/evaluation.service.ts`
-- [ ] **4.6.3** Create `src/routes/evaluation.route.ts` with endpoints
-- [ ] **4.6.4** Integration tests for evaluation CRUD
-- [ ] **4.6.5** Commit: `git commit -m "feat: add prompt evaluation framework"`
+- [x] **4.6.2** Create `src/services/evaluation.service.ts`
+- [x] **4.6.3** Create `src/routes/evaluation.route.ts` with endpoints
+- [x] **4.6.4** Integration tests for evaluation CRUD
+- [x] **4.6.5** Commit: `git commit -m "feat: add prompt evaluation framework"`
 
 ---
 
