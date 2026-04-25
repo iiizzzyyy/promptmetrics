@@ -4,6 +4,7 @@ import { PromptService } from '@services/prompt.service';
 import { PromptDriver } from '@drivers/promptmetrics-driver.interface';
 import { authenticateApiKey, requireScope } from '@middlewares/promptmetrics-auth.middleware';
 import { auditLog } from '@middlewares/promptmetrics-audit.middleware';
+import { rateLimitPerKey } from '@middlewares/rate-limit-per-key.middleware';
 import { validateQuery } from '@middlewares/promptmetrics-query-validation.middleware';
 import { getDb } from '@models/promptmetrics-sqlite';
 import { parsePagination, buildPaginatedResponse } from '@utils/pagination';
@@ -31,6 +32,7 @@ export function createPromptRoutes(driver: PromptDriver): Router {
   });
 
   router.use(authenticateApiKey);
+  router.use(rateLimitPerKey());
 
   router.get('/v1/prompts', validateQuery(paginationQuerySchema), (req, res) => controller.listPrompts(req, res));
   router.get('/v1/prompts/search', validateQuery(paginationQuerySchema), (req, res) => controller.listPrompts(req, res));

@@ -2,12 +2,14 @@ import { Router } from 'express';
 import { TraceController } from '@controllers/promptmetrics-trace.controller';
 import { TraceService } from '@services/trace.service';
 import { authenticateApiKey } from '@middlewares/promptmetrics-auth.middleware';
+import { rateLimitPerKey } from '@middlewares/rate-limit-per-key.middleware';
 
 export function createTraceRoutes(): Router {
   const router = Router();
   const controller = new TraceController(new TraceService());
 
   router.use(authenticateApiKey);
+  router.use(rateLimitPerKey());
   router.post('/v1/traces', (req, res) => controller.createTrace(req, res));
   router.get('/v1/traces/:trace_id', (req, res) => controller.getTrace(req, res));
   router.post('/v1/traces/:trace_id/spans', (req, res) => controller.createSpan(req, res));

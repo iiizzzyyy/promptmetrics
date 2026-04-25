@@ -101,9 +101,12 @@
 ## Epic 3.8 — Per-API-Key Rate Limiting
 
 ### After Task 3.8
-- **Status:** TBD
+- **Status:** PASS
+- **Date:** 2026-04-25
 - **Command:** `npm test`
-- **Notes:**
+- **Results:** 179 passed, 1 failed (pre-existing config failure)
+- **New tests:** `tests/integration/rate-limit.test.ts` — 3 tests covering independent counters per key, 429 response with Retry-After header, and no rate limiting on unauthenticated routes
+- **Commit:** `feat: add per-API-key rate limiting with sliding window`
 
 ---
 

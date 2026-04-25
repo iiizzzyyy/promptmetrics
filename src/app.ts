@@ -3,7 +3,6 @@ import helmet from 'helmet';
 import hpp from 'hpp';
 import cors from 'cors';
 import compression from 'compression';
-import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
 import yaml from 'js-yaml';
 import fs from 'fs';
@@ -30,15 +29,6 @@ export function createApp(driver?: PromptDriver): Application {
   app.use(hpp());
   app.use(cors());
   app.use(compression());
-  app.use(
-    rateLimit({
-      windowMs: 60 * 1000,
-      max: 100,
-      standardHeaders: true,
-      legacyHeaders: false,
-      skip: (req) => req.path === '/health' || req.path === '/health/deep',
-    }),
-  );
   app.use(express.json({ limit: '10mb' }));
 
   const openapiPath = path.resolve(__dirname, '../docs/openapi.yaml');

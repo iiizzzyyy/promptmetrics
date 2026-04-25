@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { RunController } from '@controllers/promptmetrics-run.controller';
 import { RunService } from '@services/run.service';
 import { authenticateApiKey } from '@middlewares/promptmetrics-auth.middleware';
+import { rateLimitPerKey } from '@middlewares/rate-limit-per-key.middleware';
 import { validateQuery } from '@middlewares/promptmetrics-query-validation.middleware';
 import { paginationQuerySchema } from '@validation-schemas/promptmetrics-pagination.schema';
 
@@ -10,6 +11,7 @@ export function createRunRoutes(): Router {
   const controller = new RunController(new RunService());
 
   router.use(authenticateApiKey);
+  router.use(rateLimitPerKey());
   router.post('/v1/runs', (req, res) => controller.createRun(req, res));
   router.get('/v1/runs', validateQuery(paginationQuerySchema), (req, res) => controller.listRuns(req, res));
   router.get('/v1/runs/:run_id', (req, res) => controller.getRun(req, res));
