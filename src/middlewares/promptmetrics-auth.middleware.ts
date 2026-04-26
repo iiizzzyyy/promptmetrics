@@ -35,9 +35,14 @@ export async function authenticateApiKey(req: Request, _res: Response, next: Nex
     throw AppError.unauthorized('API key does not belong to this workspace');
   }
 
-  await db
-    .prepare('UPDATE api_keys SET last_used_at = ? WHERE key_hash = ?')
-    .run(Math.floor(Date.now() / 1000), keyHash);
+  // Debounce last_used_at writes to reduce SQLite contention. Precision loss is bounded by API_KEY_LAST_USED_DEBOUNCE_MS (default 60 s).
+  const now = Math.floor(Date.now() / 1000);
+  const debounceMs = Number(process.env.API_KEY_LAST_USED_DEBOUNCE_MS) || 60_000;
+  const debounceSec = Math.floor(debounceMs / 1000);
+
+  if (!row.last_used_at || now - row.last_used_at >= debounceSec) {
+    await db.prepare('UPDATE api_keys SET last_used_at = ? WHERE key_hash = ?').run(now, keyHash);
+  }
 
   req.apiKey = {
     name: row.name,

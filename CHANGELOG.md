@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-04-26
+
+### Performance
+
+- **perf(sqlite):** Resolve SQLite write contention under concurrent load (#20, #21, #22).
+  - Remove unnecessary `db.transaction()` wrapper from rate-limit middleware — Node.js single-threaded guarantee makes it redundant and it added `BEGIN...COMMIT` overhead on every request.
+  - Hoist `CREATE TABLE IF NOT EXISTS rate_limits` from request hot path to `initSchema()` startup, eliminating per-request schema locks.
+  - Add `PRAGMA busy_timeout = 5000` so SQLite waits gracefully for write locks instead of returning `SQLITE_BUSY` immediately.
+  - Debounce `last_used_at` updates in auth middleware with configurable `API_KEY_LAST_USED_DEBOUNCE_MS` (default 60 s), reducing write volume by ~99%.
+  - Make rate-limit thresholds configurable via `RATE_LIMIT_WINDOW_MS` and `RATE_LIMIT_MAX_REQUESTS` env vars (defaults unchanged: 100 req / 60 s).
+
 ## [1.0.2] - 2026-04-25
 
 ### Changed

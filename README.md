@@ -249,6 +249,9 @@ All configuration is environment-variable driven. No config files required for t
 | `REDIS_URL` | No | — | Redis connection URL for caching and rate limiting |
 | `OTEL_ENABLED` | No | `false` | Enable OpenTelemetry |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | If OTEL=true | — | OTLP collector URL |
+| `RATE_LIMIT_WINDOW_MS` | No | `60000` | Rate-limit time window in milliseconds |
+| `RATE_LIMIT_MAX_REQUESTS` | No | `100` | Max requests per window per API key |
+| `API_KEY_LAST_USED_DEBOUNCE_MS` | No | `60000` | Minimum ms between `last_used_at` writes (reduces SQLite contention) |
 
 See [docs/configuration.md](docs/configuration.md) for advanced configuration.
 
