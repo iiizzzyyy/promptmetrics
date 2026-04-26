@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2026-04-26
+
+### Added
+
+- **feat(api):** Add paginated list endpoints for logs and traces (`GET /v1/logs`, `GET /v1/traces`) (#25).
+- **feat(auth):** Support master API keys with wildcard `workspace_id = '*'` that can access any workspace (#27).
+- **feat(api):** Add `/v1/api-keys` CRUD management endpoints — create, list, and delete API keys programmatically (#28).
+  - Requires `admin` scope on the caller's key.
+  - Plaintext key returned **once** on creation.
+  - Listing never includes `key_hash`.
+
+### Fixed
+
+- **fix(validation):** Allow nested objects in `metadata` fields across traces, spans, and logs (#26).
+  - Relaxes Joi schema from primitive-only values to `Joi.object().unknown(true).max(50)`.
+  - Supports real-world OpenTelemetry-style structured telemetry.
+
+### Changed
+
+- `generate-api-key` CLI script now accepts `--workspace <id>` (default `'default'`, supports `'*'` for master keys).
+
 ## [1.0.4] - 2026-04-26
 
 ### Fixed
