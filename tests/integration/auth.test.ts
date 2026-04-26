@@ -37,13 +37,9 @@ describe('Auth Integration', () => {
       'default',
     );
 
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, expires_at, workspace_id) VALUES (?, ?, ?, ?, ?)').run(
-      hashApiKey(expiredKey),
-      'expired-key',
-      'read,write',
-      Math.floor(Date.now() / 1000) - 1,
-      'default',
-    );
+    db.prepare(
+      'INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, expires_at, workspace_id) VALUES (?, ?, ?, ?, ?)',
+    ).run(hashApiKey(expiredKey), 'expired-key', 'read,write', Math.floor(Date.now() / 1000) - 1, 'default');
 
     db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
       hashApiKey(masterKey),
@@ -81,10 +77,7 @@ describe('Auth Integration', () => {
   });
 
   it('master key can access default workspace', async () => {
-    const res = await request(app)
-      .get('/v1/prompts')
-      .set('X-API-Key', masterKey)
-      .set('X-Workspace-Id', 'default');
+    const res = await request(app).get('/v1/prompts').set('X-API-Key', masterKey).set('X-Workspace-Id', 'default');
     expect(res.status).toBe(200);
   });
 

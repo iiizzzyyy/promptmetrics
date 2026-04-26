@@ -67,9 +67,7 @@ describe('API Key Management', () => {
   });
 
   it('GET /v1/api-keys with admin key returns paginated list', async () => {
-    const res = await request(app)
-      .get('/v1/api-keys?page=1&limit=10')
-      .set('X-API-Key', adminKey);
+    const res = await request(app).get('/v1/api-keys?page=1&limit=10').set('X-API-Key', adminKey);
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('items');
@@ -83,26 +81,18 @@ describe('API Key Management', () => {
   });
 
   it('DELETE /v1/api-keys/:id with admin key returns 204', async () => {
-    const createRes = await request(app)
-      .post('/v1/api-keys')
-      .set('X-API-Key', adminKey)
-      .send({ name: 'delete-me' });
+    const createRes = await request(app).post('/v1/api-keys').set('X-API-Key', adminKey).send({ name: 'delete-me' });
 
     expect(createRes.status).toBe(201);
     const id = createRes.body.id;
 
-    const deleteRes = await request(app)
-      .delete(`/v1/api-keys/${id}`)
-      .set('X-API-Key', adminKey);
+    const deleteRes = await request(app).delete(`/v1/api-keys/${id}`).set('X-API-Key', adminKey);
 
     expect(deleteRes.status).toBe(204);
   });
 
   it('POST /v1/api-keys with non-admin key returns 403', async () => {
-    const res = await request(app)
-      .post('/v1/api-keys')
-      .set('X-API-Key', readWriteKey)
-      .send({ name: 'should-fail' });
+    const res = await request(app).post('/v1/api-keys').set('X-API-Key', readWriteKey).send({ name: 'should-fail' });
 
     expect(res.status).toBe(403);
   });

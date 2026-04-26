@@ -58,11 +58,12 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 - **Git-Native Versioning** — Prompt content lives in Git (local filesystem or GitHub). Every version is immutable and traceable.
 - **Hybrid Storage** — SQLite indexes metadata for sub-millisecond queries; Git stores content for auditability. PostgreSQL and S3 backends also supported.
 - **Template Rendering** — Mustache-style variable substitution in prompts (`Hello {{name}}!`).
-- **Structured Logging** — Log LLM metadata (model, tokens, latency, cost) with validated key-value tags.
+- **Structured Logging** — Log LLM metadata (model, tokens, latency, cost) with validated key-value tags, including nested objects and arrays.
 - **Agent Telemetry** — Built-in traces, spans, and workflow runs without Jaeger, Zipkin, or DataDog.
 - **Evaluations** — Create evaluation suites, record scores, and track prompt quality metrics over time.
 - **Environment Labels** — Tag prompt versions with labels like `production` or `v2-test` and resolve them at runtime.
-- **API Key Auth** — HMAC-SHA256 hashed keys with scoped permissions (`read`, `write`, `admin`) and optional expiration.
+- **API Key Auth** — HMAC-SHA256 hashed keys with scoped permissions (`read`, `write`, `admin`), optional expiration, and master keys that can access any workspace.
+- **API Key Management** — Create, list, and revoke keys programmatically via `/v1/api-keys`.
 - **Per-API-Key Rate Limiting** — Sliding window rate limits with Redis or SQLite backends.
 - **Multi-Tenancy** — Workspace isolation via `X-Workspace-Id` header.
 - **OpenTelemetry Export** — Optional OTLP export for operators who already have an observability stack.
@@ -119,7 +120,7 @@ promptmetrics-server
 
 Generate an API key (in another terminal):
 ```bash
-node $(npm root -g)/promptmetrics/dist/scripts/generate-api-key.js default read,write
+node $(npm root -g)/promptmetrics/dist/scripts/generate-api-key.js --workspace default read,write
 # => pm_xxxxxxxx... (store this)
 ```
 
@@ -135,7 +136,7 @@ docker compose up --build
 
 Generate an API key:
 ```bash
-docker compose exec promptmetrics node dist/scripts/generate-api-key.js default read,write
+docker compose exec promptmetrics node dist/scripts/generate-api-key.js --workspace default read,write
 # => pm_xxxxxxxx... (store this)
 ```
 
@@ -148,7 +149,7 @@ cp .env.example .env          # set API_KEY_SALT and other config
 npm install
 npm run build
 npm run db:init               # initialize the SQLite database
-node dist/scripts/generate-api-key.js default read,write
+node dist/scripts/generate-api-key.js --workspace default read,write
 # => pm_xxxxxxxx... (store this)
 promptmetrics-server
 ```
@@ -263,7 +264,7 @@ Base URL: `http://localhost:3000`
 
 Authentication: All endpoints except `/health` require `X-API-Key` header.
 
-Multi-tenancy: Pass `X-Workspace-Id` header to scope all data. API keys are validated against their assigned workspace.
+Multi-tenancy: Pass `X-Workspace-Id` header to scope all data. API keys are validated against their assigned workspace. Master keys with `workspace_id = '*'` can access any workspace.
 
 ### Prompts
 - `GET /v1/prompts` — List prompts (paginated, searchable)
@@ -272,9 +273,11 @@ Multi-tenancy: Pass `X-Workspace-Id` header to scope all data. API keys are vali
 - `POST /v1/prompts` — Create a new prompt
 
 ### Logs
+- `GET /v1/logs` — List logs (paginated)
 - `POST /v1/logs` — Log metadata for an LLM request
 
 ### Traces & Spans
+- `GET /v1/traces` — List traces (paginated)
 - `POST /v1/traces` — Create a trace
 - `GET /v1/traces/:trace_id` — Get a trace with spans
 - `POST /v1/traces/:trace_id/spans` — Add a span
@@ -287,6 +290,11 @@ Multi-tenancy: Pass `X-Workspace-Id` header to scope all data. API keys are vali
 ### Prompt Labels
 - `POST /v1/prompts/:name/labels` — Tag a version
 - `GET /v1/prompts/:name/labels/:label_name` — Resolve label to version
+
+### API Keys
+- `POST /v1/api-keys` — Create an API key (admin scope)
+- `GET /v1/api-keys` — List API keys (admin scope)
+- `DELETE /v1/api-keys/:id` — Revoke an API key (admin scope)
 
 ### Evaluations
 - `POST /v1/evaluations` — Create an evaluation

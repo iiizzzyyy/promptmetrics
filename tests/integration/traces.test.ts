@@ -158,7 +158,13 @@ describe('Trace API Integration', () => {
     const res = await request(app)
       .post(`/v1/traces/${traceId}/spans`)
       .set('X-API-Key', apiKey)
-      .send({ name: 'agent-step', status: 'ok', start_time: 1000, end_time: 2000, metadata: { nested: { object: 'good' } } });
+      .send({
+        name: 'agent-step',
+        status: 'ok',
+        start_time: 1000,
+        end_time: 2000,
+        metadata: { nested: { object: 'good' } },
+      });
 
     expect(res.status).toBe(201);
     expect(res.body.trace_id).toBe(traceId);
@@ -211,13 +217,9 @@ describe('Trace API Integration', () => {
 
   it('GET /v1/traces parses metadata_json in response', async () => {
     const db = getDb();
-    db.prepare('INSERT INTO traces (trace_id, prompt_name, version_tag, metadata_json, workspace_id) VALUES (?, ?, ?, ?, ?)').run(
-      'trace-meta',
-      'test-prompt',
-      '1.0.0',
-      JSON.stringify({ agent: 'test' }),
-      'default',
-    );
+    db.prepare(
+      'INSERT INTO traces (trace_id, prompt_name, version_tag, metadata_json, workspace_id) VALUES (?, ?, ?, ?, ?)',
+    ).run('trace-meta', 'test-prompt', '1.0.0', JSON.stringify({ agent: 'test' }), 'default');
 
     const res = await request(app).get('/v1/traces').set('X-API-Key', apiKey);
 

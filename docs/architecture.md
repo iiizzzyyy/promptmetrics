@@ -71,7 +71,7 @@ The clone is bare (no working tree) to save disk space. The `git show` command r
 | Table | Purpose |
 |---|---|
 | `prompts` | Maps `prompt_id` → `name`, `version_tag`, `commit_sha` (or `fs_path`), `driver`, `created_at`, `author` |
-| `api_keys` | Stores `key_hash`, `name`, `scopes`, `created_at`, `last_used_at` |
+| `api_keys` | Stores `key_hash`, `name`, `scopes`, `workspace_id`, `expires_at`, `created_at`, `last_used_at` |
 | `logs` | Stores metadata for each LLM request: model, tokens, latency, cost, custom tags |
 | `audit_logs` | Records every prompt mutation: action, prompt name, version, API key used, IP, timestamp |
 | `config` | Runtime key/value settings |
@@ -110,7 +110,7 @@ The clone is bare (no working tree) to save disk space. The `git show` command r
 
 1. Client sends `POST /v1/logs` after their LLM call completes
 2. Auth middleware validates the API key
-3. Controller validates metadata (max 50 keys, length limits, type restrictions)
+3. Controller validates metadata (max 50 top-level keys, length limits; nested objects and arrays allowed)
 4. Row inserted into SQLite `logs` table
 5. Structured JSON written to stdout for log aggregation
 6. If OTel is enabled, a span is emitted with the metadata as attributes
@@ -122,7 +122,7 @@ Traces and spans provide first-class support for tracking agent loops and multi-
 **Create a Trace:**
 1. Client sends `POST /v1/traces` with optional `trace_id`, `prompt_name`, `version_tag`, and `metadata`
 2. Auth middleware validates the API key and checks `write` scope
-3. Controller validates the body (max 50 metadata keys, flat values only)
+3. Controller validates the body (max 50 top-level metadata keys; nested objects and arrays allowed)
 4. Row inserted into SQLite `traces` table
 5. Response returns `201 Created` with the `trace_id`
 
@@ -147,7 +147,7 @@ Workflow runs track end-to-end executions of agent workflows or pipelines, provi
 **Create a Run:**
 1. Client sends `POST /v1/runs` with `workflow_name`, optional `input`, `trace_id`, and `metadata`
 2. Auth middleware validates the API key and checks `write` scope
-3. Controller validates the body (max 50 metadata keys, flat values only)
+3. Controller validates the body (max 50 top-level metadata keys; nested objects and arrays allowed)
 4. If `trace_id` is provided, controller verifies it exists in the `traces` table
 5. Row inserted into SQLite `runs` table with `status = 'running'`
 6. Response returns `201 Created` with `run_id`
@@ -187,6 +187,32 @@ This two-step resolution keeps labels lightweight (just pointers) while leveragi
 ## Authentication
 
 API keys are hashed with HMAC-SHA256 using a server-side salt (`API_KEY_SALT`). Only the hash is stored in SQLite. When a client sends an `X-API-Key` header, it is hashed and compared against the database. Scopes (`read`, `write`, `admin`) are enforced at the route level.
+
+### Master API Keys
+
+Keys with `workspace_id = '*'` act as master keys and can access any workspace. The auth middleware accepts any `X-Workspace-Id` header for these keys instead of requiring an exact match. This is useful for administration and cross-workspace tooling. Non-master keys are rejected if the `X-Workspace-Id` header does not match their assigned workspace.
+
+### API Key Management Endpoints
+
+The `POST /v1/api-keys`, `GET /v1/api-keys`, and `DELETE /v1/api-keys/:id` endpoints allow administrators to manage keys programmatically. All three require `admin` scope.
+
+**Create a Key:**
+1. Client sends `POST /v1/api-keys` with `name`, `scopes`, optional `workspace_id`, and optional `expires_in_days`
+2. Controller validates the body and generates a random plaintext key
+3. The key is hashed with HMAC-SHA256 and inserted into the `api_keys` table
+4. The plaintext key is returned **once** in the response
+
+**List Keys:**
+1. Client sends `GET /v1/api-keys?page=1&limit=10`
+2. Controller returns paginated keys ordered by `created_at DESC`
+3. The `key_hash` field is never included in the response
+
+**Revoke a Key:**
+1. Client sends `DELETE /v1/api-keys/:id`
+2. Controller deletes the row from `api_keys`
+3. Response returns `204 No Content`
+
+Admin keys can create keys for any workspace. Non-admin keys receive `403 Forbidden` on these endpoints.
 
 ## Graceful Shutdown
 

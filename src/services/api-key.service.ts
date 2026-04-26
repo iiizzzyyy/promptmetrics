@@ -21,7 +21,10 @@ export interface CreateApiKeyInput {
 }
 
 export class ApiKeyService {
-  async createApiKey(input: CreateApiKeyInput, callerWorkspaceId: string = 'default'): Promise<{ apiKey: ApiKey; plaintextKey: string }> {
+  async createApiKey(
+    input: CreateApiKeyInput,
+    callerWorkspaceId: string = 'default',
+  ): Promise<{ apiKey: ApiKey; plaintextKey: string }> {
     const db = getDb();
     const plaintextKey = `pm_${crypto.randomBytes(32).toString('hex')}`;
     const keyHash = hashApiKey(plaintextKey);

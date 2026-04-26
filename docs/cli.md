@@ -46,6 +46,27 @@ Create a `promptmetrics.yaml` file in the current directory.
 promptmetrics init
 ```
 
+### `generate-api-key` Script
+
+Generate a new API key for server administration. This is a standalone Node.js script, not a CLI subcommand.
+
+```bash
+node dist/scripts/generate-api-key.js <name> <scopes>
+```
+
+| Flag | Required | Default | Description |
+|------|----------|---------|-------------|
+| `--workspace` | No | `default` | Workspace ID to scope the key to. Use `*` for a master key. |
+| `--expires-in-days` | No | — | Number of days until the key expires. |
+
+```bash
+# Default workspace key
+node dist/scripts/generate-api-key.js --workspace default my-cli read,write
+
+# Master key with expiration
+node dist/scripts/generate-api-key.js --workspace '*' --expires-in-days 30 admin-key admin
+```
+
 ### `promptmetrics create-prompt --file <path>`
 
 Create a new prompt from a JSON or YAML file.
@@ -221,7 +242,7 @@ promptmetrics get-label welcome production \
 API_KEY_SALT=my-salt promptmetrics-server
 
 # 2. Generate an API key
-node dist/scripts/generate-api-key.js my-cli read,write
+node dist/scripts/generate-api-key.js --workspace default --expires-in-days 30 my-cli read,write
 # => pm_abc123
 
 # 3. Create a prompt

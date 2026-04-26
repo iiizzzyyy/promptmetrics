@@ -54,7 +54,12 @@ async function generateWelcome(userName: string) {
     tokens_out: completion.usage?.completion_tokens || 0,
     latency_ms: latencyMs,
     cost_usd: estimateCost(completion), // your own function
-    metadata: { user_id: 'user_123', experiment: 'headline-v2' },
+    metadata: {
+      user_id: 'user_123',
+      experiment: 'headline-v2',
+      tags: ['v2', 'production'],
+      extra: { region: 'us-east-1', source: 'web' },
+    },
   });
 
   return completion.choices[0].message.content;
@@ -97,7 +102,12 @@ def generate_welcome(user_name: str):
         tokens_out=completion.usage.completion_tokens,
         latency_ms=latency_ms,
         cost_usd=estimate_cost(completion),
-        metadata={"user_id": "user_123", "experiment": "headline-v2"},
+        metadata={
+            "user_id": "user_123",
+            "experiment": "headline-v2",
+            "tags": ["v2", "production"],
+            "extra": {"region": "us-east-1", "source": "web"},
+        },
     )
 
     return completion.choices[0].message.content
@@ -133,7 +143,9 @@ The REST API is complete and stable — any SDK is a thin wrapper around:
 - `POST /v1/prompts` (create)
 - `GET /v1/prompts` (list)
 - `POST /v1/logs`
+- `GET /v1/logs` — list logs
 - `POST /v1/traces` — create a trace
+- `GET /v1/traces` — list traces
 - `GET /v1/traces/:trace_id` — get trace with spans
 - `POST /v1/traces/:trace_id/spans` — add a span
 - `POST /v1/runs` — create a workflow run
@@ -141,5 +153,8 @@ The REST API is complete and stable — any SDK is a thin wrapper around:
 - `GET /v1/runs` — list runs
 - `POST /v1/prompts/:name/labels` — tag a version
 - `GET /v1/prompts/:name/labels/:label_name` — resolve a label
+- `POST /v1/api-keys` — create a key
+- `GET /v1/api-keys` — list keys
+- `DELETE /v1/api-keys/:id` — revoke a key
 
 If you build one, open a PR to add it to this list.

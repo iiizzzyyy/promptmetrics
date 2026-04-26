@@ -4,6 +4,8 @@ Base URL: `http://localhost:3000`
 
 Authentication: All endpoints except `/health` require `X-API-Key` header.
 
+Workspace Authorization: Pass `X-Workspace-Id` to scope requests. Normal keys are rejected if the header does not match their assigned workspace. Master keys (`workspace_id = '*'`) accept any workspace.
+
 ## Endpoints
 
 ### Health
@@ -173,10 +175,10 @@ Log metadata for an LLM request.
 ```
 
 **Validation Rules:**
-- `metadata`: max 50 keys
+- `metadata`: max 50 top-level keys
 - Key length: max 128 chars
 - Value length: max 1024 chars
-- Supported value types: string, number, boolean
+- Supported value types: string, number, boolean, nested objects, and arrays
 - `ollama_options`: free-form object (passed through to Ollama)
 - `ollama_keep_alive`: string, max 16 chars
 - `ollama_format`: string or object
@@ -184,6 +186,40 @@ Log metadata for an LLM request.
 **Response:** `202 Accepted`
 ```json
 { "id": 1, "status": "accepted" }
+```
+
+#### GET /v1/logs
+List all logs with pagination.
+
+**Query Parameters:**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 50 | Items per page (max 100) |
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "prompt_name": "welcome",
+      "version_tag": "1.0.0",
+      "provider": "openai",
+      "model": "gpt-4o",
+      "tokens_in": 10,
+      "tokens_out": 20,
+      "latency_ms": 500,
+      "cost_usd": 0.001,
+      "metadata": { "user_id": "user_123" },
+      "created_at": 1776849966
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 50,
+  "totalPages": 1
+}
 ```
 
 ### Traces
@@ -206,7 +242,7 @@ Create a trace for an agent loop or request flow.
 
 - `trace_id` is optional; a UUID will be auto-generated if omitted.
 - `prompt_name` and `version_tag` are optional.
-- `metadata`: max 50 keys, string/number/boolean values only.
+- `metadata`: max 50 top-level keys; nested objects and arrays allowed.
 
 **Response:** `201 Created`
 ```json
@@ -215,6 +251,34 @@ Create a trace for an agent loop or request flow.
   "prompt_name": "welcome",
   "version_tag": "1.0.0",
   "status": "created"
+}
+```
+
+#### GET /v1/traces
+List all traces with pagination.
+
+**Query Parameters:**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 50 | Items per page (max 100) |
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "trace_id": "550e8400-e29b-41d4-a716-446655440000",
+      "prompt_name": "welcome",
+      "version_tag": "1.0.0",
+      "metadata": { "agent": "headline-agent" },
+      "created_at": 1776849966
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 50,
+  "totalPages": 1
 }
 ```
 
@@ -269,7 +333,7 @@ Add a span to an existing trace.
 - `parent_id` is optional for nested spans.
 - `status` must be `ok` or `error`.
 - `start_time` and `end_time` are millisecond timestamps (optional).
-- `metadata`: max 50 keys, string/number/boolean values only.
+- `metadata`: max 50 top-level keys; nested objects and arrays allowed.
 
 **Response:** `201 Created`
 ```json
@@ -320,7 +384,7 @@ Create a workflow run.
 - `workflow_name` is required.
 - `status` is optional and defaults to `running`. Valid values: `running`, `completed`, `failed`.
 - `trace_id` is optional and must reference an existing trace.
-- `metadata`: max 50 keys, string/number/boolean values only.
+- `metadata`: max 50 top-level keys; nested objects and arrays allowed.
 
 **Response:** `201 Created`
 ```json
@@ -587,6 +651,77 @@ List results for an evaluation.
 
 #### DELETE /v1/evaluations/:id
 Delete an evaluation and cascade its results.
+
+**Response:** `204 No Content`
+
+### API Keys
+
+#### POST /v1/api-keys
+Create a new API key. Requires `admin` scope.
+
+**Request Body:**
+```json
+{
+  "name": "ci-runner",
+  "scopes": ["read", "write"],
+  "workspace_id": "default",
+  "expires_in_days": 30
+}
+```
+
+- `name` is required.
+- `scopes` is required. Array of `read`, `write`, `admin`.
+- `workspace_id` is optional and defaults to `default`. Use `"*"` for a master key.
+- `expires_in_days` is optional.
+
+**Response:** `201 Created`
+```json
+{
+  "id": 1,
+  "name": "ci-runner",
+  "scopes": ["read", "write"],
+  "workspace_id": "default",
+  "expires_at": 1779441966,
+  "key": "pm_xxxxxxxx...",
+  "created_at": 1776849966
+}
+```
+
+> The plaintext `key` is returned **once** on creation and never again.
+
+#### GET /v1/api-keys
+List all API keys. Requires `admin` scope.
+
+**Query Parameters:**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 50 | Items per page (max 100) |
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "name": "ci-runner",
+      "scopes": ["read", "write"],
+      "workspace_id": "default",
+      "expires_at": 1779441966,
+      "created_at": 1776849966
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 50,
+  "totalPages": 1
+}
+```
+
+> `key_hash` is never included in the response.
+
+#### DELETE /v1/api-keys/:id
+Revoke an API key. Requires `admin` scope.
 
 **Response:** `204 No Content`
 
