@@ -141,9 +141,8 @@ program
   .action(async (options) => {
     try {
       const raw = fs.readFileSync(options.file, 'utf-8');
-      const content = options.file.endsWith('.yaml') || options.file.endsWith('.yml')
-        ? (yaml.load(raw) as object)
-        : JSON.parse(raw);
+      const content =
+        options.file.endsWith('.yaml') || options.file.endsWith('.yml') ? (yaml.load(raw) as object) : JSON.parse(raw);
       const res = await axios.post(`${getServer()}/v1/prompts`, content, {
         headers: getHeaders(),
       });
@@ -160,10 +159,9 @@ program
   .option('--limit <n>', 'Items per page', '50')
   .action(async (options) => {
     try {
-      const res = await axios.get(
-        `${getServer()}/v1/prompts?page=${options.page}&limit=${options.limit}`,
-        { headers: getHeaders() },
-      );
+      const res = await axios.get(`${getServer()}/v1/prompts?page=${options.page}&limit=${options.limit}`, {
+        headers: getHeaders(),
+      });
       print((res.data as { items: unknown[] }).items);
     } catch (err) {
       handleCliError(err);
@@ -255,10 +253,7 @@ program
           headers: getHeaders(),
         });
         const content = (detailRes.data as { content: unknown }).content;
-        fs.writeFileSync(
-          path.join(options.out, `${prompt.name}.json`),
-          JSON.stringify(content, null, 2),
-        );
+        fs.writeFileSync(path.join(options.out, `${prompt.name}.json`), JSON.stringify(content, null, 2));
       }
 
       print({ exported: prompts.length, directory: options.out });

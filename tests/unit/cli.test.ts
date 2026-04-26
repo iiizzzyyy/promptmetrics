@@ -106,16 +106,7 @@ describe('CLI', () => {
   });
 
   it('get-prompt fetches by name with variables', async () => {
-    await runCli([
-      'get-prompt',
-      'welcome',
-      '--version',
-      '1.0.0',
-      '--var',
-      'name=Alice',
-      '--api-key',
-      'pm_test',
-    ]);
+    await runCli(['get-prompt', 'welcome', '--version', '1.0.0', '--var', 'name=Alice', '--api-key', 'pm_test']);
 
     expect(mockedAxios.get).toHaveBeenCalledWith(
       'http://localhost:3000/v1/prompts/welcome?version=1.0.0&variables%5Bname%5D=Alice',
@@ -134,11 +125,7 @@ describe('CLI', () => {
 
     await runCli(['import', '--dir', './prompts', '--api-key', 'pm_test']);
 
-    expect(mockedAxios.post).toHaveBeenCalledWith(
-      'http://localhost:3000/v1/prompts',
-      { name: 'a' },
-      expect.anything(),
-    );
+    expect(mockedAxios.post).toHaveBeenCalledWith('http://localhost:3000/v1/prompts', { name: 'a' }, expect.anything());
   });
 
   it('export fetches prompts with limit', async () => {
@@ -156,10 +143,7 @@ describe('CLI', () => {
 
     await runCli(['export', '--out', './backup', '--limit', '5', '--api-key', 'pm_test']);
 
-    expect(mockedAxios.get).toHaveBeenCalledWith(
-      'http://localhost:3000/v1/prompts?limit=5',
-      expect.anything(),
-    );
+    expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:3000/v1/prompts?limit=5', expect.anything());
     expect(mockedFs.writeFileSync).toHaveBeenCalled();
   });
 
@@ -218,10 +202,7 @@ describe('CLI', () => {
   it('get-trace fetches by ID', async () => {
     await runCli(['get-trace', 'trace-123', '--api-key', 'pm_test']);
 
-    expect(mockedAxios.get).toHaveBeenCalledWith(
-      'http://localhost:3000/v1/traces/trace-123',
-      expect.anything(),
-    );
+    expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:3000/v1/traces/trace-123', expect.anything());
   });
 
   it('add-span posts to trace spans endpoint', async () => {
@@ -277,16 +258,7 @@ describe('CLI', () => {
   });
 
   it('update-run patches to /v1/runs/:id', async () => {
-    await runCli([
-      'update-run',
-      'run-123',
-      '--status',
-      'completed',
-      '--output',
-      'result=done',
-      '--api-key',
-      'pm_test',
-    ]);
+    await runCli(['update-run', 'run-123', '--status', 'completed', '--output', 'result=done', '--api-key', 'pm_test']);
 
     expect(mockedAxios.patch).toHaveBeenCalledWith(
       'http://localhost:3000/v1/runs/run-123',
@@ -296,15 +268,7 @@ describe('CLI', () => {
   });
 
   it('add-label posts to prompt labels endpoint', async () => {
-    await runCli([
-      'add-label',
-      'welcome',
-      'production',
-      '--version',
-      '1.0.0',
-      '--api-key',
-      'pm_test',
-    ]);
+    await runCli(['add-label', 'welcome', 'production', '--version', '1.0.0', '--api-key', 'pm_test']);
 
     expect(mockedAxios.post).toHaveBeenCalledWith(
       'http://localhost:3000/v1/prompts/welcome/labels',
@@ -357,7 +321,9 @@ describe('CLI', () => {
   it('list-prompts without --json uses console.table', async () => {
     const originalTable = console.table;
     let tableCalled = false;
-    console.table = () => { tableCalled = true; };
+    console.table = () => {
+      tableCalled = true;
+    };
 
     mockedAxios.get.mockResolvedValue({
       data: { items: [{ name: 'welcome' }] },

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2026-04-26
+
+### Fixed
+
+- **fix(cli):** Restore `--json` output flag for programmatic consumers (#23).
+  - Add global `--json` option via `program.option()` in Commander.
+  - Add `print()` helper that routes to `JSON.stringify()` when `--json` is set, or `console.table()` for arrays by default.
+  - Replace all `console.log(JSON.stringify(...))` and `console.table()` calls with `print()` for consistent dual-format output.
+  - Update `export` command to emit structured output via `print()`.
+  - Add unit tests for `--json` flag acceptance and table fallback.
+
 ## [1.0.3] - 2026-04-26
 
 ### Performance
