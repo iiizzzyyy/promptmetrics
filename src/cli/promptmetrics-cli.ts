@@ -35,6 +35,19 @@ function getApiKey(): string | undefined {
   return opts.apiKey || loadConfig().api_key;
 }
 
+function print(data: unknown): void {
+  const opts = program.opts() as { json?: boolean };
+  if (opts.json) {
+    console.log(JSON.stringify(data, null, 2));
+    return;
+  }
+  if (Array.isArray(data)) {
+    console.table(data);
+    return;
+  }
+  console.log(data);
+}
+
 function getHeaders(): Record<string, string> {
   const apiKey = getApiKey();
   if (!apiKey) {
@@ -105,6 +118,7 @@ program.name('promptmetrics').description('PromptMetrics CLI');
 
 program.option('--server <url>', 'Server URL');
 program.option('--api-key <key>', 'API key');
+program.option('--json', 'Output as JSON');
 
 program
   .command('init')
@@ -133,7 +147,7 @@ program
       const res = await axios.post(`${getServer()}/v1/prompts`, content, {
         headers: getHeaders(),
       });
-      console.log(JSON.stringify(res.data, null, 2));
+      print(res.data);
     } catch (err) {
       handleCliError(err);
     }
@@ -150,7 +164,7 @@ program
         `${getServer()}/v1/prompts?page=${options.page}&limit=${options.limit}`,
         { headers: getHeaders() },
       );
-      console.table((res.data as { items: unknown[] }).items);
+      print((res.data as { items: unknown[] }).items);
     } catch (err) {
       handleCliError(err);
     }
@@ -173,7 +187,7 @@ program
       const res = await axios.get(`${getServer()}/v1/prompts/${encodeURIComponent(name)}${qs}`, {
         headers: getHeaders(),
       });
-      console.log(JSON.stringify(res.data, null, 2));
+      print(res.data);
     } catch (err) {
       handleCliError(err);
     }
@@ -217,7 +231,7 @@ program
         });
       }
     }
-    console.table(results);
+    print(results);
   });
 
 program
@@ -247,7 +261,7 @@ program
         );
       }
 
-      console.log(`Exported ${prompts.length} prompts to ${options.out}`);
+      print({ exported: prompts.length, directory: options.out });
     } catch (err) {
       handleCliError(err);
     }
@@ -281,7 +295,7 @@ program
       const res = await axios.post(`${getServer()}/v1/logs`, payload, {
         headers: getHeaders(),
       });
-      console.log(JSON.stringify(res.data, null, 2));
+      print(res.data);
     } catch (err) {
       handleCliError(err);
     }
@@ -302,7 +316,7 @@ program
       const res = await axios.post(`${getServer()}/v1/traces`, payload, {
         headers: getHeaders(),
       });
-      console.log(JSON.stringify(res.data, null, 2));
+      print(res.data);
     } catch (err) {
       handleCliError(err);
     }
@@ -316,7 +330,7 @@ program
       const res = await axios.get(`${getServer()}/v1/traces/${encodeURIComponent(traceId)}`, {
         headers: getHeaders(),
       });
-      console.log(JSON.stringify(res.data, null, 2));
+      print(res.data);
     } catch (err) {
       handleCliError(err);
     }
@@ -344,7 +358,7 @@ program
       const res = await axios.post(`${getServer()}/v1/traces/${encodeURIComponent(traceId)}/spans`, payload, {
         headers: getHeaders(),
       });
-      console.log(JSON.stringify(res.data, null, 2));
+      print(res.data);
     } catch (err) {
       handleCliError(err);
     }
@@ -372,7 +386,7 @@ program
       const res = await axios.post(`${getServer()}/v1/runs`, payload, {
         headers: getHeaders(),
       });
-      console.log(JSON.stringify(res.data, null, 2));
+      print(res.data);
     } catch (err) {
       handleCliError(err);
     }
@@ -393,7 +407,7 @@ program
       const res = await axios.patch(`${getServer()}/v1/runs/${encodeURIComponent(runId)}`, payload, {
         headers: getHeaders(),
       });
-      console.log(JSON.stringify(res.data, null, 2));
+      print(res.data);
     } catch (err) {
       handleCliError(err);
     }
@@ -410,7 +424,7 @@ program
         { name: labelName, version_tag: options.version },
         { headers: getHeaders() },
       );
-      console.log(JSON.stringify(res.data, null, 2));
+      print(res.data);
     } catch (err) {
       handleCliError(err);
     }
@@ -425,7 +439,7 @@ program
         `${getServer()}/v1/prompts/${encodeURIComponent(promptName)}/labels/${encodeURIComponent(labelName)}`,
         { headers: getHeaders() },
       );
-      console.log(JSON.stringify(res.data, null, 2));
+      print(res.data);
     } catch (err) {
       handleCliError(err);
     }

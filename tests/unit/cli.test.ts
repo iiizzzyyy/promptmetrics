@@ -339,4 +339,44 @@ describe('CLI', () => {
       }),
     );
   });
+
+  it('list-prompts --json outputs valid JSON', async () => {
+    mockedAxios.get.mockResolvedValue({
+      data: { items: [{ name: 'welcome' }] },
+    } as never);
+
+    await runCli(['list-prompts', '--json', '--api-key', 'pm_test']);
+
+    const jsonOutput = logs.find((l) => l.startsWith('['));
+    expect(jsonOutput).toBeDefined();
+    expect(() => JSON.parse(jsonOutput!)).not.toThrow();
+    const parsed = JSON.parse(jsonOutput!);
+    expect(parsed).toEqual([{ name: 'welcome' }]);
+  });
+
+  it('list-prompts without --json uses console.table', async () => {
+    const originalTable = console.table;
+    let tableCalled = false;
+    console.table = () => { tableCalled = true; };
+
+    mockedAxios.get.mockResolvedValue({
+      data: { items: [{ name: 'welcome' }] },
+    } as never);
+
+    await runCli(['list-prompts', '--api-key', 'pm_test']);
+
+    expect(tableCalled).toBe(true);
+    console.table = originalTable;
+  });
+
+  it('create-prompt accepts --json flag', async () => {
+    mockedFs.readFileSync.mockImplementation((p) => {
+      if (String(p).includes('welcome.json')) return JSON.stringify({ name: 'welcome' });
+      throw new Error('not found');
+    });
+
+    await runCli(['create-prompt', '--json', '--file', 'welcome.json', '--api-key', 'pm_test']);
+
+    expect(mockedAxios.post).toHaveBeenCalled();
+  });
 });
