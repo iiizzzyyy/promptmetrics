@@ -2,9 +2,10 @@ import crypto from 'crypto';
 import { getDb } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
 
-function parseArgs(argv: string[]): { name: string; scopes: string; expiresInDays?: number } {
+function parseArgs(argv: string[]): { name: string; scopes: string; workspace: string; expiresInDays?: number } {
   let name = 'default';
   let scopes = 'read,write';
+  let workspace = 'default';
   let expiresInDays: number | undefined;
 
   for (let i = 2; i < argv.length; i++) {
@@ -13,6 +14,12 @@ function parseArgs(argv: string[]): { name: string; scopes: string; expiresInDay
       const next = argv[i + 1];
       if (next && /^\d+$/.test(next)) {
         expiresInDays = parseInt(next, 10);
+        i++;
+      }
+    } else if (arg === '--workspace') {
+      const next = argv[i + 1];
+      if (next) {
+        workspace = next;
         i++;
       }
     } else if (arg.startsWith('--')) {
@@ -24,11 +31,11 @@ function parseArgs(argv: string[]): { name: string; scopes: string; expiresInDay
     }
   }
 
-  return { name, scopes, expiresInDays };
+  return { name, scopes, workspace, expiresInDays };
 }
 
 async function main(): Promise<void> {
-  const { name, scopes, expiresInDays } = parseArgs(process.argv);
+  const { name, scopes, workspace, expiresInDays } = parseArgs(process.argv);
 
   const apiKey = `pm_${crypto.randomBytes(32).toString('hex')}`;
   const keyHash = hashApiKey(apiKey);
@@ -40,12 +47,13 @@ async function main(): Promise<void> {
   }
 
   await db
-    .prepare('INSERT INTO api_keys (key_hash, name, scopes, expires_at) VALUES (?, ?, ?, ?)')
-    .run(keyHash, name, scopes, expiresAt ?? null);
+    .prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id, expires_at) VALUES (?, ?, ?, ?, ?)')
+    .run(keyHash, name, scopes, workspace, expiresAt ?? null);
 
   console.log('\n=== Generated API Key ===');
   console.log('Name:', name);
   console.log('Scopes:', scopes);
+  console.log('Workspace:', workspace);
   if (expiresAt) {
     console.log('Expires:', new Date(expiresAt * 1000).toISOString());
   }

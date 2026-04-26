@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AppError } from '@errors/app.error';
 import { TraceService } from '@services/trace.service';
+import { parsePagination } from '@utils/pagination';
 import { createTraceSchema, createSpanSchema } from '@validation-schemas/promptmetrics-trace.schema';
 
 export class TraceController {
@@ -73,5 +74,12 @@ export class TraceController {
       metadata: span.metadata,
       created_at: span.created_at,
     });
+  }
+
+  async listTraces(req: Request, res: Response): Promise<void> {
+    const { page, limit } = parsePagination(req.query);
+    const workspaceId = req.workspaceId || 'default';
+    const result = await this.service.listTraces(page, limit, workspaceId);
+    res.status(200).json(result);
   }
 }

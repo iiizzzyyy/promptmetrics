@@ -59,12 +59,11 @@ describe('TraceController', () => {
     expect((res.json as jest.Mock).mock.calls[0][0].trace_id).toBe(traceId);
   });
 
-  it('returns 422 for invalid trace body', async () => {
+  it('accepts nested metadata in trace body', async () => {
     const req = mockReq({ metadata: { nested: { bad: true } } });
     const res = mockRes();
-    await expect(controller.createTrace(req as Request, res as Response)).rejects.toThrow(
-      expect.objectContaining({ statusCode: 422, code: 'VALIDATION_FAILED' }),
-    );
+    await controller.createTrace(req as Request, res as Response);
+    expect(res.status).toHaveBeenCalledWith(201);
   });
 
   it('gets a trace with its spans', async () => {

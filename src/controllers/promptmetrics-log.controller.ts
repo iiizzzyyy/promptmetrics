@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AppError } from '@errors/app.error';
 import { LogService } from '@services/log.service';
+import { parsePagination } from '@utils/pagination';
 import { logMetadataSchema } from '@validation-schemas/promptmetrics-log.schema';
 import { logMetadata } from '@services/promptmetrics-logger.service';
 
@@ -21,5 +22,12 @@ export class LogController {
     }
 
     res.status(202).json({ id: logEntry.id, status: 'accepted' });
+  }
+
+  async listLogs(req: Request, res: Response): Promise<void> {
+    const { page, limit } = parsePagination(req.query);
+    const workspaceId = req.workspaceId || 'default';
+    const result = await this.service.listLogs(page, limit, workspaceId);
+    res.status(200).json(result);
   }
 }

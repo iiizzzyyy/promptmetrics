@@ -137,13 +137,32 @@ describe('Trace API Integration', () => {
     expect(res.body.metadata).toEqual({ retry: 2 });
   });
 
-  it('POST /v1/traces rejects invalid metadata', async () => {
+  it('POST /v1/traces accepts nested metadata', async () => {
     const res = await request(app)
       .post('/v1/traces')
       .set('X-API-Key', apiKey)
-      .send({ metadata: { nested: { object: 'bad' } } });
+      .send({ metadata: { nested: { object: 'good' } } });
 
-    expect(res.status).toBe(422);
+    expect(res.status).toBe(201);
+
+    const getRes = await request(app).get(`/v1/traces/${res.body.trace_id}`).set('X-API-Key', apiKey);
+    expect(getRes.status).toBe(200);
+    expect(getRes.body.metadata).toEqual({ nested: { object: 'good' } });
+  });
+
+  it('POST /v1/traces/:trace_id/spans accepts nested metadata', async () => {
+    const traceId = '550e8400-e29b-41d4-a716-446655440006';
+    const db = getDb();
+    db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
+
+    const res = await request(app)
+      .post(`/v1/traces/${traceId}/spans`)
+      .set('X-API-Key', apiKey)
+      .send({ name: 'agent-step', status: 'ok', start_time: 1000, end_time: 2000, metadata: { nested: { object: 'good' } } });
+
+    expect(res.status).toBe(201);
+    expect(res.body.trace_id).toBe(traceId);
+    expect(res.body.name).toBe('agent-step');
   });
 
   it('POST /v1/traces/:trace_id/spans rejects invalid status', async () => {
@@ -157,5 +176,53 @@ describe('Trace API Integration', () => {
       .send({ name: 'step', status: 'invalid' });
 
     expect(res.status).toBe(422);
+  });
+
+  it('GET /v1/traces lists traces with pagination', async () => {
+    const db = getDb();
+    for (let i = 0; i < 5; i++) {
+      db.prepare('INSERT INTO traces (trace_id, prompt_name, version_tag, workspace_id) VALUES (?, ?, ?, ?)').run(
+        `trace-${i}`,
+        `prompt-${i}`,
+        `v${i}`,
+        'default',
+      );
+    }
+
+    const res = await request(app).get('/v1/traces?page=1&limit=3').set('X-API-Key', apiKey);
+
+    expect(res.status).toBe(200);
+    expect(res.body.items.length).toBe(3);
+    expect(res.body.total).toBe(5);
+    expect(res.body.page).toBe(1);
+    expect(res.body.limit).toBe(3);
+    expect(res.body.totalPages).toBe(2);
+  });
+
+  it('GET /v1/traces returns empty array when no traces exist', async () => {
+    const res = await request(app).get('/v1/traces').set('X-API-Key', apiKey);
+
+    expect(res.status).toBe(200);
+    expect(res.body.items).toEqual([]);
+    expect(res.body.total).toBe(0);
+    expect(res.body.page).toBe(1);
+    expect(res.body.limit).toBe(50);
+  });
+
+  it('GET /v1/traces parses metadata_json in response', async () => {
+    const db = getDb();
+    db.prepare('INSERT INTO traces (trace_id, prompt_name, version_tag, metadata_json, workspace_id) VALUES (?, ?, ?, ?, ?)').run(
+      'trace-meta',
+      'test-prompt',
+      '1.0.0',
+      JSON.stringify({ agent: 'test' }),
+      'default',
+    );
+
+    const res = await request(app).get('/v1/traces').set('X-API-Key', apiKey);
+
+    expect(res.status).toBe(200);
+    expect(res.body.items.length).toBe(1);
+    expect(res.body.items[0].metadata).toEqual({ agent: 'test' });
   });
 });

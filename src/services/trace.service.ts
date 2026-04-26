@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { AppError } from '@errors/app.error';
 import { getDb } from '@models/promptmetrics-sqlite';
+import { parsePagination, buildPaginatedResponse, PaginatedResponse } from '@utils/pagination';
 
 export interface Trace {
   trace_id: string;
@@ -190,5 +191,36 @@ export class TraceService {
       metadata: row.metadata_json ? JSON.parse(row.metadata_json) : {},
       created_at: row.created_at,
     };
+  }
+
+  async listTraces(page: number, limit: number, workspaceId: string = 'default'): Promise<PaginatedResponse<Trace>> {
+    const db = getDb();
+    const { offset } = parsePagination({ page: String(page), limit: String(limit) });
+    const total = (
+      (await db.prepare('SELECT COUNT(*) as c FROM traces WHERE workspace_id = ?').get(workspaceId)) as { c: number }
+    ).c;
+    const items = (await db
+      .prepare('SELECT * FROM traces WHERE workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
+      .all(workspaceId, limit, offset)) as Array<{
+      trace_id: string;
+      prompt_name: string | null;
+      version_tag: string | null;
+      metadata_json: string | null;
+      workspace_id: string;
+      created_at: number;
+    }>;
+
+    return buildPaginatedResponse(
+      items.map((t) => ({
+        trace_id: t.trace_id,
+        prompt_name: t.prompt_name,
+        version_tag: t.version_tag,
+        metadata: t.metadata_json ? JSON.parse(t.metadata_json) : {},
+        created_at: t.created_at,
+      })),
+      total,
+      page,
+      limit,
+    );
   }
 }

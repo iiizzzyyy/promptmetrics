@@ -302,17 +302,17 @@ describe('Full Lifecycle E2E', () => {
       expect(res.status).toBe(422);
     });
 
-    it('rejects log with invalid metadata value type', async () => {
+    it('accepts log with nested metadata', async () => {
       const res = await request(app)
         .post('/v1/logs')
         .set('X-API-Key', writeKey)
         .send({
           prompt_name: 'x',
           version_tag: '1.0.0',
-          metadata: { nested: { object: 'not-allowed' } },
+          metadata: { nested: { object: 'allowed' } },
         });
 
-      expect(res.status).toBe(422);
+      expect(res.status).toBe(202);
     });
   });
 

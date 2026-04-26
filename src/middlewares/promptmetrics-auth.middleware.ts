@@ -31,7 +31,7 @@ export async function authenticateApiKey(req: Request, _res: Response, next: Nex
   }
 
   const workspaceId = req.workspaceId || 'default';
-  if (row.workspace_id !== workspaceId) {
+  if (row.workspace_id !== workspaceId && row.workspace_id !== '*') {
     throw AppError.unauthorized('API key does not belong to this workspace');
   }
 
