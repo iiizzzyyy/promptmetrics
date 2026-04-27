@@ -1,17 +1,15 @@
 export interface PreparedStatement {
-  all(...params: unknown[]): unknown[] | Promise<unknown[]>;
-  get(...params: unknown[]): unknown | Promise<unknown | undefined>;
+  all(...params: unknown[]): Promise<unknown[]>;
+  get(...params: unknown[]): Promise<unknown | undefined>;
   run(
     ...params: unknown[]
-  ):
-    | { lastInsertRowid: number | bigint; changes: number }
-    | Promise<{ lastInsertRowid: number | bigint; changes: number }>;
+  ): Promise<{ lastInsertRowid: number | bigint; changes: number }>;
 }
 
 export interface DatabaseAdapter {
   readonly dialect: 'sqlite' | 'postgres';
   prepare(sql: string): PreparedStatement;
-  exec(sql: string): void | Promise<void>;
-  transaction<T>(fn: (db: DatabaseAdapter) => T | Promise<T>): T | Promise<T>;
-  close(): void | Promise<void>;
+  exec(sql: string): Promise<void>;
+  transaction<T>(fn: (db: DatabaseAdapter) => T | Promise<T>): Promise<T>;
+  close(): Promise<void>;
 }

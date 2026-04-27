@@ -126,9 +126,9 @@ describe('Label API Integration', () => {
 
     expect(res.status).toBe(204);
 
-    const after = db
+    const after = (await db
       .prepare('SELECT COUNT(*) as c FROM prompt_labels WHERE prompt_name = ? AND name = ?')
-      .get('welcome', 'production') as { c: number };
+      .get('welcome', 'production')) as { c: number };
     expect(after.c).toBe(0);
   });
 

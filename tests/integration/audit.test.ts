@@ -70,9 +70,9 @@ describe('Audit Logging Integration', () => {
     await auditLogService.flush();
 
     const db = getDb();
-    const row = db
+    const row = (await db
       .prepare('SELECT * FROM audit_logs WHERE prompt_name = ? ORDER BY timestamp DESC LIMIT 1')
-      .get('audit-test') as { action: string; api_key_name: string } | undefined;
+      .get('audit-test')) as { action: string; api_key_name: string } | undefined;
 
     expect(row).toBeDefined();
     expect(row!.action).toBe('create_prompt');

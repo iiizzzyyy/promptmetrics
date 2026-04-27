@@ -1,7 +1,4 @@
-export interface DatabaseAdapter {
-  exec(sql: string): void | Promise<void>;
-  readonly dialect: 'sqlite' | 'postgres';
-}
+import { DatabaseAdapter } from '../src/models/database.interface';
 
 export function idColumn(dialect: 'sqlite' | 'postgres'): string {
   return dialect === 'postgres' ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT';

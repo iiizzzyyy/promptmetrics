@@ -69,12 +69,12 @@ async function checkSqliteRateLimit(
 
   // Node.js is single-threaded; SELECT + INSERT/UPDATE is already atomic for one request.
   // A transaction wrapper would only add BEGIN...COMMIT overhead without concurrency benefit.
-  const row = db.prepare('SELECT window_start, count FROM rate_limits WHERE key = ?').get(apiKeyName) as
+  const row = (await db.prepare('SELECT window_start, count FROM rate_limits WHERE key = ?').get(apiKeyName)) as
     | { window_start: number; count: number }
     | undefined;
 
   if (!row || row.window_start < windowStart) {
-    db.prepare(
+    await db.prepare(
       `INSERT INTO rate_limits (key, window_start, count)
       VALUES (?, ?, ?)
       ON CONFLICT(key) DO UPDATE SET
@@ -97,7 +97,7 @@ async function checkSqliteRateLimit(
     return true;
   }
 
-  db.prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ?').run(apiKeyName);
+  await db.prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ?').run(apiKeyName);
   res.setHeader('RateLimit-Limit', String(maxRequests));
   res.setHeader('RateLimit-Remaining', String(maxRequests - row.count - 1));
   res.setHeader('RateLimit-Reset', String(Math.ceil((row.window_start + windowMs) / 1000)));

@@ -13,7 +13,7 @@ async function main(): Promise<void> {
       }[];
       tables = rows.map((r) => r.tablename);
     } else {
-      const rows = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[];
+      const rows = (await db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all()) as { name: string }[];
       tables = rows.map((r) => r.name);
     }
     console.log('Created tables:', tables.join(', '));

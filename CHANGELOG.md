@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] - 2026-04-27
+
+### Fixed
+
+- **fix(adapter):** Resolve PostgreSQL migrations failing because `db.exec()` was not awaited (#30).
+  - Make `DatabaseAdapter.exec()`, `close()`, and `transaction()` uniformly return `Promise<void>` (or `Promise<T>`).
+  - Make all `PreparedStatement` methods (`all`, `get`, `run`) uniformly return `Promise<...>`.
+  - Update `SqliteAdapter` and `SqlitePreparedStatement` to be fully async.
+  - Update `migrations/dialect-helpers.ts` to import `DatabaseAdapter` from the canonical interface (`src/models/database.interface`).
+  - Add `await` to all 6 migration files' `db.exec()` calls.
+  - Update callers in middleware, scripts, and tests to `await` adapter methods.
+
 ## [1.0.8] - 2026-04-27
 
 ### Changed

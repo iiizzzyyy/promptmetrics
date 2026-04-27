@@ -112,7 +112,7 @@ describe('Multi-Tenancy Integration', () => {
     expect(resA.status).toBe(202);
 
     const db = getDb();
-    const logA = db.prepare('SELECT workspace_id FROM logs WHERE prompt_name = ?').get('tenant-prompt') as {
+    const logA = (await db.prepare('SELECT workspace_id FROM logs WHERE prompt_name = ?').get('tenant-prompt')) as {
       workspace_id: string;
     };
     expect(logA.workspace_id).toBe('workspace-a');

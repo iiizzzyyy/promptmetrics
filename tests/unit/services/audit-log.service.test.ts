@@ -29,7 +29,7 @@ describe('AuditLogService', () => {
     await auditLogService.flush();
 
     const db = getDb();
-    const rows = db.prepare('SELECT * FROM audit_logs WHERE action = ?').all('test_action') as {
+    const rows = (await db.prepare('SELECT * FROM audit_logs WHERE action = ?').all('test_action')) as {
       action: string;
       api_key_name: string;
     }[];
@@ -45,7 +45,7 @@ describe('AuditLogService', () => {
     await auditLogService.flush();
 
     const db = getDb();
-    const count = (db.prepare('SELECT COUNT(*) as c FROM audit_logs').get() as { c: number }).c;
+    const count = ((await db.prepare('SELECT COUNT(*) as c FROM audit_logs').get()) as { c: number }).c;
     expect(count).toBe(3);
   });
 
@@ -58,7 +58,7 @@ describe('AuditLogService', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const db = getDb();
-    const count = (db.prepare('SELECT COUNT(*) as c FROM audit_logs').get() as { c: number }).c;
+    const count = ((await db.prepare('SELECT COUNT(*) as c FROM audit_logs').get()) as { c: number }).c;
     expect(count).toBe(100);
   });
 
@@ -76,14 +76,14 @@ describe('AuditLogService', () => {
     // Ensure the entry is still in buffer and can be flushed manually
     await auditLogService.flush();
     const db = getDb();
-    const count = (db.prepare('SELECT COUNT(*) as c FROM audit_logs').get() as { c: number }).c;
+    const count = ((await db.prepare('SELECT COUNT(*) as c FROM audit_logs').get()) as { c: number }).c;
     expect(count).toBe(1);
   });
 
   it('flush should be a no-op when buffer is empty', async () => {
     await auditLogService.flush();
     const db = getDb();
-    const count = (db.prepare('SELECT COUNT(*) as c FROM audit_logs').get() as { c: number }).c;
+    const count = ((await db.prepare('SELECT COUNT(*) as c FROM audit_logs').get()) as { c: number }).c;
     expect(count).toBe(0);
   });
 
@@ -98,7 +98,7 @@ describe('AuditLogService', () => {
     await auditLogService.flush();
 
     const db = getDb();
-    const row = db.prepare('SELECT * FROM audit_logs WHERE action = ?').get('create_prompt') as {
+    const row = (await db.prepare('SELECT * FROM audit_logs WHERE action = ?').get('create_prompt')) as {
       prompt_name: string;
       version_tag: string;
     };

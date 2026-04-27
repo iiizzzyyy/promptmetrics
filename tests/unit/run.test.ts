@@ -119,7 +119,7 @@ describe('RunController', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect((res.json as jest.Mock).mock.calls[0][0].status).toBe('updated');
 
-    const updated = db.prepare('SELECT * FROM runs WHERE run_id = ?').get(runId) as {
+    const updated = (await db.prepare('SELECT * FROM runs WHERE run_id = ?').get(runId)) as {
       status: string;
       output_json: string;
     };

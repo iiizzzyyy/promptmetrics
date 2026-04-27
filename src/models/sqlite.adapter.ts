@@ -4,15 +4,15 @@ import { DatabaseAdapter, PreparedStatement } from './database.interface';
 class SqlitePreparedStatement implements PreparedStatement {
   constructor(private readonly stmt: Database.Statement) {}
 
-  all(...params: unknown[]): unknown[] {
+  async all(...params: unknown[]): Promise<unknown[]> {
     return this.stmt.all(...params) as unknown[];
   }
 
-  get(...params: unknown[]): unknown | undefined {
+  async get(...params: unknown[]): Promise<unknown | undefined> {
     return (this.stmt.get(...params) as unknown) || undefined;
   }
 
-  run(...params: unknown[]): { lastInsertRowid: number | bigint; changes: number } {
+  async run(...params: unknown[]): Promise<{ lastInsertRowid: number | bigint; changes: number }> {
     const result = this.stmt.run(...params);
     return { lastInsertRowid: result.lastInsertRowid, changes: result.changes };
   }
@@ -26,26 +26,14 @@ export class SqliteAdapter implements DatabaseAdapter {
     return new SqlitePreparedStatement(this.db.prepare(sql));
   }
 
-  exec(sql: string): void {
+  async exec(sql: string): Promise<void> {
     this.db.exec(sql);
   }
 
-  transaction<T>(fn: (db: DatabaseAdapter) => T | Promise<T>): T | Promise<T> {
+  async transaction<T>(fn: (db: DatabaseAdapter) => T | Promise<T>): Promise<T> {
     this.db.exec('BEGIN');
     try {
-      const result = fn(this);
-      if (result instanceof Promise) {
-        return result.then(
-          (value) => {
-            this.db.exec('COMMIT');
-            return value;
-          },
-          (err) => {
-            this.db.exec('ROLLBACK');
-            throw err;
-          },
-        );
-      }
+      const result = await fn(this);
       this.db.exec('COMMIT');
       return result;
     } catch (err) {
@@ -54,7 +42,7 @@ export class SqliteAdapter implements DatabaseAdapter {
     }
   }
 
-  close(): void {
+  async close(): Promise<void> {
     this.db.close();
   }
 }

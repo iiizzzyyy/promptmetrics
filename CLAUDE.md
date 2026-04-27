@@ -102,7 +102,7 @@ PromptMetrics uses a two-tier storage architecture that spans multiple files:
 ## Critical Patterns to Know
 
 1. **Driver pattern for storage:** All prompt read/write operations go through the `PromptDriver` interface. When adding a new storage backend, implement this interface and add a case in `promptmetrics-driver.factory.ts`.
-2. **Synchronous SQLite:** `better-sqlite3` is synchronous. Controllers call `db.prepare().all()` and block the event loop. This is intentional but means heavy DB operations will stall the server.
+2. **Async DatabaseAdapter:** The `DatabaseAdapter` interface is uniformly async across SQLite and PostgreSQL backends. All query methods (`exec`, `all`, `get`, `run`, `transaction`) return `Promise`s. Controllers `await` every DB call. The SQLite adapter wraps `better-sqlite3` to satisfy this contract.
 3. **Service layer exists:** `PromptService`, `LogService`, `TraceService`, `RunService`, `LabelService`, and `EvaluationService` encapsulate business logic. Controllers are thin and delegate to services.
 4. **No ORM:** All SQL is hand-written in services and drivers. There are no models or repositories beyond the `getDb()` connection manager.
-5. **Schema migrations via umzug:** Numbered SQL files in `migrations/` are applied by `umzug` on startup.
+5. **Schema migrations via umzug:** Numbered TypeScript migration files in `migrations/` are applied by `umzug` on startup.

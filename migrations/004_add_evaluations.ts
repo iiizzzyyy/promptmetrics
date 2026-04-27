@@ -1,9 +1,10 @@
-import { DatabaseAdapter, idColumn, nowFn } from './dialect-helpers';
+import { DatabaseAdapter } from '../src/models/database.interface';
+import { idColumn, nowFn } from './dialect-helpers';
 
 export async function up(db: DatabaseAdapter): Promise<void> {
   const d = db.dialect;
 
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS evaluations (
       id ${idColumn(d)},
       name TEXT NOT NULL,
@@ -33,7 +34,7 @@ export async function up(db: DatabaseAdapter): Promise<void> {
 }
 
 export async function down(db: DatabaseAdapter): Promise<void> {
-  db.exec(`
+  await db.exec(`
     DROP TABLE IF EXISTS evaluation_results;
     DROP TABLE IF EXISTS evaluations;
   `);

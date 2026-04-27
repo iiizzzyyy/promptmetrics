@@ -80,7 +80,7 @@ class TransactionPostgresAdapter implements DatabaseAdapter {
     await this.client.query(sql);
   }
 
-  transaction<T>(_fn: (db: DatabaseAdapter) => T | Promise<T>): T | Promise<T> {
+  async transaction<T>(_fn: (db: DatabaseAdapter) => T | Promise<T>): Promise<T> {
     throw new Error('Nested transactions are not supported');
   }
 

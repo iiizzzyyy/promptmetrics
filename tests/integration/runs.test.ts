@@ -111,7 +111,7 @@ describe('Run API Integration', () => {
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('updated');
 
-    const updated = db.prepare('SELECT * FROM runs WHERE run_id = ?').get(runId) as {
+    const updated = (await db.prepare('SELECT * FROM runs WHERE run_id = ?').get(runId)) as {
       status: string;
       output_json: string;
     };

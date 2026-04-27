@@ -1,7 +1,7 @@
-import { DatabaseAdapter } from './dialect-helpers';
+import { DatabaseAdapter } from '../src/models/database.interface';
 
 export async function up(db: DatabaseAdapter): Promise<void> {
-  db.exec(`
+  await db.exec(`
     ALTER TABLE api_keys ADD COLUMN workspace_id TEXT DEFAULT 'default';
     ALTER TABLE prompts ADD COLUMN workspace_id TEXT DEFAULT 'default';
     ALTER TABLE logs ADD COLUMN workspace_id TEXT DEFAULT 'default';
@@ -26,7 +26,7 @@ export async function up(db: DatabaseAdapter): Promise<void> {
 }
 
 export async function down(db: DatabaseAdapter): Promise<void> {
-  db.exec(`
+  await db.exec(`
     DROP INDEX IF EXISTS idx_prompts_workspace;
     DROP INDEX IF EXISTS idx_logs_workspace;
     DROP INDEX IF EXISTS idx_traces_workspace;
