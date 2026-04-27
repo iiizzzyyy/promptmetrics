@@ -23,7 +23,15 @@ export async function getCachedPrompt(key: string): Promise<CachedPrompt | undef
     if (redis) {
       const raw = await redis.get(key);
       if (raw) {
-        return JSON.parse(raw) as CachedPrompt;
+        try {
+          return JSON.parse(raw) as CachedPrompt;
+        } catch (err) {
+          if (err instanceof SyntaxError) {
+            await redis.del(key);
+            return undefined;
+          }
+          throw err;
+        }
       }
     }
   }

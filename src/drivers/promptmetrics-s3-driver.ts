@@ -44,6 +44,12 @@ export class S3Driver implements PromptDriver {
     return version ? `${this.prefix}${name}/${version}.json` : `${this.prefix}${name}/`;
   }
 
+  private validateName(name: string): void {
+    if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+      throw new Error('Invalid prompt name: path traversal detected');
+    }
+  }
+
   async listPrompts(page: number = 1, limit: number = 50): Promise<{ items: string[]; total: number }> {
     const command = new ListObjectsV2Command({
       Bucket: this.bucket,
@@ -66,6 +72,7 @@ export class S3Driver implements PromptDriver {
     name: string,
     version?: string,
   ): Promise<{ content: PromptFile; version: PromptVersion } | undefined> {
+    this.validateName(name);
     let versionTag = version;
     if (!versionTag) {
       const versions = await this.listVersions(name, 1, 1);
@@ -94,6 +101,7 @@ export class S3Driver implements PromptDriver {
   }
 
   async createPrompt(prompt: PromptFile): Promise<PromptVersion> {
+    this.validateName(prompt.name);
     const key = this.key(prompt.name, prompt.version);
     const body = JSON.stringify(prompt, null, 2);
     await this.client.send(
@@ -126,6 +134,7 @@ export class S3Driver implements PromptDriver {
     page: number = 1,
     limit: number = 50,
   ): Promise<{ items: PromptVersion[]; total: number }> {
+    this.validateName(name);
     const command = new ListObjectsV2Command({
       Bucket: this.bucket,
       Prefix: this.key(name),
@@ -154,6 +163,7 @@ export class S3Driver implements PromptDriver {
   }
 
   async search(query: string): Promise<string[]> {
+    this.validateName(query);
     const all = await this.listPrompts(1, Number.MAX_SAFE_INTEGER);
     return all.items.filter((name) => name.toLowerCase().includes(query.toLowerCase()));
   }

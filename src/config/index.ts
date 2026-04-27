@@ -11,6 +11,14 @@ function getEnv(key: string, required: boolean = false, defaultValue?: string): 
   return value || defaultValue;
 }
 
+function getEnvWithMinLength(key: string, minLength: number, required: boolean = false, defaultValue?: string): string | undefined {
+  const value = getEnv(key, required, defaultValue);
+  if (value && value.length < minLength) {
+    throw new Error(`Environment variable ${key} must be at least ${minLength} characters long (got ${value.length})`);
+  }
+  return value;
+}
+
 function getEnvInt(key: string, defaultValue: number): number {
   const value = process.env[key];
   if (!value) return defaultValue;
@@ -28,11 +36,12 @@ function getEnvBool(key: string, defaultValue: boolean = false): boolean {
 export const config = {
   port: getEnvInt('PORT', 3000),
   nodeEnv: getEnv('NODE_ENV', false, 'development') as string,
-  apiKeySalt: getEnv('API_KEY_SALT', true) as string,
+  apiKeySalt: getEnvWithMinLength('API_KEY_SALT', 16, true) as string,
   driver: getEnv('DRIVER', false, 'filesystem') as 'filesystem' | 'github' | 's3',
   sqlitePath: getEnv('SQLITE_PATH', false, './data/promptmetrics.db') as string,
   githubRepo: getEnv('GITHUB_REPO') as string | undefined,
   githubToken: getEnv('GITHUB_TOKEN') as string | undefined,
+  githubWebhookSecret: getEnv('GITHUB_WEBHOOK_SECRET') as string | undefined,
   githubSyncIntervalMs: getEnvInt('GITHUB_SYNC_INTERVAL_MS', 60000),
   otelEnabled: getEnvBool('OTEL_ENABLED', false),
   otelExporterEndpoint: getEnv('OTEL_EXPORTER_OTLP_ENDPOINT') as string | undefined,

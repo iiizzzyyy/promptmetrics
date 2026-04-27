@@ -10,6 +10,9 @@ export class PromptController {
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
     const query = req.query.q as string | undefined;
+    if (query && query.length > 256) {
+      throw AppError.badRequest('Search query exceeds maximum length of 256 characters');
+    }
 
     const workspaceId = req.workspaceId || 'default';
     const result = await this.service.listPrompts(workspaceId, page, limit, query);
@@ -32,10 +35,6 @@ export class PromptController {
         },
         {} as Record<string, string>,
       );
-    }
-
-    if (req.body && req.body.variables && typeof req.body.variables === 'object') {
-      variables = { ...variables, ...req.body.variables };
     }
 
     const result = await this.service.getPrompt(workspaceId, name, version, variables, shouldRender);

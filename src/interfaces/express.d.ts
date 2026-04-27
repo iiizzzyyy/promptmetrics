@@ -10,6 +10,7 @@ declare global {
       };
       requestId?: string;
       workspaceId?: string;
+      validatedQuery?: Record<string, unknown>;
     }
   }
 }

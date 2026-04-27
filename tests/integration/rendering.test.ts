@@ -87,13 +87,10 @@ describe('Template Rendering Integration', () => {
     ]);
   });
 
-  it('should render messages with variables from POST body', async () => {
+  it('should render messages with variables from query string', async () => {
     const res = await request(app)
-      .get('/v1/prompts/greeting')
-      .set('X-API-Key', apiKey)
-      .send({
-        variables: { name: 'Bob', age: '25', role: 'manager' },
-      });
+      .get('/v1/prompts/greeting?variables[name]=Bob&variables[age]=25&variables[role]=manager')
+      .set('X-API-Key', apiKey);
 
     expect(res.status).toBe(200);
     expect(res.body.content.messages).toEqual([

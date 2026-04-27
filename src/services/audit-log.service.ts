@@ -14,6 +14,7 @@ class AuditLogService {
   private readonly maxBufferSize = 100;
   private flushIntervalMs = 5000;
   private timer: ReturnType<typeof setInterval> | null = null;
+  private droppedCount = 0;
 
   start(): void {
     if (this.timer) return;
@@ -32,7 +33,23 @@ class AuditLogService {
   enqueue(entry: AuditLogEntry): void {
     this.buffer.push(entry);
     if (this.buffer.length >= this.maxBufferSize) {
-      this.flush().catch((err) => console.error('Audit log flush failed:', err));
+      this.flushWithRetry().catch((err) => {
+        console.error('Audit log flush failed after retries:', err);
+        this.droppedCount += this.buffer.length;
+        this.buffer = [];
+      });
+    }
+  }
+
+  private async flushWithRetry(maxAttempts = 3, delayMs = 100): Promise<void> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await this.flush();
+        return;
+      } catch (err) {
+        if (attempt === maxAttempts) throw err;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
     }
   }
 
@@ -59,6 +76,10 @@ class AuditLogService {
         console.error('Failed to write audit log entry:', err);
       }
     }
+  }
+
+  getMetrics(): { droppedCount: number } {
+    return { droppedCount: this.droppedCount };
   }
 }
 

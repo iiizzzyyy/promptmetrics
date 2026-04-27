@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { getDb } from '@models/promptmetrics-sqlite';
 import { getRedisClient } from '@services/redis.service';
+import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
 
 // Rate-limit configuration -- overridable via environment for CI/test environments.
 // Production defaults: 100 requests per 60-second window.
@@ -16,7 +17,7 @@ function getDbOrNull() {
 }
 
 async function checkRedisRateLimit(
-  apiKeyName: string,
+  rateLimitKey: string,
   windowMs: number,
   maxRequests: number,
   res: Response,
@@ -26,7 +27,7 @@ async function checkRedisRateLimit(
 
   const now = Date.now();
   const windowStart = Math.floor(now / windowMs) * windowMs;
-  const key = `rate_limit:${apiKeyName}:${windowStart}`;
+  const key = `rate_limit:${rateLimitKey}:${windowStart}`;
   const ttlSeconds = Math.ceil(windowMs / 1000);
 
   const pipeline = redis.pipeline();
@@ -34,7 +35,15 @@ async function checkRedisRateLimit(
   pipeline.expire(key, ttlSeconds);
   const results = await pipeline.exec();
 
-  const count = results?.[0]?.[1] as number | undefined;
+  const incrResult = results?.[0];
+  const expireResult = results?.[1];
+
+  // If either command failed, skip rate limiting to avoid permanently blocking
+  if (incrResult?.[0] || expireResult?.[0]) {
+    return false;
+  }
+
+  const count = incrResult?.[1] as number | undefined;
   if (count === undefined) return false;
 
   const remaining = Math.max(0, maxRequests - count);
@@ -56,7 +65,7 @@ async function checkRedisRateLimit(
 }
 
 async function checkSqliteRateLimit(
-  apiKeyName: string,
+  rateLimitKey: string,
   windowMs: number,
   maxRequests: number,
   res: Response,
@@ -67,28 +76,34 @@ async function checkSqliteRateLimit(
   const now = Date.now();
   const windowStart = Math.floor(now / windowMs) * windowMs;
 
-  // Node.js is single-threaded; SELECT + INSERT/UPDATE is already atomic for one request.
-  // A transaction wrapper would only add BEGIN...COMMIT overhead without concurrency benefit.
-  const row = (await db.prepare('SELECT window_start, count FROM rate_limits WHERE key = ?').get(apiKeyName)) as
-    | { window_start: number; count: number }
-    | undefined;
+  const updateResult = await db.prepare(
+    'UPDATE rate_limits SET count = count + 1 WHERE key = ? AND window_start = ? AND count < ?'
+  ).run(rateLimitKey, windowStart, maxRequests);
 
-  if (!row || row.window_start < windowStart) {
-    await db.prepare(
+  let incremented = updateResult.changes > 0;
+
+  if (!incremented) {
+    const insertResult = await db.prepare(
       `INSERT INTO rate_limits (key, window_start, count)
-      VALUES (?, ?, ?)
-      ON CONFLICT(key) DO UPDATE SET
-        window_start = excluded.window_start,
-        count = excluded.count`,
-    ).run(apiKeyName, windowStart, 1);
-    res.setHeader('RateLimit-Limit', String(maxRequests));
-    res.setHeader('RateLimit-Remaining', String(maxRequests - 1));
-    res.setHeader('RateLimit-Reset', String(Math.ceil((windowStart + windowMs) / 1000)));
-    return false;
+       VALUES (?, ?, 1)
+       ON CONFLICT(key) DO UPDATE SET
+         window_start = excluded.window_start,
+         count = excluded.count
+       WHERE rate_limits.window_start < excluded.window_start`
+    ).run(rateLimitKey, windowStart);
+    incremented = insertResult.changes > 0;
+
+    if (!incremented) {
+      // Another request may have initialized the row; retry the atomic update once.
+      const retryResult = await db.prepare(
+        'UPDATE rate_limits SET count = count + 1 WHERE key = ? AND window_start = ? AND count < ?'
+      ).run(rateLimitKey, windowStart, maxRequests);
+      incremented = retryResult.changes > 0;
+    }
   }
 
-  if (row.count >= maxRequests) {
-    const retryAfter = Math.ceil((row.window_start + windowMs - now) / 1000);
+  if (!incremented) {
+    const retryAfter = Math.ceil((windowStart + windowMs - now) / 1000);
     res.setHeader('Retry-After', String(retryAfter));
     res.status(429).json({
       error: 'Rate limit exceeded',
@@ -97,22 +112,26 @@ async function checkSqliteRateLimit(
     return true;
   }
 
-  await db.prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ?').run(apiKeyName);
+  const row = (await db.prepare('SELECT count FROM rate_limits WHERE key = ?').get(rateLimitKey)) as
+    | { count: number }
+    | undefined;
+
+  const count = row?.count ?? 1;
   res.setHeader('RateLimit-Limit', String(maxRequests));
-  res.setHeader('RateLimit-Remaining', String(maxRequests - row.count - 1));
-  res.setHeader('RateLimit-Reset', String(Math.ceil((row.window_start + windowMs) / 1000)));
+  res.setHeader('RateLimit-Remaining', String(Math.max(0, maxRequests - count)));
+  res.setHeader('RateLimit-Reset', String(Math.ceil((windowStart + windowMs) / 1000)));
   return false;
 }
 
 export function rateLimitPerKey(windowMs = WINDOW_MS, maxRequests = DEFAULT_MAX) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const apiKeyName = req.apiKey?.name;
+    const apiKeyValue = req.headers['x-api-key'] as string | undefined;
     const workspaceId = req.workspaceId || 'default';
-    if (!apiKeyName) {
+    if (!apiKeyValue) {
       return next();
     }
 
-    const rateLimitKey = `${workspaceId}:${apiKeyName}`;
+    const rateLimitKey = `${workspaceId}:${hashApiKey(apiKeyValue)}`;
 
     const redis = getRedisClient();
     if (redis) {

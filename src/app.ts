@@ -18,6 +18,7 @@ import { createLabelRoutes } from '@routes/promptmetrics-label.route';
 import { createWebhookRoutes } from '@routes/webhook.route';
 import { createEvaluationRoutes } from '@routes/evaluation.route';
 import { createApiKeyRoutes } from '@routes/api-key.route';
+import { createAuditLogRoutes } from '@routes/audit-log.route';
 import { requestIdMiddleware } from '@middlewares/promptmetrics-request-id.middleware';
 import { errorHandlerMiddleware } from '@middlewares/promptmetrics-error-handler.middleware';
 import { tenantMiddleware } from '@middlewares/tenant.middleware';
@@ -52,6 +53,7 @@ export function createApp(driver?: PromptDriver): Application {
   app.use('/', createLabelRoutes());
   app.use('/', createEvaluationRoutes());
   app.use('/', createApiKeyRoutes());
+  app.use('/', createAuditLogRoutes());
 
   app.use(errorHandlerMiddleware);
 

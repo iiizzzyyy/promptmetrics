@@ -40,8 +40,21 @@ export class GithubDriver implements PromptDriver {
   private async ensureCloned(): Promise<void> {
     if (!fs.existsSync(this.clonePath)) {
       fs.mkdirSync(path.dirname(this.clonePath), { recursive: true });
-      const git = simpleGit();
-      await git.clone(`https://${this.token}@github.com/${this.repo}.git`, this.clonePath);
+      const askPassScript = path.join(path.dirname(this.clonePath), `.git-askpass-${Date.now()}`);
+      fs.writeFileSync(askPassScript, `#!/bin/sh\necho "${this.token}"\n`, { mode: 0o700 });
+      try {
+        const git = simpleGit();
+        await git
+          .env({
+            GIT_ASKPASS: askPassScript,
+            GIT_USERNAME: 'x-access-token',
+          })
+          .clone(`https://github.com/${this.repo}.git`, this.clonePath);
+      } finally {
+        if (fs.existsSync(askPassScript)) {
+          fs.unlinkSync(askPassScript);
+        }
+      }
     }
   }
 
@@ -52,7 +65,7 @@ export class GithubDriver implements PromptDriver {
   }
 
   async listPrompts(page: number = 1, limit: number = 50): Promise<{ items: string[]; total: number }> {
-    this.ensureCloned();
+    await this.ensureCloned();
     const promptsDir = path.join(this.clonePath, 'prompts');
     if (!fs.existsSync(promptsDir)) return { items: [], total: 0 };
 
@@ -94,7 +107,7 @@ export class GithubDriver implements PromptDriver {
     version?: string,
   ): Promise<{ content: PromptFile; version: PromptVersion } | undefined> {
     this.validateName(name);
-    this.ensureCloned();
+    await this.ensureCloned();
 
     const promptDir = path.join(this.clonePath, 'prompts', name);
     if (!fs.existsSync(promptDir)) return undefined;
@@ -129,7 +142,11 @@ export class GithubDriver implements PromptDriver {
           created_at: Math.floor(Date.now() / 1000),
         },
       };
-    } catch {
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') {
+        return undefined;
+      }
+      console.error(`GithubDriver.getPrompt failed for ${name}:`, err);
       return undefined;
     }
   }
@@ -139,14 +156,14 @@ export class GithubDriver implements PromptDriver {
     encodedContent: string,
     existingSha: string | undefined,
     tagName: string,
-  ): Promise<void> {
+  ): Promise<string> {
     const url = `${this.apiBase}/repos/${this.repo}/contents/${filePath}`;
 
     // Exponential backoff retry
     let lastError: Error | undefined;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        await axios.put(
+        const response = await axios.put(
           url,
           {
             message: `Create/Update prompt: ${filePath}`,
@@ -155,6 +172,8 @@ export class GithubDriver implements PromptDriver {
           },
           { headers: this.getAuthHeaders() },
         );
+
+        const blobSha = (response.data as { content: { sha: string } }).content.sha;
 
         // Create tag
         await axios.post(
@@ -166,7 +185,7 @@ export class GithubDriver implements PromptDriver {
           { headers: this.getAuthHeaders() },
         );
 
-        return;
+        return blobSha;
       } catch (err) {
         lastError = err as Error;
         const status = (err as { response?: { status?: number } }).response?.status;
@@ -200,7 +219,7 @@ export class GithubDriver implements PromptDriver {
     }
 
     // Use circuit breaker for GitHub content creation
-    await this.createContentBreaker.fire(filePath, encodedContent, existingSha, tagName);
+    const blobSha = (await this.createContentBreaker.fire(filePath, encodedContent, existingSha, tagName)) as string;
 
     const version: PromptVersion = {
       name: prompt.name,
@@ -232,7 +251,7 @@ export class GithubDriver implements PromptDriver {
           headers: this.getAuthHeaders(),
           data: {
             message: `Revert prompt: ${prompt.name} v${prompt.version}`,
-            sha: existingSha || (await this.getLatestSha()) || '',
+            sha: blobSha,
           },
         });
       } catch {

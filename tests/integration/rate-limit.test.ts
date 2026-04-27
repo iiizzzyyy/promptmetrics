@@ -15,7 +15,7 @@ describe('Per-API-Key Rate Limiting', () => {
 
   beforeAll(async () => {
     process.env.SQLITE_PATH = testDbPath;
-    process.env.API_KEY_SALT = 'test-salt';
+    process.env.API_KEY_SALT = 'test-salt-for-ci';
 
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
@@ -27,12 +27,12 @@ describe('Per-API-Key Rate Limiting', () => {
     const db = getDb();
     keyA = 'pm_key_a';
     keyB = 'pm_key_b';
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
       hashApiKey(keyA),
       'key-a',
       'read,write',
     );
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
       hashApiKey(keyB),
       'key-b',
       'read,write',
@@ -53,7 +53,9 @@ describe('Per-API-Key Rate Limiting', () => {
     const router = Router();
     router.use((req, _res, next) => {
       // manually attach apiKey so rate limiter can read it
-      req.apiKey = { name: req.headers['x-test-key'] as string, scopes: ['read'] };
+      const keyValue = req.headers['x-test-key'] as string;
+      req.apiKey = { name: keyValue, scopes: ['read'] };
+      req.headers['x-api-key'] = keyValue;
       next();
     });
     router.use(rateLimitPerKey(60_000, 3));
@@ -81,6 +83,7 @@ describe('Per-API-Key Rate Limiting', () => {
     const router = Router();
     router.use((req, _res, next) => {
       req.apiKey = { name: 'limited-key', scopes: ['read'] };
+      req.headers['x-api-key'] = 'limited-key-value';
       next();
     });
     router.use(rateLimitPerKey(60_000, 2));

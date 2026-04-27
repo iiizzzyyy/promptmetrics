@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { PromptDriver, PromptFile, PromptVersion } from './promptmetrics-driver.interface';
-import { withTransaction } from '@models/promptmetrics-sqlite';
+import { getDb } from '@models/promptmetrics-sqlite';
 
 export class FilesystemDriver implements PromptDriver {
   private readonly basePath: string;
@@ -94,18 +94,17 @@ export class FilesystemDriver implements PromptDriver {
       created_at: Math.floor(stats.mtime.getTime() / 1000),
     };
 
-    await withTransaction(async (db) => {
-      await db
-        .prepare(
-          `INSERT INTO prompts (name, version_tag, fs_path, driver, created_at)
-          VALUES (?, ?, ?, ?, ?)
-          ON CONFLICT(name, version_tag) DO UPDATE SET
-            fs_path = excluded.fs_path,
-            driver = excluded.driver,
-            created_at = excluded.created_at`,
-        )
-        .run(prompt.name, prompt.version, filePath, 'filesystem', version.created_at);
-    });
+    const db = getDb();
+    await db
+      .prepare(
+        `INSERT INTO prompts (name, version_tag, fs_path, driver, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(name, version_tag) DO UPDATE SET
+          fs_path = excluded.fs_path,
+          driver = excluded.driver,
+          created_at = excluded.created_at`,
+      )
+      .run(prompt.name, prompt.version, filePath, 'filesystem', version.created_at);
 
     return version;
   }

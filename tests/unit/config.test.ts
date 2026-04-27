@@ -15,7 +15,7 @@ describe('Config', () => {
 
   it('should load default values', () => {
     process.env.PORT = '3000';
-    process.env.API_KEY_SALT = 'test-salt';
+    process.env.API_KEY_SALT = 'test-salt-for-ci';
     delete process.env.NODE_ENV;
 
     jest.isolateModules(() => {
@@ -33,7 +33,7 @@ describe('Config', () => {
   it('should parse integer values', () => {
     process.env.PORT = '8080';
     process.env.GITHUB_SYNC_INTERVAL_MS = '30000';
-    process.env.API_KEY_SALT = 'test-salt';
+    process.env.API_KEY_SALT = 'test-salt-for-ci';
     delete process.env.NODE_ENV;
 
     jest.isolateModules(() => {

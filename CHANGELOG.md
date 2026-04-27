@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.10] - 2026-04-27
+
+### Security
+
+- **fix(github-driver):** Remove token from clone URL and use `GIT_ASKPASS` credential helper (#37).
+- **fix(s3-driver):** Add prompt name validation to prevent path traversal via malicious object keys (#44).
+- **fix(rate-limit):** Use hashed API key instead of key name for rate-limit counters to prevent cross-key bucket sharing (#45).
+- **fix(webhook):** Read `GITHUB_WEBHOOK_SECRET` at request time instead of caching at startup (#51).
+- **fix(config):** Enforce minimum 16-character `API_KEY_SALT` at startup (#52).
+- **fix(tenant):** Validate `X-Workspace-Id` header against `a-zA-Z0-9_-` with max 128 characters (#53).
+
+### Fixed
+
+- **fix(postgres):** Append `RETURNING id` to INSERT statements so `lastInsertRowid` returns actual row IDs (#32).
+- **fix(postgres):** Add pool error handler to prevent uncaught exceptions from crashing Node (#40).
+- **fix(postgres):** Preserve original error when ROLLBACK fails during transaction cleanup (#49).
+- **fix(github-driver):** Add missing `await` to `ensureCloned()` calls to prevent race conditions (#33).
+- **fix(github-driver):** Use blob SHA from GitHub API response for revert DELETE on DB failure (#36).
+- **fix(github-driver):** Distinguish ENOENT/404 from internal errors instead of swallowing all exceptions (#59).
+- **fix(rate-limit):** Validate both INCR and EXPIRE pipeline results in Redis path to avoid permanent API key blocking (#34).
+- **fix(rate-limit):** Replace SQLite SELECT-then-UPDATE with atomic UPDATE + INSERT ON CONFLICT to eliminate read-modify-write races (#35).
+- **fix(cache):** Wrap `JSON.parse` in try/catch to survive corrupted Redis cache entries (#38).
+- **fix(redis):** Close connection-leak race window in `getRedisClient()` singleton initialization (#39).
+- **fix(audit):** Add bounded retry queue and `droppedCount` metric when audit log flush fails (#42).
+- **fix(audit):** Truncate `prompt_name` and `version_tag` to 256 characters before enqueueing (#57).
+- **fix(filesystem-driver):** Remove redundant `withTransaction()` wrapper around single INSERT ON CONFLICT statement (#60).
+- **fix(migrations):** Wrap `down()` in `db.transaction()` for atomic rollback safety (#48).
+- **fix(tests):** Add `await` to all `db.prepare(...).run(...)` calls in test `beforeAll` blocks to eliminate flakiness (#43).
+
+### Changed
+
+- **refactor(routes):** Move `/v1/audit-logs` from prompt route to dedicated `src/routes/audit-log.route.ts` (#54).
+- **refactor(config):** Centralize `GITHUB_WEBHOOK_SECRET` in config object (#51).
+- **refactor(run):** Replace dynamic SQL construction with `buildPartialUpdate()` utility for prepared statement reuse (#58).
+- **refactor(errors):** Add `AppError.toJSON()` for consistent serialization (#56).
+- **refactor(types):** Correct `listApiKeys` return type from `PaginatedResponse<Omit<ApiKey, 'id'>>` to `PaginatedResponse<ApiKey>` (#55).
+- **refactor(validation):** Change `validateQuery` middleware to write validated values to `req.validatedQuery` instead of mutating `req.query` (#50).
+- **fix(validation):** Reject prompt search queries longer than 256 characters (#46).
+- **fix(validation):** Ignore request body on `GET /v1/prompts/:name` (#47).
+- **fix(package):** Correct `dotenv` version from non-existent `^17.2.2` to `^16.4.5` (#61).
+
 ## [1.0.9] - 2026-04-27
 
 ### Fixed

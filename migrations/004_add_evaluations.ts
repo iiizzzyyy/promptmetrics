@@ -34,8 +34,10 @@ export async function up(db: DatabaseAdapter): Promise<void> {
 }
 
 export async function down(db: DatabaseAdapter): Promise<void> {
-  await db.exec(`
-    DROP TABLE IF EXISTS evaluation_results;
-    DROP TABLE IF EXISTS evaluations;
-  `);
+  await db.transaction(async (trx) => {
+    await trx.exec(`
+      DROP TABLE IF EXISTS evaluation_results;
+      DROP TABLE IF EXISTS evaluations;
+    `);
+  });
 }

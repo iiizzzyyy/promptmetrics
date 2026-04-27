@@ -34,4 +34,13 @@ export class AppError extends Error {
   static internal(message?: string): AppError {
     return new AppError(message || 'Internal server error', 500, 'INTERNAL_ERROR');
   }
+
+  toJSON() {
+    return {
+      message: this.message,
+      statusCode: this.statusCode,
+      code: this.code,
+      details: this.details,
+    };
+  }
 }

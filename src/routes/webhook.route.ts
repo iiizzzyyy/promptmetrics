@@ -13,9 +13,9 @@ function verifySignature(payload: string, signature: string, secret: string): bo
 
 export function createWebhookRoutes(driver: PromptDriver): Router {
   const router = Router();
-  const secret = process.env.GITHUB_WEBHOOK_SECRET;
 
   router.post('/webhooks/github', async (req: Request, res: Response): Promise<void> => {
+    const secret = process.env.GITHUB_WEBHOOK_SECRET;
     if (!secret) {
       res.status(500).json({ error: 'Webhook secret not configured' });
       return;

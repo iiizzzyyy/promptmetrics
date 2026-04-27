@@ -58,7 +58,7 @@ export class ApiKeyService {
     limit: number,
     callerWorkspaceId: string,
     isAdmin: boolean,
-  ): Promise<PaginatedResponse<Omit<ApiKey, 'id'>>> {
+  ): Promise<PaginatedResponse<ApiKey>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
 

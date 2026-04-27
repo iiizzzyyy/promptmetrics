@@ -4,11 +4,8 @@ let redisClient: Redis | null = null;
 
 export function getRedisClient(): Redis | null {
   if (redisClient) return redisClient;
-
-  const redisUrl = process.env.REDIS_URL;
-  if (!redisUrl) return null;
-
-  redisClient = new Redis(redisUrl);
+  if (!process.env.REDIS_URL) return null;
+  redisClient = new Redis(process.env.REDIS_URL);
   return redisClient;
 }
 

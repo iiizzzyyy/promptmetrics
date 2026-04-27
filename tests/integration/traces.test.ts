@@ -27,7 +27,7 @@ describe('Trace API Integration', () => {
     const db = getDb();
     apiKey = 'pm_testtrace789';
     const keyHash = hashApiKey(apiKey);
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
       keyHash,
       'test-trace-key',
       'read,write',

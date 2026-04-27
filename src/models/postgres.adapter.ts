@@ -23,7 +23,11 @@ class PostgresPreparedStatement implements PreparedStatement {
   }
 
   async run(...params: unknown[]): Promise<{ lastInsertRowid: number | bigint; changes: number }> {
-    const result = await this.pool.query(this.rewritePlaceholders(this.sql), params);
+    let sql = this.rewritePlaceholders(this.sql);
+    if (/^\s*INSERT\b/i.test(sql) && !/\bRETURNING\b/i.test(sql)) {
+      sql += ' RETURNING id';
+    }
+    const result = await this.pool.query(sql, params);
     return {
       lastInsertRowid: result.rows[0]?.id ?? 0,
       changes: result.rowCount ?? 0,
@@ -37,6 +41,9 @@ export class PostgresAdapter implements DatabaseAdapter {
 
   constructor(connectionString: string) {
     this.pool = new Pool({ connectionString });
+    this.pool.on('error', (err) => {
+      console.error('Postgres pool error:', err);
+    });
   }
 
   prepare(sql: string): PreparedStatement {
@@ -56,7 +63,11 @@ export class PostgresAdapter implements DatabaseAdapter {
       await client.query('COMMIT');
       return result as T;
     } catch (err) {
-      await client.query('ROLLBACK');
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackErr) {
+        (err as any).cause = rollbackErr;
+      }
       throw err;
     } finally {
       client.release();
@@ -111,7 +122,11 @@ class TransactionPreparedStatement implements PreparedStatement {
   }
 
   async run(...params: unknown[]): Promise<{ lastInsertRowid: number | bigint; changes: number }> {
-    const result = await this.client.query(this.rewritePlaceholders(this.sql), params);
+    let sql = this.rewritePlaceholders(this.sql);
+    if (/^\s*INSERT\b/i.test(sql) && !/\bRETURNING\b/i.test(sql)) {
+      sql += ' RETURNING id';
+    }
+    const result = await this.client.query(sql, params);
     return {
       lastInsertRowid: result.rows[0]?.id ?? 0,
       changes: result.rowCount ?? 0,

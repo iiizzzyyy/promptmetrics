@@ -57,7 +57,9 @@ describe('withTransaction', () => {
   it('should support nested reads inside transaction', async () => {
     await withTransaction(async (db) => {
       await db.prepare('INSERT INTO config (key, value) VALUES (?, ?)').run('nested', 'val');
-      const row = (await db.prepare('SELECT value FROM config WHERE key = ?').get('nested')) as { value: string } | undefined;
+      const row = (await db.prepare('SELECT value FROM config WHERE key = ?').get('nested')) as
+        | { value: string }
+        | undefined;
       expect(row?.value).toBe('val');
     });
   });

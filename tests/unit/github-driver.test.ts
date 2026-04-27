@@ -12,7 +12,7 @@ describe('GithubDriver', () => {
       DRIVER: 'github',
       GITHUB_REPO: 'test-org/test-repo',
       GITHUB_TOKEN: 'test-token',
-      API_KEY_SALT: 'test-salt',
+      API_KEY_SALT: 'test-salt-for-ci',
     };
     nock.cleanAll();
   });
@@ -48,7 +48,7 @@ describe('GithubDriver', () => {
     process.env.DRIVER = 'github';
     process.env.GITHUB_REPO = 'test-org/test-repo';
     process.env.GITHUB_TOKEN = 'test-token';
-    process.env.API_KEY_SALT = 'test-salt';
+    process.env.API_KEY_SALT = 'test-salt-for-ci';
 
     let driver: GithubDriver;
     jest.isolateModules(() => {
@@ -85,7 +85,7 @@ describe('GithubDriver', () => {
     process.env.DRIVER = 'github';
     process.env.GITHUB_REPO = 'test-org/test-repo';
     process.env.GITHUB_TOKEN = 'test-token';
-    process.env.API_KEY_SALT = 'test-salt';
+    process.env.API_KEY_SALT = 'test-salt-for-ci';
 
     let driver: GithubDriver;
     jest.isolateModules(() => {
@@ -127,7 +127,7 @@ describe('GithubDriver', () => {
     process.env.DRIVER = 'github';
     process.env.GITHUB_REPO = 'test-org/test-repo';
     process.env.GITHUB_TOKEN = 'test-token';
-    process.env.API_KEY_SALT = 'test-salt';
+    process.env.API_KEY_SALT = 'test-salt-for-ci';
 
     let driver: GithubDriver;
     jest.isolateModules(() => {

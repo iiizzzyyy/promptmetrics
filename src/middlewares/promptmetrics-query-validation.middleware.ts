@@ -8,12 +8,7 @@ export function validateQuery(schema: Joi.ObjectSchema) {
     if (error) {
       throw AppError.badRequest('Invalid query parameters', error.details.map((d) => d.message));
     }
-    Object.defineProperty(req, 'query', {
-      value,
-      writable: true,
-      enumerable: true,
-      configurable: true,
-    });
+    req.validatedQuery = value;
     next();
   };
 }

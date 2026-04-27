@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { AppError } from '@errors/app.error';
 import { getDb } from '@models/promptmetrics-sqlite';
+import { buildPartialUpdate } from '@utils/sql-builder';
 import { parsePagination, buildPaginatedResponse, PaginatedResponse } from '@utils/pagination';
 
 export interface Run {
@@ -123,33 +124,30 @@ export class RunService {
       throw AppError.notFound('Run');
     }
 
-    const updates: string[] = [];
-    const params: unknown[] = [];
+    const fields: Array<{ column: string; value: unknown }> = [];
 
     if (input.status !== undefined) {
-      updates.push('status = ?');
-      params.push(input.status);
+      fields.push({ column: 'status', value: input.status });
     }
     if (input.output !== undefined) {
-      updates.push('output_json = ?');
-      params.push(JSON.stringify(input.output));
+      fields.push({ column: 'output_json', value: JSON.stringify(input.output) });
     }
     if (input.metadata !== undefined) {
-      updates.push('metadata_json = ?');
-      params.push(JSON.stringify(input.metadata));
+      fields.push({ column: 'metadata_json', value: JSON.stringify(input.metadata) });
     }
 
-    if (updates.length === 0) {
+    if (fields.length === 0) {
       return { run_id: runId, status: 'unchanged' };
     }
 
-    updates.push('updated_at = ?');
-    params.push(Math.floor(Date.now() / 1000));
-    params.push(runId);
+    fields.push({ column: 'updated_at', value: Math.floor(Date.now() / 1000) });
 
-    await db
-      .prepare(`UPDATE runs SET ${updates.join(', ')} WHERE run_id = ? AND workspace_id = ?`)
-      .run(...params, workspaceId);
+    const { sql, params } = buildPartialUpdate('runs', fields, [
+      { column: 'run_id', value: runId },
+      { column: 'workspace_id', value: workspaceId },
+    ]);
+
+    await db.prepare(sql).run(...params);
 
     return { run_id: runId, status: 'updated' };
   }

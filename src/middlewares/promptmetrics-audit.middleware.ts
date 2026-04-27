@@ -26,8 +26,8 @@ export function auditLog(action: string) {
 
           auditLogService.enqueue({
             action,
-            prompt_name: promptName,
-            version_tag: versionTag,
+            prompt_name: promptName ? promptName.slice(0, 256) : undefined,
+            version_tag: versionTag ? versionTag.slice(0, 256) : undefined,
             api_key_name: apiKey?.name || 'unknown',
             ip_address: req.ip || req.socket.remoteAddress || 'unknown',
             workspace_id: req.workspaceId || 'default',

@@ -105,4 +105,9 @@ describe('AuditLogService', () => {
     expect(row.prompt_name).toBe('welcome');
     expect(row.version_tag).toBe('1.0.0');
   });
+
+  it('should track dropped entries via metrics', async () => {
+    const initialMetrics = auditLogService.getMetrics();
+    expect(initialMetrics.droppedCount).toBe(0);
+  });
 });

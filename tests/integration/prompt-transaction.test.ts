@@ -27,7 +27,7 @@ describe('Prompt Creation Transaction', () => {
 
     const db = getDb();
     apiKey = 'pm_testtrans456';
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
       hashApiKey(apiKey),
       'test-key',
       'read,write',

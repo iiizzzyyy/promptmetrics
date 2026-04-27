@@ -133,16 +133,18 @@ export async function up(db: DatabaseAdapter): Promise<void> {
 }
 
 export async function down(db: DatabaseAdapter): Promise<void> {
-  await db.exec(`
-    DROP TABLE IF EXISTS rate_limits;
-    DROP TABLE IF EXISTS prompt_labels;
-    DROP TABLE IF EXISTS runs;
-    DROP TABLE IF EXISTS spans;
-    DROP TABLE IF EXISTS traces;
-    DROP TABLE IF EXISTS audit_logs;
-    DROP TABLE IF EXISTS config;
-    DROP TABLE IF EXISTS logs;
-    DROP TABLE IF EXISTS api_keys;
-    DROP TABLE IF EXISTS prompts;
-  `);
+  await db.transaction(async (trx) => {
+    await trx.exec(`
+      DROP TABLE IF EXISTS rate_limits;
+      DROP TABLE IF EXISTS prompt_labels;
+      DROP TABLE IF EXISTS runs;
+      DROP TABLE IF EXISTS spans;
+      DROP TABLE IF EXISTS traces;
+      DROP TABLE IF EXISTS audit_logs;
+      DROP TABLE IF EXISTS config;
+      DROP TABLE IF EXISTS logs;
+      DROP TABLE IF EXISTS api_keys;
+      DROP TABLE IF EXISTS prompts;
+    `);
+  });
 }
