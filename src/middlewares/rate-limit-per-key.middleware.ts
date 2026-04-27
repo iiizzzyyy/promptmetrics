@@ -74,7 +74,11 @@ async function checkSqliteRateLimit(
     | undefined;
 
   if (!row || row.window_start < windowStart) {
-    db.prepare('INSERT OR REPLACE INTO rate_limits (key, window_start, count) VALUES (?, ?, ?)').run(
+    db.prepare(`INSERT INTO rate_limits (key, window_start, count)
+      VALUES (?, ?, ?)
+      ON CONFLICT(key) DO UPDATE SET
+        window_start = excluded.window_start,
+        count = excluded.count`).run(
       apiKeyName,
       windowStart,
       1,

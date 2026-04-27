@@ -44,18 +44,6 @@ export async function closeDb(): Promise<void> {
 export async function initSchema(): Promise<void> {
   const migrator = createMigrator();
   await migrator.up();
-  const db = getDb();
-  if (db instanceof SqliteAdapter) {
-    // Create rate_limits table used by the per-key rate limiter.
-    // Schema is kept in sync with the middleware implementation.
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS rate_limits (
-        key TEXT PRIMARY KEY,
-        window_start INTEGER NOT NULL,
-        count INTEGER NOT NULL DEFAULT 0
-      )
-    `);
-  }
 }
 
 export async function withTransaction<T>(fn: (db: DatabaseAdapter) => T | Promise<T>): Promise<T> {

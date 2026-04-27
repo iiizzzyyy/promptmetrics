@@ -214,7 +214,12 @@ export class GithubDriver implements PromptDriver {
       await withTransaction(async (db) => {
         await db
           .prepare(
-            'INSERT OR REPLACE INTO prompts (name, version_tag, commit_sha, driver, created_at) VALUES (?, ?, ?, ?, ?)',
+            `INSERT INTO prompts (name, version_tag, commit_sha, driver, created_at)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(name, version_tag) DO UPDATE SET
+            commit_sha = excluded.commit_sha,
+            driver = excluded.driver,
+            created_at = excluded.created_at`,
           )
           .run(prompt.name, prompt.version, version.commit_sha, 'github', version.created_at);
       });

@@ -19,6 +19,7 @@ class SqlitePreparedStatement implements PreparedStatement {
 }
 
 export class SqliteAdapter implements DatabaseAdapter {
+  readonly dialect = 'sqlite' as const;
   constructor(private readonly db: Database.Database) {}
 
   prepare(sql: string): PreparedStatement {

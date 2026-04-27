@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2026-04-27
+
+### Fixed
+
+- **fix(postgres):** Resolve PostgreSQL incompatibility across migrations, runtime SQL, and adapter placeholders (#29).
+  - Convert all 6 migrations from `.sql` to TypeScript with dialect-conditional DDL (`SERIAL PRIMARY KEY` vs `INTEGER PRIMARY KEY AUTOINCREMENT`, `EXTRACT(EPOCH FROM NOW())` vs `unixepoch()`).
+  - Rewrite `?` placeholders to `$1, $2, ...` in `PostgresAdapter` for `pg` module compatibility.
+  - Replace SQLite-only `INSERT OR REPLACE INTO` with cross-dialect `INSERT ... ON CONFLICT ... DO UPDATE` in all drivers and rate-limit middleware.
+  - Replace `unixepoch()` in `run.service.ts` with application-level timestamps.
+  - Replace `sqlite_master` query in `init-db.ts` with dialect-aware catalog lookup.
+  - Move `rate_limits` table creation from `initSchema()` into `001_initial_schema.ts` migration.
+  - Rename `SQLiteStorage` -> `MigrationStorage` to reflect generic dialect support.
+  - Maintain backward compatibility: existing SQLite databases with `.sql` migration records remain no-ops under the new resolver.
+
 ## [1.0.6] - 2026-04-26
 
 ### Changed

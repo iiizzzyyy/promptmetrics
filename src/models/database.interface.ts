@@ -9,6 +9,7 @@ export interface PreparedStatement {
 }
 
 export interface DatabaseAdapter {
+  readonly dialect: 'sqlite' | 'postgres';
   prepare(sql: string): PreparedStatement;
   exec(sql: string): void | Promise<void>;
   transaction<T>(fn: (db: DatabaseAdapter) => T | Promise<T>): T | Promise<T>;

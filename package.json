@@ -1,6 +1,6 @@
 {
   "name": "promptmetrics",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Lightweight, self-hosted prompt registry with versioning, metadata logging, evaluations, and multi-tenant observability",
   "main": "dist/server.js",
   "bin": {
@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "ts-node -r tsconfig-paths/register src/server.ts",
-    "build": "tsc && tsc-alias",
+    "build": "tsc && tsc-alias && tsc migrations/*.ts --rootDir . --outDir dist --declaration false",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write ./src",

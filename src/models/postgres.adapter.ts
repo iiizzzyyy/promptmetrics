@@ -7,18 +7,23 @@ class PostgresPreparedStatement implements PreparedStatement {
     private readonly sql: string,
   ) {}
 
+  private rewritePlaceholders(sql: string): string {
+    let i = 0;
+    return sql.replace(/\?/g, () => `$${++i}`);
+  }
+
   async all(...params: unknown[]): Promise<unknown[]> {
-    const result = await this.pool.query(this.sql, params);
+    const result = await this.pool.query(this.rewritePlaceholders(this.sql), params);
     return result.rows;
   }
 
   async get(...params: unknown[]): Promise<unknown | undefined> {
-    const result = await this.pool.query(this.sql, params);
+    const result = await this.pool.query(this.rewritePlaceholders(this.sql), params);
     return result.rows[0];
   }
 
   async run(...params: unknown[]): Promise<{ lastInsertRowid: number | bigint; changes: number }> {
-    const result = await this.pool.query(this.sql, params);
+    const result = await this.pool.query(this.rewritePlaceholders(this.sql), params);
     return {
       lastInsertRowid: result.rows[0]?.id ?? 0,
       changes: result.rowCount ?? 0,
@@ -27,6 +32,7 @@ class PostgresPreparedStatement implements PreparedStatement {
 }
 
 export class PostgresAdapter implements DatabaseAdapter {
+  readonly dialect = 'postgres' as const;
   private readonly pool: Pool;
 
   constructor(connectionString: string) {
@@ -63,6 +69,7 @@ export class PostgresAdapter implements DatabaseAdapter {
 }
 
 class TransactionPostgresAdapter implements DatabaseAdapter {
+  readonly dialect = 'postgres' as const;
   constructor(private readonly client: PoolClient) {}
 
   prepare(sql: string): PreparedStatement {
@@ -88,18 +95,23 @@ class TransactionPreparedStatement implements PreparedStatement {
     private readonly sql: string,
   ) {}
 
+  private rewritePlaceholders(sql: string): string {
+    let i = 0;
+    return sql.replace(/\?/g, () => `$${++i}`);
+  }
+
   async all(...params: unknown[]): Promise<unknown[]> {
-    const result = await this.client.query(this.sql, params);
+    const result = await this.client.query(this.rewritePlaceholders(this.sql), params);
     return result.rows;
   }
 
   async get(...params: unknown[]): Promise<unknown | undefined> {
-    const result = await this.client.query(this.sql, params);
+    const result = await this.client.query(this.rewritePlaceholders(this.sql), params);
     return result.rows[0];
   }
 
   async run(...params: unknown[]): Promise<{ lastInsertRowid: number | bigint; changes: number }> {
-    const result = await this.client.query(this.sql, params);
+    const result = await this.client.query(this.rewritePlaceholders(this.sql), params);
     return {
       lastInsertRowid: result.rows[0]?.id ?? 0,
       changes: result.rowCount ?? 0,

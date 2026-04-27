@@ -143,7 +143,8 @@ export class RunService {
       return { run_id: runId, status: 'unchanged' };
     }
 
-    updates.push('updated_at = unixepoch()');
+    updates.push('updated_at = ?');
+    params.push(Math.floor(Date.now() / 1000));
     params.push(runId);
 
     await db

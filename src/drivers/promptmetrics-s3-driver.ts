@@ -108,7 +108,11 @@ export class S3Driver implements PromptDriver {
 
     await withTransaction(async (db) => {
       await db
-        .prepare('INSERT OR REPLACE INTO prompts (name, version_tag, driver, created_at) VALUES (?, ?, ?, ?)')
+        .prepare(`INSERT INTO prompts (name, version_tag, driver, created_at)
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(name, version_tag) DO UPDATE SET
+            driver = excluded.driver,
+            created_at = excluded.created_at`)
         .run(prompt.name, prompt.version, 's3', version.created_at);
     });
 

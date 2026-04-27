@@ -7,7 +7,7 @@ export interface SQLiteStorageOptions {
   columnType?: string;
 }
 
-export class SQLiteStorage {
+export class MigrationStorage {
   private db: DatabaseAdapter;
   private tableName: string;
   private columnName: string;
