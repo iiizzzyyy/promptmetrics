@@ -2,7 +2,7 @@
 
 ## Overview
 
-PromptMetrics uses a **hybrid storage model**: prompt content lives in Git (GitHub or local filesystem) while a SQLite database acts as a fast metadata index. This gives you versioned, auditable prompt storage with sub-millisecond reads.
+PromptMetrics uses a **hybrid storage model**: prompt content lives in Git (GitHub or local filesystem) while a **SQLite or PostgreSQL** database acts as the metadata index. This gives you versioned, auditable prompt storage with sub-millisecond reads.
 
 ## Why Hybrid?
 
@@ -13,19 +13,19 @@ PromptMetrics uses a **hybrid storage model**: prompt content lives in Git (GitH
 ## System Diagram
 
 ```
-+-------------+      +-----------------+      +------------------+
-|  API / CLI  |----->|   Express App   |----->|  SQLite (WAL)    |
-+-------------+      +-----------------+      |  - prompts index |
-       |                                        |  - api_keys      |
-       |                                        |  - logs          |
-       v                                        |  - audit_logs    |
-+-------------+      +-----------------+      |  - traces        |
-|   OTel      |      |  Storage Driver |----->|  - spans         |
-|  (opt-in)   |      |  - filesystem   |      +------------------+
-+-------------+      |  - github       |----->|   Git / Files    |
-                     +-----------------+      |  - content       |
-                                              |  - history       |
-                                              +------------------+
++-------------+      +-----------------+      +------------------------+
+|  API / CLI  |----->|   Express App   |----->|  SQLite / PostgreSQL   |
++-------------+      +-----------------+      |  - prompts index       |
+       |                                        |  - api_keys            |
+       |                                        |  - logs                |
+       v                                        |  - audit_logs          |
++-------------+      +-----------------+      |  - traces              |
+|   OTel      |      |  Storage Driver |----->|  - spans               |
+|  (opt-in)   |      |  - filesystem   |      +------------------------+
++-------------+      |  - github       |----->|   Git / Files          |
+                     +-----------------+      |  - content             |
+                                              |  - history             |
+                                              +------------------------+
 ```
 
 ## Storage Drivers
@@ -35,7 +35,7 @@ PromptMetrics uses a **hybrid storage model**: prompt content lives in Git (GitH
 Best for local development and single-node deployments.
 
 - Prompts stored as JSON files at `./prompts/{name}/{version}.json`
-- SQLite `prompts` table stores the filesystem path in the `commit_sha` column
+- The `prompts` table stores the filesystem path in the `commit_sha` column
 - No background sync needed
 - Instant writes, zero external dependencies
 
@@ -66,7 +66,7 @@ GitHub Repo                  Local Machine / Container
 
 The clone is bare (no working tree) to save disk space. The `git show` command reads file content directly from the git object database without checking out files.
 
-## SQLite Schema
+## Database Schema
 
 | Table | Purpose |
 |---|---|
@@ -82,7 +82,7 @@ The clone is bare (no working tree) to save disk space. The `git show` command r
 | `evaluations` | Tracks evaluation suites: `id`, `name`, `description`, `prompt_name`, `version_tag`, `criteria_json`, `workspace_id`, `created_at` |
 | `evaluation_results` | Stores individual scores: `id`, `evaluation_id`, `run_id`, `score`, `metadata_json`, `workspace_id`, `created_at` |
 
-**Mode:** WAL (Write-Ahead Logging) enables concurrent readers and a single writer without locks blocking reads.
+**SQLite Mode:** When using SQLite, WAL (Write-Ahead Logging) enables concurrent readers and a single writer without locks blocking reads.
 
 ## Request Flow
 
@@ -92,7 +92,7 @@ The clone is bare (no working tree) to save disk space. The `git show` command r
 2. Auth middleware validates the API key and checks `read` scope
 3. Audit middleware captures the request (non-blocking)
 4. Controller asks the driver for the prompt
-5. Driver looks up the latest version in SQLite, then reads content from git/filesystem
+5. Driver looks up the latest version in the database, then reads content from git/filesystem
 6. Controller renders messages by substituting `{{variables}}` in `system` and `user` role messages
 7. Response returns JSON with rendered messages and version metadata
 
@@ -102,7 +102,7 @@ The clone is bare (no working tree) to save disk space. The `git show` command r
 2. Auth middleware validates the API key and checks `write` scope
 3. Controller validates the request body against the prompt schema
 4. Driver writes the file (filesystem or GitHub API)
-5. Driver inserts a row into SQLite `prompts` table
+5. Driver inserts a row into the `prompts` table
 6. Audit middleware logs the `create` action
 7. Response returns `201 Created` with version metadata
 
@@ -111,7 +111,7 @@ The clone is bare (no working tree) to save disk space. The `git show` command r
 1. Client sends `POST /v1/logs` after their LLM call completes
 2. Auth middleware validates the API key
 3. Controller validates metadata (max 50 top-level keys, length limits; nested objects and arrays allowed)
-4. Row inserted into SQLite `logs` table
+4. Row inserted into the `logs` table
 5. Structured JSON written to stdout for log aggregation
 6. If OTel is enabled, a span is emitted with the metadata as attributes
 
@@ -123,19 +123,19 @@ Traces and spans provide first-class support for tracking agent loops and multi-
 1. Client sends `POST /v1/traces` with optional `trace_id`, `prompt_name`, `version_tag`, and `metadata`
 2. Auth middleware validates the API key and checks `write` scope
 3. Controller validates the body (max 50 top-level metadata keys; nested objects and arrays allowed)
-4. Row inserted into SQLite `traces` table
+4. Row inserted into the `traces` table
 5. Response returns `201 Created` with the `trace_id`
 
 **Add a Span:**
 1. Client sends `POST /v1/traces/:trace_id/spans` with `name`, `status` (`ok` or `error`), optional `start_time`/`end_time`, and `metadata`
 2. Controller validates the body and verifies the trace exists
-3. Row inserted into SQLite `spans` table with a foreign key to `traces.trace_id`
+3. Row inserted into the `spans` table with a foreign key to `traces.trace_id`
 4. Response returns `201 Created` with `trace_id` and `span_id`
 
 **Retrieve a Trace:**
 1. Client sends `GET /v1/traces/:trace_id`
 2. Auth middleware validates the API key and checks `read` scope
-3. Controller fetches the trace from SQLite and all associated spans ordered by `start_time`
+3. Controller fetches the trace from the database and all associated spans ordered by `start_time`
 4. Response returns the trace with its full span tree
 
 This design keeps telemetry local to the registry, making it ideal for self-hosted deployments where operators want to correlate prompt usage with agent execution steps without setting up Jaeger or Zipkin.
@@ -149,7 +149,7 @@ Workflow runs track end-to-end executions of agent workflows or pipelines, provi
 2. Auth middleware validates the API key and checks `write` scope
 3. Controller validates the body (max 50 top-level metadata keys; nested objects and arrays allowed)
 4. If `trace_id` is provided, controller verifies it exists in the `traces` table
-5. Row inserted into SQLite `runs` table with `status = 'running'`
+5. Row inserted into the `runs` table with `status = 'running'`
 6. Response returns `201 Created` with `run_id`
 
 **Update a Run:**
@@ -172,13 +172,13 @@ Prompt labels allow teams to tag prompt versions with environment or release nam
 1. Client sends `POST /v1/prompts/:name/labels` with `name` and `version_tag`
 2. Auth middleware validates the API key and checks `write` scope
 3. Controller validates the body (`name` max 128 chars, alphanumeric/underscore/dot/dash only)
-4. Row inserted into SQLite `prompt_labels` table
+4. Row inserted into the `prompt_labels` table
 5. If a label with the same name already exists for this prompt, a `409 Conflict` is returned
 6. Response returns `201 Created`
 
 **Resolve a Label:**
 1. Client sends `GET /v1/prompts/:name/labels/:label_name`
-2. Controller looks up the label in SQLite
+2. Controller looks up the label in the database
 3. Response returns the label with its `version_tag`
 4. The client can then fetch the actual prompt content using `GET /v1/prompts/:name?version=version_tag`
 
@@ -186,7 +186,7 @@ This two-step resolution keeps labels lightweight (just pointers) while leveragi
 
 ## Authentication
 
-API keys are hashed with HMAC-SHA256 using a server-side salt (`API_KEY_SALT`). Only the hash is stored in SQLite. When a client sends an `X-API-Key` header, it is hashed and compared against the database. Scopes (`read`, `write`, `admin`) are enforced at the route level.
+API keys are hashed with HMAC-SHA256 using a server-side salt (`API_KEY_SALT`). Only the hash is stored in the database. When a client sends an `X-API-Key` header, it is hashed and compared against the database. Scopes (`read`, `write`, `admin`) are enforced at the route level.
 
 ### Master API Keys
 
@@ -220,15 +220,12 @@ On `SIGTERM` or `SIGINT`:
 1. HTTP server stops accepting new connections
 2. OpenTelemetry SDK is shut down (flushes pending spans)
 3. Git sync background job is stopped
-4. SQLite connection is closed
+4. Database connection is closed
 5. Process exits cleanly
 
 ## Horizontal Scaling Considerations
 
-PromptMetrics is designed for single-node deployment. SQLite WAL mode handles concurrent reads and a single writer well, but multiple nodes would require:
-- Replacing SQLite with PostgreSQL (or another networked database)
-- Replacing the local bare clone with a shared git cache or object store
-- These changes are documented as a future migration path, not current requirements.
+PromptMetrics defaults to single-node deployment with SQLite. SQLite WAL mode handles concurrent reads and a single writer well. For multiple nodes or networked deployments, you can switch to PostgreSQL by setting `DATABASE_URL`. You would also need to replace the local bare clone with a shared git cache or object store (for example, the S3 driver).
 
 ## Evaluations
 
@@ -238,13 +235,13 @@ The evaluations system lets teams define quality checks for prompts and record s
 1. Client sends `POST /v1/evaluations` with `name`, `prompt_name`, optional `version_tag`, `description`, and `criteria`
 2. Auth middleware validates the API key and checks `write` scope
 3. Controller validates the body via Joi schema
-4. Row inserted into SQLite `evaluations` table
+4. Row inserted into the `evaluations` table
 5. Response returns `201 Created` with evaluation metadata
 
 **Add a Result:**
 1. Client sends `POST /v1/evaluations/:id/results` with `run_id`, `score`, and `metadata`
 2. Controller validates the body and verifies the evaluation exists
-3. Row inserted into SQLite `evaluation_results` table with foreign key to `evaluations.id`
+3. Row inserted into the `evaluation_results` table with foreign key to `evaluations.id`
 4. Response returns `201 Created`
 
 **Delete an Evaluation:**
@@ -259,7 +256,7 @@ When `REDIS_URL` is configured, PromptMetrics uses Redis for:
 - **LRU Cache** — Prompt lookups are cached with TTL-based eviction
 - **Rate Limiting** — Per-API-key sliding window counters with atomic increments via `MULTI/EXEC`
 
-If Redis is unavailable, the system falls back to in-memory LRU cache and SQLite-based rate limiting.
+If Redis is unavailable, the system falls back to in-memory LRU cache and database-based rate limiting.
 
 ### PostgreSQL Backend
 Set `DATABASE_URL` to use PostgreSQL instead of SQLite. The `DatabaseAdapter` interface abstracts database operations, with SQLite and PostgreSQL implementations. All SQL is compatible with both backends.
@@ -274,7 +271,7 @@ All tables include a `workspace_id` column. The `tenantMiddleware` reads the `X-
 GitHub API calls are wrapped in an Opossum circuit breaker with exponential backoff on 429 responses. This prevents cascading failures when GitHub's API is rate-limiting.
 
 ### Async Audit Log Queue
-The `AuditLogService` batches audit entries in memory and flushes them to SQLite asynchronously via `setImmediate`. This keeps the request path fast while ensuring durable audit records.
+The `AuditLogService` batches audit entries in memory and flushes them to the database asynchronously via `setImmediate`. This keeps the request path fast while ensuring durable audit records.
 
 ## Security
 

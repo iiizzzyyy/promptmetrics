@@ -8,7 +8,9 @@ async function main(): Promise<void> {
     const db = getDb();
     let tables: string[];
     if (db.dialect === 'postgres') {
-      const rows = (await db.prepare("SELECT tablename FROM pg_tables WHERE schemaname = 'public'").all()) as { tablename: string }[];
+      const rows = (await db.prepare("SELECT tablename FROM pg_tables WHERE schemaname = 'public'").all()) as {
+        tablename: string;
+      }[];
       tables = rows.map((r) => r.tablename);
     } else {
       const rows = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[];

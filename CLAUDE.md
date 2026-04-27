@@ -52,7 +52,7 @@ PromptMetrics uses a two-tier storage architecture that spans multiple files:
    - `GithubDriver` — uses GitHub Contents API + a local bare clone at `./data/github-clone` (synced via background `GitSyncJob`)
    - `S3Driver` — stores prompt JSON as objects in S3 with keys like `prompts/{name}/{version}.json`
 
-2. **Metadata** lives in SQLite (`better-sqlite3` with WAL mode) or PostgreSQL. The `getDb()` singleton (`src/models/promptmetrics-sqlite.ts`) provides the connection. Schema is managed via `umzug` migration runner (`src/migrations/migrator.ts`) with numbered SQL files in `migrations/`.
+2. **Metadata** lives in SQLite (`better-sqlite3` with WAL mode) or PostgreSQL. The `getDb()` singleton (`src/models/promptmetrics-sqlite.ts`) provides the connection. Schema is managed via `umzug` migration runner (`src/migrations/migrator.ts`) with numbered TypeScript migration files in `migrations/` that use dialect-conditional DDL for SQLite and PostgreSQL.
 
 **Key implication:** The `prompts` table in SQLite is an *index* — it stores `name`, `version_tag`, `commit_sha`, and `driver`, but the actual prompt JSON content is read from Git/filesystem by the driver. When creating a prompt, the driver writes content to the storage backend AND inserts a row into SQLite. These two operations are NOT wrapped in a transaction.
 

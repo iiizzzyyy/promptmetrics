@@ -37,6 +37,8 @@ describe('MigrationStorage', () => {
     expect(() => new MigrationStorage({ db, tableName: 'migrations', columnName: 'select * from' })).toThrow(
       'Invalid column name',
     );
-    expect(() => new MigrationStorage({ db, tableName: 'migrations', columnName: '2col' })).toThrow('Invalid column name');
+    expect(() => new MigrationStorage({ db, tableName: 'migrations', columnName: '2col' })).toThrow(
+      'Invalid column name',
+    );
   });
 });

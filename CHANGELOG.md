@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] - 2026-04-27
+
+### Changed
+
+- **docs:** Update README, architecture guide (`docs/architecture.md`), API reference (`docs/api.md`), and release tracker (`docs/NPM_RELEASES.md`) for v1.0.7 cross-dialect database support.
+  - Reflect that migrations are now TypeScript files with dialect-conditional DDL.
+  - Update architecture diagrams and schema sections to show PostgreSQL as a first-class alternative to SQLite.
+  - Update `CLAUDE.md` to describe TypeScript migrations instead of SQL files.
+
 ## [1.0.7] - 2026-04-27
 
 ### Fixed

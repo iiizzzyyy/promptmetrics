@@ -4,13 +4,9 @@ export interface DatabaseAdapter {
 }
 
 export function idColumn(dialect: 'sqlite' | 'postgres'): string {
-  return dialect === 'postgres'
-    ? 'SERIAL PRIMARY KEY'
-    : 'INTEGER PRIMARY KEY AUTOINCREMENT';
+  return dialect === 'postgres' ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT';
 }
 
 export function nowFn(dialect: 'sqlite' | 'postgres'): string {
-  return dialect === 'postgres'
-    ? 'EXTRACT(EPOCH FROM NOW())::INTEGER'
-    : 'unixepoch()';
+  return dialect === 'postgres' ? 'EXTRACT(EPOCH FROM NOW())::INTEGER' : 'unixepoch()';
 }

@@ -71,8 +71,8 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 - **Node.js & Python SDKs** — First-class client libraries for programmatic access.
 - **GitHub Webhooks** — Immediate sync on push events via webhook endpoint.
 - **Circuit Breaker** — GitHub API calls wrapped in an Opossum circuit breaker with exponential backoff on 429 responses.
-- **Migration System** — `umzug`-based migration runner with numbered SQL files in `migrations/`.
-- **Async Audit Log Queue** — `AuditLogService` batches audit entries and flushes to SQLite asynchronously.
+- **Migration System** — `umzug`-based migration runner with TypeScript migration files in `migrations/` supporting SQLite and PostgreSQL.
+- **Async Audit Log Queue** — `AuditLogService` batches audit entries and flushes to the database asynchronously.
 
 ---
 
@@ -102,7 +102,7 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 
 **Design principles:**
 - **Prompt content is code** — Version it like code (Git), not like data (database rows).
-- **Metadata is data** — SQLite is perfect for fast, structured queries over indexes and logs.
+- **Metadata is data** — SQLite is the default for fast, structured queries over indexes and logs. PostgreSQL is available for networked or multi-node deployments.
 - **No proxy, no lock-in** — PromptMetrics serves prompts and collects logs, but LLM inference happens in your code.
 
 Read the full architecture in [docs/architecture.md](docs/architecture.md).

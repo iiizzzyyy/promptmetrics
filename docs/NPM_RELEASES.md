@@ -69,7 +69,7 @@ npm publish
 - OpenAPI Documentation (`/docs` Swagger UI)
 - LRU Cache for prompt lookups
 - Database Transactions (`withTransaction()`)
-- Migration System (`umzug` + numbered SQL files)
+- Migration System (`umzug` + TypeScript migrations with dialect-conditional DDL)
 - Async Audit Log Queue (`AuditLogService`)
 
 #### Changed
@@ -157,7 +157,7 @@ The `files` array in `package.json` controls what gets published:
 | Path | Purpose |
 |------|---------|
 | `dist/` | Compiled TypeScript output |
-| `migrations/` | SQL migration files for `umzug` |
+| `migrations/` | TypeScript migration files with dialect-conditional DDL for `umzug` |
 | `docs/` | OpenAPI spec for Swagger UI at `/docs` |
 | `clients/node/` | Node.js SDK source |
 | `README.md` | Package landing page on npm |

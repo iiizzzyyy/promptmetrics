@@ -19,7 +19,7 @@ Shallow health check.
 ```
 
 #### GET /health/deep
-Deep health check including SQLite and driver status.
+Deep health check including database and driver status.
 
 **Response:**
 ```json
