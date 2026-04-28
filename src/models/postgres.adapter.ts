@@ -23,10 +23,7 @@ class PostgresPreparedStatement implements PreparedStatement {
   }
 
   async run(...params: unknown[]): Promise<{ lastInsertRowid: number | bigint; changes: number }> {
-    let sql = this.rewritePlaceholders(this.sql);
-    if (/^\s*INSERT\b/i.test(sql) && !/\bRETURNING\b/i.test(sql)) {
-      sql += ' RETURNING id';
-    }
+    const sql = this.rewritePlaceholders(this.sql);
     const result = await this.pool.query(sql, params);
     return {
       lastInsertRowid: result.rows[0]?.id ?? 0,
@@ -122,10 +119,7 @@ class TransactionPreparedStatement implements PreparedStatement {
   }
 
   async run(...params: unknown[]): Promise<{ lastInsertRowid: number | bigint; changes: number }> {
-    let sql = this.rewritePlaceholders(this.sql);
-    if (/^\s*INSERT\b/i.test(sql) && !/\bRETURNING\b/i.test(sql)) {
-      sql += ' RETURNING id';
-    }
+    const sql = this.rewritePlaceholders(this.sql);
     const result = await this.client.query(sql, params);
     return {
       lastInsertRowid: result.rows[0]?.id ?? 0,

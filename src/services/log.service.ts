@@ -40,7 +40,8 @@ export class LogService {
     const result = await db
       .prepare(
         `INSERT INTO logs (prompt_name, version_tag, metadata_json, provider, model, tokens_in, tokens_out, latency_ms, cost_usd, ollama_options, ollama_keep_alive, ollama_format, workspace_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         RETURNING id`,
       )
       .run(
         input.prompt_name,

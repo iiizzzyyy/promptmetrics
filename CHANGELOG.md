@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.12] - 2026-04-28
+
+### Fixed
+
+- **fix(postgres):** Remove automatic `RETURNING id` appending from `PostgresAdapter` that broke INSERTs on tables without an `id` column (#63).
+  - Stop appending `RETURNING id` blindly in `PostgresAdapter.run()` and `TransactionPreparedStatement.run()`.
+  - Add explicit `RETURNING id` to INSERT statements in `EvaluationService` (`evaluations` and `evaluation_results` tables), `ApiKeyService` (`api_keys` table), and `LogService` (`logs` table) where callers rely on `lastInsertRowid`.
+  - Update `tests/unit/postgres.adapter.test.ts` to verify no auto-appending and correct behavior when the caller includes `RETURNING id`.
+
 ## [1.0.11] - 2026-04-28
 
 ### Fixed

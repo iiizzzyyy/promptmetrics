@@ -38,7 +38,7 @@ export class ApiKeyService {
     }
 
     const result = await db
-      .prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id, expires_at) VALUES (?, ?, ?, ?, ?)')
+      .prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id, expires_at) VALUES (?, ?, ?, ?, ?) RETURNING id')
       .run(keyHash, input.name, scopes, workspaceId, expiresAt);
 
     const apiKey: ApiKey = {

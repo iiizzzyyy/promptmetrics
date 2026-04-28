@@ -41,7 +41,8 @@ export class EvaluationService {
     const result = await db
       .prepare(
         `INSERT INTO evaluations (name, description, prompt_name, version_tag, criteria_json, workspace_id)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?)
+       RETURNING id`,
       )
       .run(
         input.name,
@@ -154,7 +155,8 @@ export class EvaluationService {
     const result = await db
       .prepare(
         `INSERT INTO evaluation_results (evaluation_id, run_id, score, metadata_json, workspace_id)
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?)
+       RETURNING id`,
       )
       .run(
         evaluationId,
