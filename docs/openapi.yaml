@@ -611,6 +611,117 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /v1/metrics/time-series:
+    get:
+      summary: Get time-series metrics
+      description: Returns daily aggregated metrics over a time window.
+      parameters:
+        - name: window
+          in: query
+          description: Time window
+          schema:
+            type: string
+            enum: ['7d', '30d', '90d']
+            default: '30d'
+      responses:
+        '200':
+          description: Time-series metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeSeriesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/metrics/prompts:
+    get:
+      summary: Get prompt metrics
+      description: Returns aggregated metrics grouped by prompt and version.
+      parameters:
+        - name: window
+          in: query
+          description: Time window
+          schema:
+            type: string
+            enum: ['7d', '30d', '90d']
+            default: '30d'
+        - name: limit
+          in: query
+          description: Maximum number of prompts to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Prompt metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptMetricsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/metrics/evaluations:
+    get:
+      summary: Get evaluation trends
+      description: Returns evaluation score trends grouped by evaluation and date.
+      parameters:
+        - name: window
+          in: query
+          description: Time window
+          schema:
+            type: string
+            enum: ['7d', '30d', '90d']
+            default: '30d'
+        - name: evaluation_id
+          in: query
+          description: Filter by specific evaluation ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Evaluation trends
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationTrendsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/metrics/activity:
+    get:
+      summary: Get activity summary
+      description: Returns a summary of activity counts and recent runs.
+      parameters:
+        - name: window
+          in: query
+          description: Time window
+          schema:
+            type: string
+            enum: ['7d', '30d', '90d']
+            default: '30d'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Activity summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -1272,6 +1383,142 @@ components:
           type: integer
         totalPages:
           type: integer
+
+    TimeSeriesPoint:
+      type: object
+      properties:
+        date:
+          type: string
+          example: '2026-04-01'
+        request_count:
+          type: integer
+        total_tokens:
+          type: integer
+        total_cost_usd:
+          type: number
+        avg_latency_ms:
+          type: number
+        p50_latency_ms:
+          type: number
+          nullable: true
+        p95_latency_ms:
+          type: number
+          nullable: true
+        error_rate:
+          type: number
+
+    TimeSeriesResponse:
+      type: object
+      properties:
+        window:
+          type: string
+          example: '30d'
+        start:
+          type: integer
+        end:
+          type: integer
+        daily:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSeriesPoint'
+
+    PromptMetric:
+      type: object
+      properties:
+        prompt_name:
+          type: string
+        version_tag:
+          type: string
+        request_count:
+          type: integer
+        total_tokens_in:
+          type: integer
+        total_tokens_out:
+          type: integer
+        total_cost_usd:
+          type: number
+        avg_latency_ms:
+          type: number
+        error_rate:
+          type: number
+
+    PromptMetricsResponse:
+      type: object
+      properties:
+        window:
+          type: string
+          example: '30d'
+        prompts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PromptMetric'
+
+    EvaluationTrendPoint:
+      type: object
+      properties:
+        date:
+          type: string
+          example: '2026-04-01'
+        avg_score:
+          type: number
+        result_count:
+          type: integer
+        min_score:
+          type: number
+        max_score:
+          type: number
+
+    EvaluationTrend:
+      type: object
+      properties:
+        evaluation_id:
+          type: integer
+        name:
+          type: string
+        prompt_name:
+          type: string
+        trend:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluationTrendPoint'
+
+    EvaluationTrendsResponse:
+      type: object
+      properties:
+        window:
+          type: string
+          example: '30d'
+        evaluations:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluationTrend'
+
+    ActivitySummary:
+      type: object
+      properties:
+        total_runs:
+          type: integer
+        total_traces:
+          type: integer
+        total_logs:
+          type: integer
+        total_evaluations:
+          type: integer
+        active_prompts:
+          type: integer
+        failed_runs:
+          type: integer
+
+    ActivityResponse:
+      type: object
+      properties:
+        window:
+          type: string
+          example: '7d'
+        summary:
+          $ref: '#/components/schemas/ActivitySummary'
+        recent_runs:
+          $ref: '#/components/schemas/PaginatedRunList'
 
     ErrorResponse:
       type: object

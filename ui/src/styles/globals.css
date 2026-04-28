@@ -1,0 +1,267 @@
+@import "tailwindcss";
+
+:root {
+  /* Dark-first canvas — v2 design system */
+  --color-background: #0a0a0a;
+  --color-foreground: #ededed;
+
+  --color-card: #111111;
+  --color-card-foreground: #ededed;
+
+  --color-accent: #171717;
+  --color-accent-foreground: #ededed;
+
+  --color-primary: #389438;
+  --color-primarygradient: linear-gradient(
+    135deg,
+    rgba(56, 148, 56, 1) 0%,
+    rgba(56, 148, 56, 0.6) 100%
+  );
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: #111111;
+  --color-secondary-foreground: #ededed;
+
+  --color-muted: #171717;
+  --color-muted-foreground: #a1a1a1;
+
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-input: #111111;
+  --color-ring: #389438;
+
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+
+  /* v2 semantic tokens */
+  --pm-bg: #0a0a0a;
+  --pm-bg-raised: #0d0d0d;
+  --pm-surface: #111111;
+  --pm-surface-hover: #171717;
+  --pm-fg: #ededed;
+  --pm-fg-muted: #a1a1a1;
+  --pm-fg-dim: #6b6b6b;
+  --pm-brand: #389438;
+  --pm-brand-bright: #5cc15c;
+  --pm-border: rgba(255, 255, 255, 0.1);
+  --pm-border-subtle: rgba(255, 255, 255, 0.06);
+  --pm-border-medium: rgba(255, 255, 255, 0.08);
+  --pm-glow: rgba(56, 148, 56, 0.3);
+}
+
+[data-theme="light"] {
+  --color-background: #ffffff;
+  --color-foreground: #0c0e19;
+
+  --color-card: #ffffff;
+  --color-card-foreground: #0c0e19;
+
+  --color-accent: #f3f6f3;
+  --color-accent-foreground: #262626;
+
+  --color-primary: #389438;
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: #c2c2c2;
+  --color-secondary-foreground: #ffffff;
+
+  --color-muted: #f3f6f3;
+  --color-muted-foreground: #737373;
+
+  --color-border: #e5eaef;
+  --color-input: #e0ebe3;
+  --color-ring: #0c0e19;
+
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+}
+
+@theme inline {
+  --breakpoint-2xl: 87.5rem;
+
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-foreground);
+
+  --color-card: var(--color-card);
+  --color-card-foreground: var(--color-card-foreground);
+
+  --color-accent: var(--color-accent);
+  --color-accent-foreground: var(--color-accent-foreground);
+
+  --color-primary: var(--color-primary);
+  --color-primary-gradient: var(--color-primary-gradient);
+  --color-primary-foreground: var(--color-primary-foreground);
+
+  --color-secondary: var(--color-secondary);
+  --color-secondary-foreground: var(--color-secondary-foreground);
+
+  --color-muted: var(--color-muted);
+  --color-muted-foreground: var(--color-muted-foreground);
+
+  --color-border: var(--color-border);
+  --color-input: var(--color-input);
+  --color-ring: var(--color-ring);
+
+  --color-destructive: var(--color-destructive);
+  --color-destructive-foreground: var(--color-destructive-foreground);
+
+  --font-geist: var(--font-geist-sans), "Geist", sans-serif;
+  --font-mono: var(--font-geist-mono), "Geist Mono", monospace;
+}
+
+@layer base {
+  html {
+    background-color: var(--pm-bg);
+    color: var(--pm-fg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    background-color: var(--pm-bg);
+    color: var(--pm-fg);
+    font-family: var(--font-geist);
+  }
+  * {
+    border-color: var(--color-border);
+  }
+  ::selection {
+    background: rgba(56, 148, 56, 0.35);
+    color: #ffffff;
+  }
+}
+
+@layer components {
+  .container {
+    @apply px-8 max-md:px-0 mx-auto;
+  }
+  .pm-surface {
+    background-color: var(--pm-surface);
+    border: 1px solid var(--pm-border);
+  }
+  .pm-surface-raised {
+    background-color: var(--pm-bg-raised);
+    border-top: 1px solid var(--pm-border-subtle);
+    border-bottom: 1px solid var(--pm-border-subtle);
+  }
+  .pm-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--pm-brand-bright);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .pm-eyebrow::before {
+    content: "";
+    width: 14px;
+    height: 1px;
+    background: var(--pm-brand);
+    display: block;
+  }
+  .pm-display {
+    font-family: var(--font-geist);
+    font-weight: 600;
+    font-size: clamp(48px, 7vw, 112px);
+    line-height: 1.1;
+    letter-spacing: -0.055em;
+    color: var(--pm-fg);
+  }
+  .pm-h1 {
+    font-family: var(--font-geist);
+    font-weight: 600;
+    font-size: clamp(36px, 5vw, 76px);
+    line-height: 1.05;
+    letter-spacing: -0.045em;
+    color: var(--pm-fg);
+  }
+  .pm-h2 {
+    font-family: var(--font-geist);
+    font-weight: 600;
+    font-size: clamp(28px, 3.4vw, 48px);
+    line-height: 1.1;
+    letter-spacing: -0.035em;
+    color: var(--pm-fg);
+  }
+  .pm-h3 {
+    font-family: var(--font-geist);
+    font-weight: 600;
+    font-size: 24px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--pm-fg);
+  }
+  .pm-h4 {
+    font-family: var(--font-geist);
+    font-weight: 600;
+    font-size: 17px;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    color: var(--pm-fg);
+  }
+  .pm-body {
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--pm-fg-muted);
+  }
+  .pm-lede {
+    font-size: 18px;
+    line-height: 1.55;
+    color: var(--pm-fg-muted);
+  }
+  .pm-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--pm-fg-dim);
+  }
+  .pm-code {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--pm-brand-bright);
+    background: var(--pm-surface);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .pm-mono-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--pm-fg-dim);
+  }
+  .pm-metric-num {
+    font-family: var(--font-geist);
+    font-size: 36px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    color: var(--pm-fg);
+  }
+  .pm-dot-grid {
+    background:
+      radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px) 0 0 / 24px 24px,
+      var(--pm-bg);
+  }
+}
+
+@layer utilities {
+  .bg-primarygradient {
+    background-image: var(--color-primarygradient);
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--pm-surface) inset !important;
+  -webkit-text-fill-color: var(--pm-fg) !important;
+}
+
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+}
