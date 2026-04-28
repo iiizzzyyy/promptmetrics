@@ -1,4 +1,4 @@
-import { idColumn, nowFn, windowStartColumn } from '../../../migrations/dialect-helpers';
+import { idColumn, nowFn, windowStartColumn, timestampColumn } from '../../../migrations/dialect-helpers';
 
 describe('dialect-helpers', () => {
   describe('idColumn', () => {
@@ -28,6 +28,16 @@ describe('dialect-helpers', () => {
 
     it('returns INTEGER for sqlite', () => {
       expect(windowStartColumn('sqlite')).toBe('INTEGER');
+    });
+  });
+
+  describe('timestampColumn', () => {
+    it('returns BIGINT for postgres', () => {
+      expect(timestampColumn('postgres')).toBe('BIGINT');
+    });
+
+    it('returns INTEGER for sqlite', () => {
+      expect(timestampColumn('sqlite')).toBe('INTEGER');
     });
   });
 });

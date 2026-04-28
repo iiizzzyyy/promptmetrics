@@ -7,6 +7,7 @@ import { PromptDriver, PromptFile, PromptVersion } from './promptmetrics-driver.
 import { config } from '@config/index';
 import { getDb, withTransaction } from '@models/promptmetrics-sqlite';
 import { createCircuitBreaker } from '@services/circuit-breaker.service';
+import { parseCountRow } from '@utils/pagination';
 
 export class GithubDriver implements PromptDriver {
   private readonly clonePath: string;
@@ -273,9 +274,7 @@ export class GithubDriver implements PromptDriver {
       .prepare('SELECT * FROM prompts WHERE name = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
       .all(name, limit, (page - 1) * limit)) as PromptVersion[];
 
-    const total = (
-      (await db.prepare('SELECT COUNT(*) as count FROM prompts WHERE name = ?').get(name)) as { count: number }
-    ).count;
+    const total = parseCountRow(await db.prepare('SELECT COUNT(*) as count FROM prompts WHERE name = ?').get(name));
 
     return { items: rows, total };
   }

@@ -1,6 +1,6 @@
 import { AppError } from '@errors/app.error';
 import { getDb } from '@models/promptmetrics-sqlite';
-import { parsePagination, buildPaginatedResponse, PaginatedResponse } from '@utils/pagination';
+import { parsePagination, buildPaginatedResponse, PaginatedResponse, parseCountRow } from '@utils/pagination';
 
 export interface Label {
   prompt_name: string;
@@ -40,11 +40,9 @@ export class LabelService {
   ): Promise<PaginatedResponse<Label>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const total = (
-      (await db
-        .prepare('SELECT COUNT(*) as c FROM prompt_labels WHERE prompt_name = ? AND workspace_id = ?')
-        .get(promptName, workspaceId)) as { c: number }
-    ).c;
+    const total = parseCountRow(await db
+      .prepare('SELECT COUNT(*) as c FROM prompt_labels WHERE prompt_name = ? AND workspace_id = ?')
+      .get(promptName, workspaceId));
     const items = (await db
       .prepare(
         'SELECT * FROM prompt_labels WHERE prompt_name = ? AND workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',

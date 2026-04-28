@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { AppError } from '@errors/app.error';
 import { getDb } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
-import { parsePagination, buildPaginatedResponse, PaginatedResponse } from '@utils/pagination';
+import { parsePagination, buildPaginatedResponse, PaginatedResponse, parseCountRow } from '@utils/pagination';
 
 export interface ApiKey {
   id: number;
@@ -38,7 +38,9 @@ export class ApiKeyService {
     }
 
     const result = await db
-      .prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id, expires_at) VALUES (?, ?, ?, ?, ?) RETURNING id')
+      .prepare(
+        'INSERT INTO api_keys (key_hash, name, scopes, workspace_id, expires_at) VALUES (?, ?, ?, ?, ?) RETURNING id',
+      )
       .run(keyHash, input.name, scopes, workspaceId, expiresAt);
 
     const apiKey: ApiKey = {
@@ -74,7 +76,7 @@ export class ApiKeyService {
 
     itemsQuery += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
 
-    const total = ((await db.prepare(totalQuery).get(...params)) as { c: number }).c;
+    const total = parseCountRow(await db.prepare(totalQuery).get(...params));
     const items = (await db.prepare(itemsQuery).all(...params, limit, offset)) as Array<{
       id: number;
       name: string;

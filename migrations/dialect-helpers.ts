@@ -11,3 +11,7 @@ export function nowFn(dialect: 'sqlite' | 'postgres'): string {
 export function windowStartColumn(dialect: 'sqlite' | 'postgres'): string {
   return dialect === 'postgres' ? 'BIGINT' : 'INTEGER';
 }
+
+export function timestampColumn(dialect: 'sqlite' | 'postgres'): string {
+  return dialect === 'postgres' ? 'BIGINT' : 'INTEGER';
+}

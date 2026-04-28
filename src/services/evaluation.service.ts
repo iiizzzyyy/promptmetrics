@@ -1,6 +1,6 @@
 import { AppError } from '@errors/app.error';
 import { getDb } from '@models/promptmetrics-sqlite';
-import { parsePagination, buildPaginatedResponse, PaginatedResponse } from '@utils/pagination';
+import { parsePagination, buildPaginatedResponse, PaginatedResponse, parseCountRow } from '@utils/pagination';
 
 export interface Evaluation {
   id: number;
@@ -71,11 +71,7 @@ export class EvaluationService {
   ): Promise<PaginatedResponse<Evaluation>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const total = (
-      (await db.prepare('SELECT COUNT(*) as c FROM evaluations WHERE workspace_id = ?').get(workspaceId)) as {
-        c: number;
-      }
-    ).c;
+    const total = parseCountRow(await db.prepare('SELECT COUNT(*) as c FROM evaluations WHERE workspace_id = ?').get(workspaceId));
     const items = (await db
       .prepare('SELECT * FROM evaluations WHERE workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
       .all(workspaceId, limit, offset)) as Array<{
@@ -184,11 +180,9 @@ export class EvaluationService {
   ): Promise<PaginatedResponse<EvaluationResult>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const total = (
-      (await db
-        .prepare('SELECT COUNT(*) as c FROM evaluation_results WHERE evaluation_id = ? AND workspace_id = ?')
-        .get(evaluationId, workspaceId)) as { c: number }
-    ).c;
+    const total = parseCountRow(await db
+      .prepare('SELECT COUNT(*) as c FROM evaluation_results WHERE evaluation_id = ? AND workspace_id = ?')
+      .get(evaluationId, workspaceId));
     const items = (await db
       .prepare(
         'SELECT * FROM evaluation_results WHERE evaluation_id = ? AND workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',

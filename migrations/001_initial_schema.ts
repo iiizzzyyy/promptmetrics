@@ -1,5 +1,5 @@
 import { DatabaseAdapter } from '../src/models/database.interface';
-import { idColumn, nowFn, windowStartColumn } from './dialect-helpers';
+import { idColumn, nowFn, windowStartColumn, timestampColumn } from './dialect-helpers';
 
 export async function up(db: DatabaseAdapter): Promise<void> {
   const d = db.dialect;
@@ -83,8 +83,8 @@ export async function up(db: DatabaseAdapter): Promise<void> {
       parent_id TEXT,
       name TEXT NOT NULL,
       status TEXT CHECK(status IN ('ok', 'error')),
-      start_time INTEGER,
-      end_time INTEGER,
+      start_time ${timestampColumn(d)},
+      end_time ${timestampColumn(d)},
       metadata_json TEXT,
       created_at INTEGER NOT NULL DEFAULT (${nowFn(d)}),
       FOREIGN KEY (trace_id) REFERENCES traces(trace_id)

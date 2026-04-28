@@ -27,3 +27,23 @@ export function buildPaginatedResponse<T>(items: T[], total: number, page: numbe
     totalPages: Math.ceil(total / limit),
   };
 }
+
+export function parseCount(value: unknown): number {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const n = Number(value);
+    return Number.isNaN(n) ? 0 : n;
+  }
+  if (typeof value === 'bigint') {
+    return Number(value);
+  }
+  return 0;
+}
+
+export function parseCountRow(row: unknown): number {
+  if (row === null || row === undefined) return 0;
+  const r = row as Record<string, unknown>;
+  const val = r.c ?? r.count ?? 0;
+  return parseCount(val);
+}

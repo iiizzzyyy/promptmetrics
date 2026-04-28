@@ -1,242 +1,203 @@
-# Issue Resolution Plan: Open Issues #24–#28
+# Open Issues Resolution Plan
 
-**Date:** 2026-04-26
-**Status:** Proposed — Awaiting Approval
-**Agents Consulted:** AI Engineer, Software Architect
+**Repository**: iiizzzyyy/promptmetrics  
+**Date**: 2026-04-28  
+**Issues**: #64, #65  
+**Version**: 1.0.12  
+**Status**: Proposed
 
 ---
 
 ## Executive Summary
 
-There are **5 open issues** on the promptmetrics repository. After analysis:
-- **#24** is a **duplicate/stale report** of #23, which was already fixed in v1.0.4.
-- **#25, #26** are high-value, low-risk fixes that can be implemented independently.
-- **#27, #28** are related (workspace auth + key management) and should be built together.
+Two PostgreSQL-specific production bugs have been identified in promptmetrics v1.0.12:
 
-**Recommended order:** #25 → #26 → #27 + #28 (bundle) → close #24 as duplicate.
+1. **Issue #64**: `spans.start_time` and `spans.end_time` columns use `INTEGER` which overflows with millisecond timestamps on PostgreSQL.
+2. **Issue #65**: `COUNT(*)` queries return JavaScript strings on PostgreSQL (via `node-postgres` bigint handling), breaking pagination `total` fields across all list endpoints.
 
----
+Both issues share the same root cause class: **SQLite/PostgreSQL dialect differences not fully abstracted**. Issue #31 previously fixed the same overflow for `rate_limits.window_start`; these two issues are the remaining gaps.
 
-## Issue Inventory
-
-| Issue | Title | Priority | Effort | Risk | Status |
-|-------|-------|----------|--------|------|--------|
-| #25 | Missing GET /v1/logs and GET /v1/traces list endpoints | **P1** | Small | Low | Open |
-| #26 | Metadata validation rejects nested objects | **P1** | Small | Low | Open |
-| #27 | Workspace authorization too strict | **P2** | Medium | Medium | Open |
-| #28 | Missing /v1/api-keys management endpoint | **P2** | Medium | Medium | Open |
-| #24 | Regression: --json flag missing | **P3** | None | None | **Resolved** |
+This plan provides a unified, minimal-delta resolution that leverages existing patterns (`dialect-helpers.ts`) to fix both issues without introducing new bugs.
 
 ---
 
-## Issue #24: Regression — `--json` flag missing
+## Issue #64: PostgreSQL INTEGER Overflow on spans.start_time / spans.end_time
 
-**Status:** Already resolved by #23 fix (v1.0.4).
+### Architectural Analysis (Software Architect Perspective)
 
-**Verification:**
-- `src/cli/promptmetrics-cli.ts` has `program.option('--json', 'Output as JSON')` at line 121.
-- `print()` helper routes to `JSON.stringify()` when `--json` is set.
-- Tests in `tests/unit/cli.test.ts` verify `--json` acceptance and table fallback.
+**Root Cause**: The initial schema migration (`001_initial_schema.ts`) declares `start_time INTEGER` and `end_time INTEGER`. PostgreSQL's `INTEGER` is a signed 32-bit type with max value `2,147,483,647`. Millisecond timestamps such as `1777359830616` exceed this by ~800x, causing insert failures.
 
-**Action:** Close #24 as duplicate of #23.
+**Why SQLite is unaffected**: SQLite's `INTEGER` is a 64-bit type (up to `9,223,372,036,854,775,807`), so it silently handles millisecond timestamps.
 
----
+**Trade-off Analysis**:
 
-## Issue #25: Missing GET /v1/logs and GET /v1/traces list endpoints
+| Approach | Pros | Cons | Verdict |
+|----------|------|------|---------|
+| A. Change `INTEGER` → `BIGINT` unconditionally | Simple, works for both DBs | Incompatible with SQLite (SQLite has no `BIGINT` keyword; `INTEGER` is already 64-bit) | Rejected |
+| B. Dialect-conditional DDL (`postgres ? BIGINT : INTEGER`) | Matches existing pattern from #31; zero risk to SQLite | Adds one helper function | **Accepted** |
+| C. Store timestamps as seconds instead of ms | Reduces value magnitude | Breaking change to API contract; requires migration of existing data | Rejected |
 
-### Problem Analysis
+**Decision**: Use Approach B, consistent with the existing `windowStartColumn` helper in `dialect-helpers.ts`.
 
-The route files `promptmetrics-log.route.ts` and `promptmetrics-trace.route.ts` only wire:
-- `POST /v1/logs`, `GET /v1/logs/:id`
-- `POST /v1/traces`, `GET /v1/traces/:trace_id`, `POST /v1/traces/:trace_id/spans`
+### Implementation Details
 
-There are **no list routes** (`GET /v1/logs`, `GET /v1/traces`). The pattern already exists in `RunService.listRuns()` and `RunController.listRuns()`, so this is a straightforward gap-fill.
+1. **Add helper** `timestampColumn(dialect)` in `migrations/dialect-helpers.ts`:
+   ```typescript
+   export function timestampColumn(dialect: 'sqlite' | 'postgres'): string {
+     return dialect === 'postgres' ? 'BIGINT' : 'INTEGER';
+   }
+   ```
 
-### Root Cause
+2. **Update initial schema** `migrations/001_initial_schema.ts`:
+   - Import `timestampColumn`
+   - Change `start_time INTEGER` → `start_time ${timestampColumn(d)}`
+   - Change `end_time INTEGER` → `end_time ${timestampColumn(d)}`
 
-The log and trace services/controllers were built with single-resource operations but the list operations were never added, despite the `runs` module having a complete example.
+3. **Add dedicated migration** `migrations/009_alter_spans_time_columns.ts`:
+   - For PostgreSQL: `ALTER TABLE spans ALTER COLUMN start_time TYPE BIGINT`
+   - For PostgreSQL: `ALTER TABLE spans ALTER COLUMN end_time TYPE BIGINT`
+   - For SQLite: no-op (already 64-bit INTEGER)
 
-### Architectural Decision
-
-**ADR-001: Reuse the existing pagination pattern from `RunService`.**
-
-- `parsePagination()` from `@utils/pagination` handles query parsing.
-- `buildPaginatedResponse()` wraps results.
-- SQLite query: `SELECT * FROM logs WHERE workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`.
-- Same pattern applies to traces.
-
-**Trade-off:** Minimal new code; follows established convention. No downsides.
-
-### Files Affected
-
-| File | Change |
-|------|--------|
-| `src/services/log.service.ts` | Add `listLogs()` method |
-| `src/services/trace.service.ts` | Add `listTraces()` method |
-| `src/controllers/promptmetrics-log.controller.ts` | Add `listLogs()` method |
-| `src/controllers/promptmetrics-trace.controller.ts` | Add `listTraces()` method |
-| `src/routes/promptmetrics-log.route.ts` | Add `GET /v1/logs` route |
-| `src/routes/promptmetrics-trace.route.ts` | Add `GET /v1/traces` route |
-| `tests/integration/logs.test.ts` | Add list integration tests |
-| `tests/integration/traces.test.ts` | Add list integration tests |
+4. **No service-layer changes required**: `TraceService.createSpan()` already passes `start_time` and `end_time` as numbers; the type is preserved through the adapter layer.
 
 ---
 
-## Issue #26: Metadata validation rejects nested objects
+## Issue #65: PostgreSQL COUNT(*) Returns String, Breaking Pagination
 
-### Problem Analysis
+### Architectural Analysis (Software Architect Perspective)
 
-Joi validation schemas for metadata fields only allow string/number/boolean values. When a span contains nested objects (e.g., `{"tool": "calculator", "arguments": {"expression": "2+2"}}`), validation fails with:
+**Root Cause**: `node-postgres` returns PostgreSQL `bigint` values as JavaScript strings to avoid precision loss. SQLite returns `number` natively. The codebase casts `COUNT(*)` results directly as `{ c: number }` and accesses `.c`, which yields a string on PostgreSQL. This string is then passed to `buildPaginatedResponse()`, which expects `number` for `total` and `totalPages` calculations. While `Math.ceil("5" / 10)` happens to work via JavaScript coercion, the JSON response contains `"total": "5"` instead of `"total": 5`, breaking API contracts and client-side TypeScript assumptions.
 
-```json
-{"error": "Validation failed", "details": ["metadata.arguments must be one of [string, number, boolean]"]}
-```
+**Scope**: All paginated list endpoints and internal count queries.
 
-### Root Cause
+**Affected Files**:
+- `src/services/prompt.service.ts` (2 count queries: `listPrompts`, `listVersions`)
+- `src/services/trace.service.ts` (1 count query: `listTraces`)
+- `src/services/evaluation.service.ts` (2 count queries: `listEvaluations`, `listEvaluationResults`)
+- `src/services/log.service.ts` (1 count query: `listLogs`)
+- `src/services/run.service.ts` (1 count query: `listRuns`)
+- `src/services/label.service.ts` (1 count query)
+- `src/services/api-key.service.ts` (1 count query)
+- `src/routes/audit-log.route.ts` (1 count query)
+- `src/drivers/promptmetrics-github-driver.ts` (1 count query)
 
-The trace schema uses `Joi.object().pattern(Joi.string(), Joi.string(), Joi.number(), Joi.boolean())` or similar primitive restriction. Metadata fields in logs, runs, and traces should accept arbitrary JSON.
+**Trade-off Analysis**:
 
-### Architectural Decision
+| Approach | Pros | Cons | Verdict |
+|----------|------|------|---------|
+| A. Inline `Number(result?.c ?? 0)` at every call site | Minimal abstraction; explicit | Repetitive; risk of missing call sites; inconsistency | Rejected |
+| B. Helper function `parseCount(row)` in `dialect-helpers.ts` or `pagination.ts` | Single point of truth; easy to test; catches all cases | Slightly more abstraction | **Accepted** |
+| C. Configure `node-postgres` `types.setTypeParser(20, parseInt)` | Global fix; no code changes | Overrides all bigint parsing globally; may break other legitimate bigint use cases (IDs, etc.); hidden side effect | Rejected |
+| D. Use `parseInt()` instead of `Number()` | Handles strings | Fails on `null`/`undefined` without coalescing | Rejected |
 
-**ADR-002: Allow `Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean(), Joi.object(), Joi.array())` for metadata fields.**
+**Decision**: Use Approach B — introduce a `parseCount()` helper that safely converts count results to numbers, handling both string (PostgreSQL) and number (SQLite) inputs, plus null/undefined fallback.
 
-- Use a recursive schema helper for metadata: `metadataValueSchema` that accepts primitives, objects, or arrays.
-- Apply to all metadata fields across trace, span, log, and run schemas.
-- Add a **depth guard** to prevent deeply nested objects from causing stack overflow or DOS (max depth 5).
+### Implementation Details
 
-**Trade-off:**
-- **Easier:** Supports real-world OpenTelemetry-style structured telemetry.
-- **Harder:** Slightly less strict validation; need depth guard for safety.
+1. **Add helper** in `src/utils/pagination.ts`:
+   ```typescript
+   export function parseCount(result: unknown): number {
+     if (result === null || result === undefined) return 0;
+     if (typeof result === 'number') return result;
+     if (typeof result === 'string') return Number(result);
+     if (typeof result === 'bigint') return Number(result);
+     return 0;
+   }
+   ```
 
-### Files Affected
+2. **Add typed wrapper** for the common `COUNT(*) as c` pattern:
+   ```typescript
+   export function parseCountRow(row: unknown): number {
+     if (row === null || row === undefined) return 0;
+     const r = row as Record<string, unknown>;
+     const val = r.c ?? r.count ?? 0;
+     return parseCount(val);
+   }
+   ```
 
-| File | Change |
-|------|--------|
-| `src/validation-schemas/promptmetrics-trace.schema.ts` | Allow nested objects in metadata |
-| `src/validation-schemas/promptmetrics-log.schema.ts` | Allow nested objects in metadata |
-| `src/validation-schemas/promptmetrics-run.schema.ts` | Allow nested objects in metadata |
-| `tests/integration/traces.test.ts` | Add nested metadata test |
-| `tests/integration/logs.test.ts` | Add nested metadata test |
+3. **Update all affected service files** to use `parseCountRow()` instead of direct `.c` access.
 
----
-
-## Issue #27: Workspace authorization too strict
-
-### Problem Analysis
-
-The auth middleware rejects requests when `X-Workspace-Id` does not match the API key's `workspace_id`. This means:
-- Admin keys that should span all workspaces are blocked.
-- Multi-tenant CI/CD cannot use a single key across workspaces.
-
-### Root Cause
-
-`src/middlewares/promptmetrics-auth.middleware.ts` enforces exact workspace match after key lookup. There is no concept of a "master" or "admin" key that bypasses workspace checks.
-
-### Architectural Decision
-
-**ADR-003: Add `is_admin` boolean to `api_keys` table. Admin keys bypass workspace validation.**
-
-- Add `is_admin INTEGER DEFAULT 0` to `api_keys` table via migration.
-- In auth middleware: if `row.is_admin === 1`, skip workspace check; allow any `X-Workspace-Id`.
-- Non-admin keys continue to require exact workspace match.
-- Admin keys still require valid scopes.
-
-**Alternative considered:**
-- Null `workspace_id` meaning "all workspaces." Rejected because it complicates indexing and query patterns.
-
-**Trade-off:**
-- **Easier:** Simple migration, clear semantics, backward compatible.
-- **Harder:** Admin keys are more powerful; must be created carefully.
-
-### Files Affected
-
-| File | Change |
-|------|--------|
-| `migrations/006_add_api_key_admin.sql` | New migration |
-| `src/middlewares/promptmetrics-auth.middleware.ts` | Check `is_admin` flag |
-| `src/models/promptmetrics-sqlite.ts` | Ensure schema handles new column |
-| `tests/integration/auth.test.ts` | Add admin key tests |
+4. **Update tests** that mock or assert on count values to handle both types.
 
 ---
 
-## Issue #28: Missing /v1/api-keys management endpoint
+## Risk Mitigation & Regression Prevention
 
-### Problem Analysis
+### What Could Go Wrong
 
-There is no REST API for programmatic API key management. Keys can only be created via `npm run api-key:generate` (a CLI script) or direct DB insertion.
+1. **Migration 009 fails on PostgreSQL**: If existing `spans` rows contain out-of-range values, `ALTER COLUMN TYPE BIGINT` could fail. However, the column was already failing on INSERT, so out-of-range rows are unlikely to exist.
+2. **Missing a COUNT(*) call site**: If any count query is missed, that endpoint will still return strings on PostgreSQL.
+3. **`parseCount` breaks on unexpected input**: Must handle `null`, `undefined`, `string`, `number`, and `bigint` defensively.
+4. **SQLite behavior changes**: The plan explicitly preserves `INTEGER` for SQLite, so no SQLite regression.
+5. **Build breaks**: Adding a new migration file requires the migrator to pick it up. The existing `umzug` setup uses glob patterns that will automatically include `009_*.ts`.
 
-### Root Cause
+### Prevention Measures
 
-No route/controller/service triad exists for API keys. The auth middleware handles key validation but there's no CRUD surface.
-
-### Architectural Decision
-
-**ADR-004: Implement minimal CRUD for API keys, restricted to admin-scoped keys.**
-
-Endpoints:
-- `POST /v1/api-keys` — create key (requires `admin` scope). Returns `{ id, name, workspace_id, scopes, key, created_at }`. The raw key is returned **once** on creation.
-- `GET /v1/api-keys` — list keys (requires `admin` scope). Returns paginated list.
-- `DELETE /v1/api-keys/:id` — revoke key (requires `admin` scope).
-
-**Security considerations:**
-- Only admin keys can manage other keys.
-- Raw key is hashed with HMAC-SHA256 before storage (reuse existing `hashApiKey`).
-- On creation, return the raw key once; never store or return it again.
-- `DELETE` soft-deletes or hard-deletes; hard-delete is acceptable for API keys.
-
-**Trade-off:**
-- **Easier:** Enables CI/CD key rotation and workspace provisioning.
-- **Harder:** Admin keys become high-value targets; requires careful scope enforcement.
-
-### Files Affected
-
-| File | Change |
-|------|--------|
-| `src/services/api-key.service.ts` | New service |
-| `src/controllers/api-key.controller.ts` | New controller |
-| `src/routes/api-key.route.ts` | New routes |
-| `src/validation-schemas/api-key.schema.ts` | New schemas |
-| `src/app.ts` | Mount api-key routes |
-| `tests/integration/api-keys.test.ts` | New integration tests |
-
-### Dependency on #27
-
-The `POST /v1/api-keys` endpoint needs to support creating admin keys. This requires the `is_admin` column from #27. Therefore, **#27 must be implemented before or alongside #28**.
+1. **Comprehensive grep audit**: Before and after the fix, grep for all `COUNT(*)` occurrences to ensure completeness.
+2. **Unit tests for `parseCount` and `parseCountRow`**: Test all input types (string, number, bigint, null, undefined, object).
+3. **Integration tests on both backends**: Run the full test suite against SQLite (default) and verify PostgreSQL behavior via mocked adapter or dedicated integration tests.
+4. **Static analysis**: Run `npm run lint` and `npm run build` after all changes.
+5. **No changes to `buildPaginatedResponse`**: The function signature remains unchanged; only the callers provide the correct type.
 
 ---
 
-## Cross-Cutting Concerns
+## ADR-009: PostgreSQL Dialect Normalization for COUNT and BIGINT
 
-### Testing Strategy
-- Each issue gets integration tests following the existing `runs.test.ts` pattern.
-- #25 and #26 can be tested independently.
-- #27 and #28 share a test file for admin key behavior.
+### Status
+Proposed
 
-### Security
-- #27 introduces admin keys — ensure they are documented as sensitive.
-- #28 key creation must reject creating admin keys unless the caller is admin.
-- #26 depth guard prevents metadata abuse.
+### Context
+PostgreSQL and SQLite have divergent type systems. SQLite uses dynamic typing (`INTEGER` is 64-bit), while PostgreSQL uses strict static typing (`INTEGER` is 32-bit, `BIGINT` is 64-bit). Our abstraction layer (`DatabaseAdapter`) does not currently normalize `COUNT(*)` return types or timestamp column widths, leading to production bugs #64 and #65.
 
-### Backward Compatibility
-- #25: additive (new routes) — fully backward compatible.
-- #26: relaxes validation — fully backward compatible.
-- #27: additive (new column with default 0) — fully backward compatible.
-- #28: additive (new routes) — fully backward compatible.
+### Decision
+1. Introduce dialect-conditional DDL helpers for timestamp columns (`timestampColumn`).
+2. Introduce a runtime count-normalization helper (`parseCountRow`) in the pagination utility layer.
+3. Apply these helpers consistently across all migrations and services.
 
----
-
-## Success Metrics
-
-- [ ] `GET /v1/logs?page=1&limit=10` returns `{ items, total, page, limit, totalPages }`
-- [ ] `GET /v1/traces?page=1&limit=10` returns paginated traces
-- [ ] `POST /v1/traces/:id/spans` accepts `metadata: { arguments: { expression: "2+2" } }`
-- [ ] Admin API key can access any workspace via `X-Workspace-Id`
-- [ ] `POST /v1/api-keys` creates and returns a new key
-- [ ] `GET /v1/api-keys` lists keys (paginated)
-- [ ] `DELETE /v1/api-keys/:id` revokes a key
-- [ ] All existing tests pass (31 suites, 215 tests)
+### Consequences
+- **Easier**: Adding future PostgreSQL support for new tables; adding new paginated endpoints.
+- **Harder**: None. The abstraction is thin and localized.
+- **Risk**: Very low. The patterns are proven by #31 and #63.
 
 ---
 
-*Plan generated by AI Engineer & Software Architect agent analysis.*
-*Proposed 2026-04-26.*
+## Files to Modify
+
+### Issue #64
+1. `migrations/dialect-helpers.ts` — add `timestampColumn`
+2. `migrations/001_initial_schema.ts` — use `timestampColumn` for `spans.start_time`, `spans.end_time`
+3. `migrations/009_alter_spans_time_columns.ts` — new migration for existing PostgreSQL deployments
+
+### Issue #65
+4. `src/utils/pagination.ts` — add `parseCount` and `parseCountRow`
+5. `src/services/prompt.service.ts` — 2 call sites
+6. `src/services/trace.service.ts` — 1 call site
+7. `src/services/evaluation.service.ts` — 2 call sites
+8. `src/services/log.service.ts` — 1 call site
+9. `src/services/run.service.ts` — 1 call site
+10. `src/services/label.service.ts` — 1 call site
+11. `src/services/api-key.service.ts` — 1 call site
+12. `src/routes/audit-log.route.ts` — 1 call site
+13. `src/drivers/promptmetrics-github-driver.ts` — 1 count query
+
+### Tests
+14. `tests/unit/utils/pagination.test.ts` — new unit tests for `parseCount` / `parseCountRow`
+15. Update any existing tests that assert on raw count types
+
+---
+
+## Deliverables
+
+1. `docs/plans/open-issues-resolution-plan.md` (this document)
+2. `docs/plans/BUILD_TASKS_OPEN_ISSUES.md` — step-by-step implementation tasks
+3. `docs/plans/TESTING_PLAN_OPEN_ISSUES.md` — comprehensive testing strategy
+
+---
+
+## Approval
+
+| Role | Name | Status |
+|------|------|--------|
+| Software Architect | — | Proposed |
+| AI Engineer | — | Proposed |
+| API Tester | — | Pending (see testing plan) |

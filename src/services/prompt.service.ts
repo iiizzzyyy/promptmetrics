@@ -1,7 +1,7 @@
 import mustache from 'mustache';
 import { AppError } from '@errors/app.error';
 import { PromptDriver, PromptFile, PromptVersion } from '@drivers/promptmetrics-driver.interface';
-import { parsePagination, buildPaginatedResponse, PaginatedResponse } from '@utils/pagination';
+import { parsePagination, buildPaginatedResponse, PaginatedResponse, parseCountRow } from '@utils/pagination';
 import { getCachedPrompt, cacheKey, setCachedPrompt, invalidatePrompt } from '@services/cache.service';
 import { getDb } from '@models/promptmetrics-sqlite';
 import { config } from '@config/index';
@@ -32,10 +32,9 @@ export class PromptService {
       return buildPaginatedResponse(paginated, total, page, limit);
     }
 
-    const totalRow = (await db
+    const total = parseCountRow(await db
       .prepare("SELECT COUNT(DISTINCT name) as c FROM prompts WHERE workspace_id = ? AND status = 'active'")
-      .get(workspaceId)) as { c: number };
-    const total = totalRow.c;
+      .get(workspaceId));
     const rows = (await db
       .prepare("SELECT DISTINCT name FROM prompts WHERE workspace_id = ? AND status = 'active' ORDER BY name LIMIT ? OFFSET ?")
       .all(workspaceId, limit, offset)) as Array<{ name: string }>;
@@ -110,10 +109,9 @@ export class PromptService {
   ): Promise<PaginatedResponse<PromptVersion>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const totalRow = (await db
+    const total = parseCountRow(await db
       .prepare("SELECT COUNT(*) as c FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active'")
-      .get(name, workspaceId)) as { c: number };
-    const total = totalRow.c;
+      .get(name, workspaceId));
     const rows = (await db
       .prepare("SELECT * FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT ? OFFSET ?")
       .all(name, workspaceId, limit, offset)) as PromptVersion[];
