@@ -4,7 +4,7 @@
 **Date**: 2026-04-28  
 **Issues**: #64, #65  
 **Version**: 1.0.12  
-**Status**: Proposed
+**Status**: Completed
 
 ---
 
@@ -144,7 +144,7 @@ This plan provides a unified, minimal-delta resolution that leverages existing p
 ## ADR-009: PostgreSQL Dialect Normalization for COUNT and BIGINT
 
 ### Status
-Proposed
+Completed
 
 ### Context
 PostgreSQL and SQLite have divergent type systems. SQLite uses dynamic typing (`INTEGER` is 64-bit), while PostgreSQL uses strict static typing (`INTEGER` is 32-bit, `BIGINT` is 64-bit). Our abstraction layer (`DatabaseAdapter`) does not currently normalize `COUNT(*)` return types or timestamp column widths, leading to production bugs #64 and #65.
@@ -198,6 +198,6 @@ PostgreSQL and SQLite have divergent type systems. SQLite uses dynamic typing (`
 
 | Role | Name | Status |
 |------|------|--------|
-| Software Architect | — | Proposed |
-| AI Engineer | — | Proposed |
-| API Tester | — | Pending (see testing plan) |
+| Software Architect | — | Completed |
+| AI Engineer | — | Completed |
+| API Tester | — | Completed |

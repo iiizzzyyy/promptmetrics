@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.13] - 2026-04-28
+
+### Fixed
+
+- **fix(postgres):** Resolve `spans.start_time` and `spans.end_time` INTEGER overflow on PostgreSQL by using `BIGINT` (#64).
+  - Add `timestampColumn(dialect)` helper in `migrations/dialect-helpers.ts` that returns `'BIGINT'` for PostgreSQL and `'INTEGER'` for SQLite.
+  - Update `001_initial_schema.ts` to use `BIGINT` for `spans.start_time` and `spans.end_time` on PostgreSQL.
+  - Add migration `009_alter_spans_time_columns.ts` to alter existing PostgreSQL deployments.
+
+- **fix(postgres):** Normalize `COUNT(*)` results so pagination `total` fields are always numbers on both PostgreSQL and SQLite (#65).
+  - Add `parseCount` and `parseCountRow` helpers in `src/utils/pagination.ts` to safely convert PostgreSQL string counts to numbers.
+  - Replace all direct `.c` / `.count` accesses across 9 service, route, and driver files with `parseCountRow()`.
+  - All paginated endpoints now return `total` as a proper `number` regardless of database backend.
+
 ## [1.0.12] - 2026-04-28
 
 ### Fixed
