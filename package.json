@@ -1,6 +1,6 @@
 {
   "name": "promptmetrics",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "Lightweight, self-hosted prompt registry with versioning, metadata logging, evaluations, and multi-tenant observability",
   "main": "dist/server.js",
   "bin": {
