@@ -48,7 +48,7 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 | Agent debugging | Black box execution | Traces, spans, and runs with full timeline |
 | Environment management | Hardcoded version strings | Label-based resolution (`production`, `staging`) |
 | Evaluations | Manual prompt quality checks | Structured evaluation suites with scoring and history |
-| Dashboard | No central UI for prompt ops | Optional Next.js dashboard for prompts, logs, traces, runs, labels, and settings |
+| Dashboard | No central UI for prompt ops | Optional Next.js observability dashboard with charts, traces, logs, runs, and metrics |
 | Operational cost | Managed SaaS fees, data egress | Self-hosted, single-node, zero external deps |
 
 ---
@@ -68,7 +68,7 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 - **Per-API-Key Rate Limiting** — Sliding window rate limits with Redis or SQLite backends.
 - **Multi-Tenancy** — Workspace isolation via `X-Workspace-Id` header.
 - **OpenTelemetry Export** — Optional OTLP export for operators who already have an observability stack.
-- **Web UI Dashboard** — Next.js dashboard for browsing prompts, logs, traces, runs, labels, and settings.
+- **Web UI Dashboard** — Next.js observability dashboard with time-series charts, token usage, prompt metrics, evaluation trends, and pages for prompts, logs, traces, runs, labels, evaluations, and settings.
 - **Node.js & Python SDKs** — First-class client libraries for programmatic access.
 - **GitHub Webhooks** — Immediate sync on push events via webhook endpoint.
 - **Circuit Breaker** — GitHub API calls wrapped in an Opossum circuit breaker with exponential backoff on 429 responses.
@@ -305,6 +305,12 @@ Multi-tenancy: Pass `X-Workspace-Id` header to scope all data. API keys are vali
 - `POST /v1/evaluations/:id/results` — Add a result
 - `GET /v1/evaluations/:id/results` — List results
 - `DELETE /v1/evaluations/:id` — Delete an evaluation
+
+### Metrics
+- `GET /v1/metrics/time-series` — Daily request counts, tokens, latency, and error rates (window: 7d|30d|90d)
+- `GET /v1/metrics/prompts` — Per-prompt usage metrics
+- `GET /v1/metrics/evaluations` — Evaluation score trends over time
+- `GET /v1/metrics/activity` — Activity summary with recent runs
 
 ### Audit
 - `GET /v1/audit-logs` — Query audit logs (admin scope)
