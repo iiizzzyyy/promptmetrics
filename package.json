@@ -82,7 +82,7 @@
     "@types/axios": "^0.9.36",
     "axios": "^1.15.2",
     "better-sqlite3": "^12.1.1",
-    "commander": "^13.1.0",
+    "commander": "^14.0.3",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
