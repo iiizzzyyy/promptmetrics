@@ -4,6 +4,7 @@ import { PromptDriver, PromptFile, PromptVersion } from '@drivers/promptmetrics-
 import { parsePagination, buildPaginatedResponse, PaginatedResponse } from '@utils/pagination';
 import { getCachedPrompt, cacheKey, setCachedPrompt, invalidatePrompt } from '@services/cache.service';
 import { getDb } from '@models/promptmetrics-sqlite';
+import { config } from '@config/index';
 
 export class PromptService {
   constructor(private driver: PromptDriver) {}
@@ -24,7 +25,7 @@ export class PromptService {
       }
       const placeholders = driverItems.map(() => '?').join(',');
       const rows = (await db
-        .prepare(`SELECT DISTINCT name FROM prompts WHERE workspace_id = ? AND name IN (${placeholders}) ORDER BY name`)
+        .prepare(`SELECT DISTINCT name FROM prompts WHERE workspace_id = ? AND status = 'active' AND name IN (${placeholders}) ORDER BY name`)
         .all(workspaceId, ...driverItems)) as Array<{ name: string }>;
       const total = rows.length;
       const paginated = rows.slice(offset, offset + limit);
@@ -32,11 +33,11 @@ export class PromptService {
     }
 
     const totalRow = (await db
-      .prepare('SELECT COUNT(DISTINCT name) as c FROM prompts WHERE workspace_id = ?')
+      .prepare("SELECT COUNT(DISTINCT name) as c FROM prompts WHERE workspace_id = ? AND status = 'active'")
       .get(workspaceId)) as { c: number };
     const total = totalRow.c;
     const rows = (await db
-      .prepare('SELECT DISTINCT name FROM prompts WHERE workspace_id = ? ORDER BY name LIMIT ? OFFSET ?')
+      .prepare("SELECT DISTINCT name FROM prompts WHERE workspace_id = ? AND status = 'active' ORDER BY name LIMIT ? OFFSET ?")
       .all(workspaceId, limit, offset)) as Array<{ name: string }>;
 
     return buildPaginatedResponse(rows, total, page, limit);
@@ -51,7 +52,7 @@ export class PromptService {
   ): Promise<{ content: PromptFile; version: PromptVersion }> {
     const db = getDb();
     const membership = (await db
-      .prepare('SELECT 1 FROM prompts WHERE name = ? AND workspace_id = ? LIMIT 1')
+      .prepare("SELECT 1 FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active' LIMIT 1")
       .get(name, workspaceId)) as { 1: number } | undefined;
     if (!membership) {
       throw AppError.notFound('Prompt');
@@ -110,22 +111,41 @@ export class PromptService {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
     const totalRow = (await db
-      .prepare('SELECT COUNT(*) as c FROM prompts WHERE name = ? AND workspace_id = ?')
+      .prepare("SELECT COUNT(*) as c FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active'")
       .get(name, workspaceId)) as { c: number };
     const total = totalRow.c;
     const rows = (await db
-      .prepare('SELECT * FROM prompts WHERE name = ? AND workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
+      .prepare("SELECT * FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT ? OFFSET ?")
       .all(name, workspaceId, limit, offset)) as PromptVersion[];
 
     return buildPaginatedResponse(rows, total, page, limit);
   }
 
   async createPrompt(workspaceId: string, prompt: PromptFile): Promise<PromptVersion> {
-    const result = await this.driver.createPrompt(prompt);
     const db = getDb();
+    const now = Math.floor(Date.now() / 1000);
+
+    // Step 1: insert pending row (or reset existing to pending)
     await db
-      .prepare('UPDATE prompts SET workspace_id = ? WHERE name = ? AND version_tag = ?')
-      .run(workspaceId, prompt.name, prompt.version);
+      .prepare(
+        `INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(name, version_tag) DO UPDATE SET
+           workspace_id = excluded.workspace_id,
+           status = 'pending',
+           driver = excluded.driver,
+           created_at = excluded.created_at`,
+      )
+      .run(prompt.name, prompt.version, workspaceId, 'pending', config.driver, now);
+
+    // Step 2: driver writes content and updates its own fields via ON CONFLICT
+    const result = await this.driver.createPrompt(prompt);
+
+    // Step 3: activate
+    await db
+      .prepare("UPDATE prompts SET status = 'active' WHERE name = ? AND version_tag = ?")
+      .run(prompt.name, prompt.version);
+
     await invalidatePrompt(workspaceId, prompt.name);
     return result;
   }

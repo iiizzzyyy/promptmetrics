@@ -31,19 +31,13 @@ describe('Multi-Tenancy Integration', () => {
     workspaceAKey = 'pm_workspace_a_key';
     workspaceBKey = 'pm_workspace_b_key';
 
-    await db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
-      hashApiKey(workspaceAKey),
-      'workspace-a-key',
-      'read,write',
-      'workspace-a',
-    );
+    await db
+      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
+      .run(hashApiKey(workspaceAKey), 'workspace-a-key', 'read,write', 'workspace-a');
 
-    await db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
-      hashApiKey(workspaceBKey),
-      'workspace-b-key',
-      'read,write',
-      'workspace-b',
-    );
+    await db
+      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
+      .run(hashApiKey(workspaceBKey), 'workspace-b-key', 'read,write', 'workspace-b');
 
     driver = new FilesystemDriver(testPromptsPath);
     app = createApp(driver);

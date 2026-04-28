@@ -96,6 +96,27 @@ describe('GitHub Webhook', () => {
     expect(res.body.message).toBe('Sync triggered');
   });
 
+  it('should return 401 when signature differs in last byte (constant-time comparison)', async () => {
+    const payload = JSON.stringify({ ref: 'refs/heads/main' });
+    const validSignature = signPayload(payload);
+    // Flip the last hex character
+    const badSignature = validSignature.slice(0, -1) + (validSignature.slice(-1) === 'a' ? 'b' : 'a');
+
+    const res = await request(app)
+      .post('/webhooks/github')
+      .set('X-GitHub-Event', 'push')
+      .set('X-Hub-Signature-256', badSignature)
+      .set('Content-Type', 'application/json')
+      .send(payload);
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('Invalid signature');
+  });
+
+  // NOTE: Replay attack resistance is not implemented. There is no timestamp
+  // check on webhook signatures, so a valid signature could be replayed.
+  // This gap should be addressed in a future security hardening sprint.
+
   it('should return 500 when webhook secret is not configured', async () => {
     delete process.env.GITHUB_WEBHOOK_SECRET;
     const freshDriver = new FilesystemDriver(testPromptsPath + '-fresh');

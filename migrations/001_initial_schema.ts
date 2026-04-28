@@ -1,5 +1,5 @@
 import { DatabaseAdapter } from '../src/models/database.interface';
-import { idColumn, nowFn } from './dialect-helpers';
+import { idColumn, nowFn, windowStartColumn } from './dialect-helpers';
 
 export async function up(db: DatabaseAdapter): Promise<void> {
   const d = db.dialect;
@@ -126,7 +126,7 @@ export async function up(db: DatabaseAdapter): Promise<void> {
 
     CREATE TABLE IF NOT EXISTS rate_limits (
       key TEXT PRIMARY KEY,
-      window_start INTEGER NOT NULL,
+      window_start ${windowStartColumn(d)} NOT NULL,
       count INTEGER NOT NULL DEFAULT 0
     );
   `);

@@ -76,28 +76,30 @@ async function checkSqliteRateLimit(
   const now = Date.now();
   const windowStart = Math.floor(now / windowMs) * windowMs;
 
-  const updateResult = await db.prepare(
-    'UPDATE rate_limits SET count = count + 1 WHERE key = ? AND window_start = ? AND count < ?'
-  ).run(rateLimitKey, windowStart, maxRequests);
+  const updateResult = await db
+    .prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ? AND window_start = ? AND count < ?')
+    .run(rateLimitKey, windowStart, maxRequests);
 
   let incremented = updateResult.changes > 0;
 
   if (!incremented) {
-    const insertResult = await db.prepare(
-      `INSERT INTO rate_limits (key, window_start, count)
+    const insertResult = await db
+      .prepare(
+        `INSERT INTO rate_limits (key, window_start, count)
        VALUES (?, ?, 1)
        ON CONFLICT(key) DO UPDATE SET
          window_start = excluded.window_start,
          count = excluded.count
-       WHERE rate_limits.window_start < excluded.window_start`
-    ).run(rateLimitKey, windowStart);
+       WHERE rate_limits.window_start < excluded.window_start`,
+      )
+      .run(rateLimitKey, windowStart);
     incremented = insertResult.changes > 0;
 
     if (!incremented) {
       // Another request may have initialized the row; retry the atomic update once.
-      const retryResult = await db.prepare(
-        'UPDATE rate_limits SET count = count + 1 WHERE key = ? AND window_start = ? AND count < ?'
-      ).run(rateLimitKey, windowStart, maxRequests);
+      const retryResult = await db
+        .prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ? AND window_start = ? AND count < ?')
+        .run(rateLimitKey, windowStart, maxRequests);
       incremented = retryResult.changes > 0;
     }
   }

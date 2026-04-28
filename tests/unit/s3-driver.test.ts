@@ -86,4 +86,43 @@ describe('S3Driver', () => {
     const result = await driver.search('hel');
     expect(result).toEqual(['hello']);
   });
+
+  describe('path traversal protection', () => {
+    it('should reject createPrompt with malicious name containing ..', async () => {
+      await expect(
+        driver.createPrompt({
+          name: '../../../etc/passwd',
+          version: '1.0.0',
+          messages: [{ role: 'user', content: 'x' }],
+        }),
+      ).rejects.toThrow('Invalid prompt name: path traversal detected');
+
+      // Ensure no S3 call was made
+      expect(s3Mock.commandCalls(PutObjectCommand).length).toBe(0);
+    });
+
+    it('should reject createPrompt with malicious name containing /', async () => {
+      await expect(
+        driver.createPrompt({
+          name: 'foo/../../../bar',
+          version: '1.0.0',
+          messages: [{ role: 'user', content: 'x' }],
+        }),
+      ).rejects.toThrow('Invalid prompt name: path traversal detected');
+
+      expect(s3Mock.commandCalls(PutObjectCommand).length).toBe(0);
+    });
+
+    it('should reject getPrompt with malicious name', async () => {
+      await expect(driver.getPrompt('../../../etc/passwd', '1.0.0')).rejects.toThrow(
+        'Invalid prompt name: path traversal detected',
+      );
+      expect(s3Mock.commandCalls(GetObjectCommand).length).toBe(0);
+    });
+
+    it('should reject listVersions with malicious name', async () => {
+      await expect(driver.listVersions('foo\\bar')).rejects.toThrow('Invalid prompt name: path traversal detected');
+      expect(s3Mock.commandCalls(ListObjectsV2Command).length).toBe(0);
+    });
+  });
 });

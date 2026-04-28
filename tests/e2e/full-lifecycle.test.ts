@@ -332,6 +332,67 @@ describe('Full Lifecycle E2E', () => {
       const res = await request(app).get('/v1/audit-logs').set('X-API-Key', writeKey);
       expect(res.status).toBe(403);
     });
+
+    it('should isolate audit logs per workspace', async () => {
+      await auditLogService.flush();
+
+      // Create workspace-specific admin keys
+      const db = getDb();
+      const workspaceAAdminKey = 'pm_ws_a_admin';
+      const workspaceBAdminKey = 'pm_ws_b_admin';
+      db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
+        hashApiKey(workspaceAAdminKey),
+        'ws-a-admin',
+        'read,write,admin',
+        'workspace-a',
+      );
+      db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
+        hashApiKey(workspaceBAdminKey),
+        'ws-b-admin',
+        'read,write,admin',
+        'workspace-b',
+      );
+
+      // Create a prompt in workspace A
+      await request(app)
+        .post('/v1/prompts')
+        .set('X-API-Key', workspaceAAdminKey)
+        .set('X-Workspace-Id', 'workspace-a')
+        .send({
+          name: 'ws-a-prompt',
+          version: '1.0.0',
+          messages: [{ role: 'user', content: 'Hello A' }],
+        });
+
+      // Create a prompt in workspace B
+      await request(app)
+        .post('/v1/prompts')
+        .set('X-API-Key', workspaceBAdminKey)
+        .set('X-Workspace-Id', 'workspace-b')
+        .send({
+          name: 'ws-b-prompt',
+          version: '1.0.0',
+          messages: [{ role: 'user', content: 'Hello B' }],
+        });
+
+      await auditLogService.flush();
+
+      // Audit logs for workspace A should only contain workspace-a entries
+      const logsA = await request(app)
+        .get('/v1/audit-logs')
+        .set('X-API-Key', workspaceAAdminKey)
+        .set('X-Workspace-Id', 'workspace-a');
+      expect(logsA.status).toBe(200);
+      expect(logsA.body.items.every((item: { workspace_id: string }) => item.workspace_id === 'workspace-a')).toBe(true);
+
+      // Audit logs for workspace B should only contain workspace-b entries
+      const logsB = await request(app)
+        .get('/v1/audit-logs')
+        .set('X-API-Key', workspaceBAdminKey)
+        .set('X-Workspace-Id', 'workspace-b');
+      expect(logsB.status).toBe(200);
+      expect(logsB.body.items.every((item: { workspace_id: string }) => item.workspace_id === 'workspace-b')).toBe(true);
+    });
   });
 
   describe('Validation', () => {

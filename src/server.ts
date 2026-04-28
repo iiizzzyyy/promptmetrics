@@ -7,6 +7,7 @@ import { setupGracefulShutdown } from '@utils/promptmetrics-shutdown';
 import { initOtel, shutdownOtel } from '@services/promptmetrics-otel.service';
 import { auditLogService } from '@services/audit-log.service';
 import { GitSyncJob } from '@jobs/promptmetrics-git-sync.job';
+import { PromptReconciliationJob } from '@jobs/promptmetrics-reconciliation.job';
 import { createDriver } from '@drivers/promptmetrics-driver.factory';
 
 async function main(): Promise<void> {
@@ -31,12 +32,22 @@ async function main(): Promise<void> {
     console.log('Git sync job skipped: GITHUB_WEBHOOK_SECRET is configured (using webhooks)');
   }
 
+  // Start prompt reconciliation job for all valid drivers
+  const reconciliationJob = new PromptReconciliationJob(driver);
+  if (['filesystem', 'github', 's3'].includes(config.driver)) {
+    reconciliationJob.start();
+    console.log('Prompt reconciliation job started');
+  }
+
   setupGracefulShutdown({
     server,
     cleanupJobs: [
       shutdownOtel,
       async () => {
         gitSyncJob.stop();
+      },
+      async () => {
+        reconciliationJob.stop();
       },
       async () => {
         await auditLogService.flush();

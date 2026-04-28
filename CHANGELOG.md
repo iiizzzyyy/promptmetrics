@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.11] - 2026-04-28
+
+### Fixed
+
+- **fix(postgres):** Resolve integer overflow in `rate_limits.window_start` on PostgreSQL by using `BIGINT` instead of `INTEGER` (#31).
+  - Add `windowStartColumn(dialect)` helper in `migrations/dialect-helpers.ts` that returns `'BIGINT'` for PostgreSQL and `'INTEGER'` for SQLite.
+  - Update `001_initial_schema.ts` to use `BIGINT` for `rate_limits.window_start` on PostgreSQL.
+  - Add migration `007_alter_rate_limits_window_start.ts` to alter existing PostgreSQL deployments.
+
+### Added
+
+- **feat(prompts):** Implement atomic prompt writes with pending/active state machine (#41).
+  - Add `status` column (`TEXT NOT NULL DEFAULT 'active'`) to `prompts` table via migration `008_add_prompt_status.ts`.
+  - Refactor `PromptService.createPrompt()` to insert metadata with `status = 'pending'`, write to the storage driver, then update `status = 'active'`.
+  - Add `AND status = 'active'` filter to `listPrompts()`, `listVersions()`, and `getPrompt()` so incomplete writes are never returned.
+  - Create `PromptReconciliationJob` (`src/jobs/promptmetrics-reconciliation.job.ts`) that runs every 60 seconds (configurable via `PROMPT_RECONCILE_INTERVAL_MS`) to heal prompts stuck in `pending` state.
+  - Start `PromptReconciliationJob` alongside `GitSyncJob` in `src/server.ts`.
+
+### Changed
+
+- **test:** Expand test coverage from 82.61% to 89.23% (#62).
+  - Add unit tests for error handler, rate-limit middleware, postgres adapter, reconciliation job, and dialect helpers.
+  - Expand tests for cache service, S3 driver, GitHub driver, webhook, rate-limit integration, prompt transactions, and E2E full-lifecycle.
+
 ## [1.0.10] - 2026-04-27
 
 ### Security

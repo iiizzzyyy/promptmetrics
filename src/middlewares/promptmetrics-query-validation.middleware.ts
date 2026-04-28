@@ -6,7 +6,10 @@ export function validateQuery(schema: Joi.ObjectSchema) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     const { error, value } = schema.validate(req.query, { abortEarly: false });
     if (error) {
-      throw AppError.badRequest('Invalid query parameters', error.details.map((d) => d.message));
+      throw AppError.badRequest(
+        'Invalid query parameters',
+        error.details.map((d) => d.message),
+      );
     }
     req.validatedQuery = value;
     next();

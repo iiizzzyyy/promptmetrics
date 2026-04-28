@@ -11,7 +11,12 @@ function getEnv(key: string, required: boolean = false, defaultValue?: string): 
   return value || defaultValue;
 }
 
-function getEnvWithMinLength(key: string, minLength: number, required: boolean = false, defaultValue?: string): string | undefined {
+function getEnvWithMinLength(
+  key: string,
+  minLength: number,
+  required: boolean = false,
+  defaultValue?: string,
+): string | undefined {
   const value = getEnv(key, required, defaultValue);
   if (value && value.length < minLength) {
     throw new Error(`Environment variable ${key} must be at least ${minLength} characters long (got ${value.length})`);

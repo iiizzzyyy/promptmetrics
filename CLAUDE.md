@@ -54,7 +54,7 @@ PromptMetrics uses a two-tier storage architecture that spans multiple files:
 
 2. **Metadata** lives in SQLite (`better-sqlite3` with WAL mode) or PostgreSQL. The `getDb()` singleton (`src/models/promptmetrics-sqlite.ts`) provides the connection. Schema is managed via `umzug` migration runner (`src/migrations/migrator.ts`) with numbered TypeScript migration files in `migrations/` that use dialect-conditional DDL for SQLite and PostgreSQL.
 
-**Key implication:** The `prompts` table in SQLite is an *index* — it stores `name`, `version_tag`, `commit_sha`, and `driver`, but the actual prompt JSON content is read from Git/filesystem by the driver. When creating a prompt, the driver writes content to the storage backend AND inserts a row into SQLite. These two operations are NOT wrapped in a transaction.
+**Key implication:** The `prompts` table in SQLite is an *index* — it stores `name`, `version_tag`, `commit_sha`, `driver`, and `status`, but the actual prompt JSON content is read from Git/filesystem by the driver. When creating a prompt, `PromptService` inserts a row with `status = 'pending'`, calls the driver to write content to the storage backend, then updates the row to `status = 'active'`. If the driver write fails, the row remains `pending` and is not returned by read operations. A background `PromptReconciliationJob` heals stuck pending prompts automatically.
 
 ### Application Bootstrap Flow
 
@@ -62,6 +62,7 @@ PromptMetrics uses a two-tier storage architecture that spans multiple files:
 2. `src/app.ts` mounts global middleware (helmet, CORS, rate limit, JSON parser) and routes.
 3. Routes are mounted at `/` but endpoints are versioned under `/v1/`. Each route file (`src/routes/*.route.ts`) receives the driver instance and wires its controller.
 4. `GitSyncJob` starts only if `DRIVER=github`.
+5. `PromptReconciliationJob` starts on every boot to heal prompts stuck in `pending` state.
 
 **Important:** There is a known bug where the driver is instantiated twice — once in `server.ts` (for `GitSyncJob`) and once inside `createApp()`. When modifying this area, prefer passing the driver instance from `server.ts` into `createApp(driver)` rather than creating a second instance.
 
@@ -77,7 +78,8 @@ PromptMetrics uses a two-tier storage architecture that spans multiple files:
 1. Route (`src/routes/promptmetrics-prompt.route.ts`) receives the driver.
 2. `PromptController` methods handle HTTP concerns (pagination params, query parsing) then delegate to the driver.
 3. `getPrompt` performs Mustache variable substitution on `system` and `user` role messages via the `mustache` library. The result is cached in an LRU cache (or Redis when `REDIS_URL` is set).
-4. Validation is done via Joi schemas in `src/validation-schemas/` and returns 422 with a `details` array.
+4. Read operations (`listPrompts`, `listVersions`, `getPrompt`) filter on `status = 'active'`, so incomplete writes are invisible to clients.
+5. Validation is done via Joi schemas in `src/validation-schemas/` and returns 422 with a `details` array.
 
 ---
 

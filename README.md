@@ -57,6 +57,7 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 
 - **Git-Native Versioning** — Prompt content lives in Git (local filesystem or GitHub). Every version is immutable and traceable.
 - **Hybrid Storage** — SQLite indexes metadata for sub-millisecond queries; Git stores content for auditability. PostgreSQL and S3 backends also supported.
+- **Atomic Prompt Writes** — Two-phase commit with pending/active status and a background reconciliation job to heal incomplete writes.
 - **Template Rendering** — Mustache-style variable substitution in prompts (`Hello {{name}}!`).
 - **Structured Logging** — Log LLM metadata (model, tokens, latency, cost) with validated key-value tags, including nested objects and arrays.
 - **Agent Telemetry** — Built-in traces, spans, and workflow runs without Jaeger, Zipkin, or DataDog.
@@ -253,6 +254,7 @@ All configuration is environment-variable driven. No config files required for t
 | `RATE_LIMIT_WINDOW_MS` | No | `60000` | Rate-limit time window in milliseconds |
 | `RATE_LIMIT_MAX_REQUESTS` | No | `100` | Max requests per window per API key |
 | `API_KEY_LAST_USED_DEBOUNCE_MS` | No | `60000` | Minimum ms between `last_used_at` writes (reduces SQLite contention) |
+| `PROMPT_RECONCILE_INTERVAL_MS` | No | `60000` | Interval in ms for the reconciliation job to heal pending prompts |
 
 See [docs/configuration.md](docs/configuration.md) for advanced configuration.
 

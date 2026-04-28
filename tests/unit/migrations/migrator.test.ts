@@ -66,4 +66,13 @@ describe('createMigrator', () => {
     const executed = await migrator.executed();
     expect(executed.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('should run migration 007 successfully', async () => {
+    const migrator = createMigrator();
+    await migrator.up();
+
+    const executed = await migrator.executed();
+    const names = executed.map((m) => m.name);
+    expect(names).toContain('007_alter_rate_limits_window_start.sql');
+  });
 });

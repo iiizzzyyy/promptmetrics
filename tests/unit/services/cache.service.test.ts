@@ -1,22 +1,27 @@
 import { getCachedPrompt, cacheKey, setCachedPrompt, invalidatePrompt, CachedPrompt } from '@services/cache.service';
+import * as redisService from '@services/redis.service';
+
+const mockRedisClient = {
+  get: jest.fn(),
+  setex: jest.fn(),
+  del: jest.fn(),
+  flushall: jest.fn(),
+  keys: jest.fn(),
+};
+
+jest.mock('@services/redis.service', () => ({
+  isRedisEnabled: jest.fn().mockReturnValue(false),
+  getRedisClient: jest.fn().mockReturnValue(null),
+  closeRedis: jest.fn(),
+}));
 
 const WORKSPACE = 'default';
 
 describe('CacheService', () => {
-  beforeEach(async () => {
-    const { getRedisClient } = await import('@services/redis.service');
-    const redis = getRedisClient();
-    if (redis) {
-      await redis.flushall();
-    }
-  });
-
-  afterEach(async () => {
-    const { getRedisClient } = await import('@services/redis.service');
-    const redis = getRedisClient();
-    if (redis) {
-      await redis.flushall();
-    }
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (redisService.isRedisEnabled as jest.Mock).mockReturnValue(false);
+    (redisService.getRedisClient as jest.Mock).mockReturnValue(null);
   });
 
   const makeEntry = (name: string): CachedPrompt => ({
@@ -88,5 +93,40 @@ describe('CacheService', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(await getCachedPrompt(key)).toBeUndefined();
+  });
+
+  it('should return undefined when Redis returns invalid JSON', async () => {
+    mockRedisClient.get.mockResolvedValue('not-json{');
+    (redisService.isRedisEnabled as jest.Mock).mockReturnValue(true);
+    (redisService.getRedisClient as jest.Mock).mockReturnValue(mockRedisClient);
+
+    const result = await getCachedPrompt(cacheKey(WORKSPACE, 'bad-json'));
+    expect(result).toBeUndefined();
+    expect(mockRedisClient.del).toHaveBeenCalled();
+  });
+
+  it('should use Redis when enabled', async () => {
+    mockRedisClient.get.mockResolvedValue(null);
+    mockRedisClient.setex.mockResolvedValue('OK');
+    (redisService.isRedisEnabled as jest.Mock).mockReturnValue(true);
+    (redisService.getRedisClient as jest.Mock).mockReturnValue(mockRedisClient);
+
+    const entry = makeEntry('redis-prompt');
+    const key = cacheKey(WORKSPACE, 'redis-prompt');
+    await setCachedPrompt(key, entry);
+
+    expect(mockRedisClient.setex).toHaveBeenCalled();
+    const result = await getCachedPrompt(key);
+    expect(result).toBeUndefined();
+  });
+
+  it('should invalidate via Redis when enabled', async () => {
+    mockRedisClient.keys.mockResolvedValue(['prompt:default:multi:1.0.0']);
+    (redisService.isRedisEnabled as jest.Mock).mockReturnValue(true);
+    (redisService.getRedisClient as jest.Mock).mockReturnValue(mockRedisClient);
+
+    await invalidatePrompt(WORKSPACE, 'multi');
+    expect(mockRedisClient.keys).toHaveBeenCalledWith('prompt:default:multi:*');
+    expect(mockRedisClient.del).toHaveBeenCalledWith('prompt:default:multi:1.0.0');
   });
 });

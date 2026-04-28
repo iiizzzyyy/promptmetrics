@@ -30,30 +30,23 @@ describe('Auth Integration', () => {
     masterKey = 'pm_master_key_789';
     defaultWorkspaceKey = 'pm_default_workspace_key_abc';
 
-    await db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
-      hashApiKey(validKey),
-      'valid-key',
-      'read,write',
-      'default',
-    );
+    await db
+      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
+      .run(hashApiKey(validKey), 'valid-key', 'read,write', 'default');
 
-    await db.prepare(
-      'INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, expires_at, workspace_id) VALUES (?, ?, ?, ?, ?)',
-    ).run(hashApiKey(expiredKey), 'expired-key', 'read,write', Math.floor(Date.now() / 1000) - 1, 'default');
+    await db
+      .prepare(
+        'INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, expires_at, workspace_id) VALUES (?, ?, ?, ?, ?)',
+      )
+      .run(hashApiKey(expiredKey), 'expired-key', 'read,write', Math.floor(Date.now() / 1000) - 1, 'default');
 
-    await db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
-      hashApiKey(masterKey),
-      'master-key',
-      'read,write,admin',
-      '*',
-    );
+    await db
+      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
+      .run(hashApiKey(masterKey), 'master-key', 'read,write,admin', '*');
 
-    await db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
-      hashApiKey(defaultWorkspaceKey),
-      'default-workspace-key',
-      'read,write',
-      'default',
-    );
+    await db
+      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
+      .run(hashApiKey(defaultWorkspaceKey), 'default-workspace-key', 'read,write', 'default');
 
     app = createApp();
   });

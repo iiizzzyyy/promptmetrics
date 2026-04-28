@@ -7,3 +7,7 @@ export function idColumn(dialect: 'sqlite' | 'postgres'): string {
 export function nowFn(dialect: 'sqlite' | 'postgres'): string {
   return dialect === 'postgres' ? 'EXTRACT(EPOCH FROM NOW())::INTEGER' : 'unixepoch()';
 }
+
+export function windowStartColumn(dialect: 'sqlite' | 'postgres'): string {
+  return dialect === 'postgres' ? 'BIGINT' : 'INTEGER';
+}

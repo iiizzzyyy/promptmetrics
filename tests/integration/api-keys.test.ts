@@ -26,19 +26,13 @@ describe('API Key Management', () => {
     adminKey = 'pm_admin_key_123';
     readWriteKey = 'pm_rw_key_456';
 
-    await db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
-      hashApiKey(adminKey),
-      'admin-key',
-      'read,write,admin',
-      'default',
-    );
+    await db
+      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
+      .run(hashApiKey(adminKey), 'admin-key', 'read,write,admin', 'default');
 
-    await db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
-      hashApiKey(readWriteKey),
-      'rw-key',
-      'read,write',
-      'default',
-    );
+    await db
+      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
+      .run(hashApiKey(readWriteKey), 'rw-key', 'read,write', 'default');
 
     app = createApp();
   });

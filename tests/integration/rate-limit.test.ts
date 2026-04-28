@@ -27,16 +27,12 @@ describe('Per-API-Key Rate Limiting', () => {
     const db = getDb();
     keyA = 'pm_key_a';
     keyB = 'pm_key_b';
-    await db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
-      hashApiKey(keyA),
-      'key-a',
-      'read,write',
-    );
-    await db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
-      hashApiKey(keyB),
-      'key-b',
-      'read,write',
-    );
+    await db
+      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)')
+      .run(hashApiKey(keyA), 'key-a', 'read,write');
+    await db
+      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)')
+      .run(hashApiKey(keyB), 'key-b', 'read,write');
 
     app = createApp();
   });
@@ -115,5 +111,44 @@ describe('Per-API-Key Rate Limiting', () => {
     // The real app's /health endpoint has no auth middleware, so no rate limiting either
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);
+  });
+
+  it('accepts window_start values larger than 2^31', async () => {
+    const db = getDb();
+    const largeWindowStart = 2 ** 31 + 1; // 2147483649
+
+    await db
+      .prepare('INSERT INTO rate_limits (key, window_start, count) VALUES (?, ?, 1)')
+      .run('large-window-test', largeWindowStart);
+
+    const row = (await db
+      .prepare('SELECT window_start FROM rate_limits WHERE key = ?')
+      .get('large-window-test')) as { window_start: number } | undefined;
+
+    expect(row).toBeDefined();
+    expect(row!.window_start).toBe(largeWindowStart);
+  });
+
+  it('should allow exactly 10 concurrent requests and block the rest with limit=10', async () => {
+    const router = Router();
+    router.use((req, _res, next) => {
+      req.apiKey = { name: 'concurrent-key', scopes: ['read'] };
+      req.headers['x-api-key'] = 'concurrent-key-value';
+      next();
+    });
+    router.use(rateLimitPerKey(60_000, 10));
+    router.get('/concurrent', (_req, res) => res.json({ ok: true }));
+
+    const testApp = express();
+    testApp.use(router);
+
+    const requests = Array.from({ length: 20 }).map(() => request(testApp).get('/concurrent'));
+    const results = await Promise.all(requests);
+
+    const successes = results.filter((r) => r.status === 200).length;
+    const blocked = results.filter((r) => r.status === 429).length;
+
+    expect(successes).toBe(10);
+    expect(blocked).toBe(10);
   });
 });
