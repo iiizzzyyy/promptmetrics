@@ -79,7 +79,7 @@
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.215.0",
     "@opentelemetry/sdk-node": "^0.215.0",
-    "@types/axios": "^0.9.36",
+    "@types/axios": "^0.14.4",
     "axios": "^1.15.2",
     "better-sqlite3": "^12.1.1",
     "commander": "^13.1.0",
