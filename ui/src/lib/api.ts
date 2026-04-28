@@ -1,310 +1,268 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
-export interface PromptMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-  name?: string;
+type PaginatedResponse<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+async function fetchJson<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...((options?.headers || {}) as Record<string, string>),
+    },
+    ...options,
+  });
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
 }
 
-export interface PromptVariable {
-  type?: 'string' | 'number' | 'boolean' | 'array' | 'object';
-  required?: boolean;
-  default?: unknown;
+function buildQuery(params?: Record<string, string | number | undefined>) {
+  const q = new URLSearchParams();
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined) q.set(k, String(v));
+    }
+  }
+  const qs = q.toString();
+  return qs ? `?${qs}` : "";
 }
 
-export interface ModelConfig {
-  model?: string;
-  temperature?: number;
-  max_tokens?: number;
-  top_p?: number;
-  frequency_penalty?: number;
-  presence_penalty?: number;
-}
+export type TimeSeriesPoint = {
+  date: string;
+  request_count: number;
+  total_tokens: number;
+  total_cost_usd: number;
+  avg_latency_ms: number;
+  p50_latency_ms: number | null;
+  p95_latency_ms: number | null;
+  error_rate: number;
+};
 
-export interface OllamaConfig {
-  options?: Record<string, unknown>;
-  keep_alive?: string;
-  format?: string;
-}
+export type TimeSeriesResponse = {
+  window: string;
+  start: number;
+  end: number;
+  daily: TimeSeriesPoint[];
+};
 
-export interface CreatePromptRequest {
+export type PromptMetric = {
+  prompt_name: string;
+  version_tag: string;
+  request_count: number;
+  total_tokens_in: number;
+  total_tokens_out: number;
+  total_cost_usd: number;
+  avg_latency_ms: number;
+  error_rate: number;
+};
+
+export type PromptMetricsResponse = {
+  window: string;
+  prompts: PromptMetric[];
+};
+
+export type EvaluationTrendPoint = {
+  date: string;
+  avg_score: number;
+  result_count: number;
+  min_score: number;
+  max_score: number;
+};
+
+export type EvaluationTrend = {
+  evaluation_id: number;
   name: string;
-  version: string;
-  messages: PromptMessage[];
-  variables?: Record<string, PromptVariable>;
-  model_config?: ModelConfig;
-  ollama?: OllamaConfig;
-  tags?: string[];
-}
+  prompt_name: string;
+  trend: EvaluationTrendPoint[];
+};
 
-export interface PromptVersion {
+export type EvaluationTrendsResponse = {
+  window: string;
+  evaluations: EvaluationTrend[];
+};
+
+export type ActivitySummary = {
+  total_runs: number;
+  total_traces: number;
+  total_logs: number;
+  total_evaluations: number;
+  active_prompts: number;
+  failed_runs: number;
+};
+
+export type ActivityResponse = {
+  window: string;
+  summary: ActivitySummary;
+  recent_runs: {
+    items: Array<{
+      run_id: string;
+      workflow_name: string;
+      status: string;
+      created_at: number;
+      updated_at: number;
+    }>;
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};
+
+export type PromptItem = {
+  name: string;
+};
+
+export type PromptVersion = {
   name: string;
   version_tag: string;
   commit_sha?: string;
-  fs_path?: string;
+  driver?: string;
+  status: string;
   created_at: number;
-  author?: string;
-}
+};
 
-export interface PromptResponse {
-  content?: {
-    name?: string;
-    version?: string;
-    messages?: PromptMessage[];
-    variables?: Record<string, PromptVariable>;
-    model_config?: ModelConfig;
-    ollama?: OllamaConfig;
-    tags?: string[];
-  };
-  version?: PromptVersion;
-}
+export type PromptFile = {
+  name: string;
+  version: string;
+  messages: Array<{ role: string; content: string }>;
+  variables?: Record<string, unknown>;
+};
 
-export interface PaginatedPromptList {
-  items: Array<{ name: string }>;
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
+export type PromptDetail = {
+  content: PromptFile;
+  version: PromptVersion;
+};
 
-export interface PaginatedVersionList {
-  items: PromptVersion[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface CreateLogRequest {
+export type LogEntry = {
+  id: number;
   prompt_name: string;
   version_tag: string;
-  provider?: string;
-  model?: string;
-  tokens_in?: number;
-  tokens_out?: number;
-  latency_ms?: number;
-  cost_usd?: number;
-  ollama_options?: Record<string, unknown>;
-  ollama_keep_alive?: string;
-  ollama_format?: unknown;
-  metadata?: Record<string, unknown>;
-}
+  model?: string | null;
+  tokens_in?: number | null;
+  tokens_out?: number | null;
+  latency_ms?: number | null;
+  cost_usd?: number | null;
+  created_at: number;
+};
 
-export interface LogAcceptedResponse {
-  id?: number;
-  status?: string;
-}
-
-export interface CreateTraceRequest {
-  trace_id?: string;
-  prompt_name?: string;
-  version_tag?: string;
-  metadata?: Record<string, string | number | boolean>;
-}
-
-export interface TraceCreatedResponse {
+export type TraceItem = {
   trace_id: string;
-  prompt_name?: string;
-  version_tag?: string;
-  status?: string;
-}
+  prompt_name: string | null;
+  version_tag: string | null;
+  metadata: Record<string, unknown>;
+  created_at: number;
+};
 
-export interface TraceResponse {
-  trace_id: string;
-  prompt_name?: string;
-  version_tag?: string;
-  metadata?: Record<string, unknown>;
-  created_at?: number;
-  spans?: Array<Record<string, unknown>>;
-}
-
-export interface CreateSpanRequest {
-  span_id?: string;
-  parent_id?: string;
-  name: string;
-  status: 'ok' | 'error';
-  start_time?: number;
-  end_time?: number;
-  metadata?: Record<string, string | number | boolean>;
-}
-
-export interface SpanCreatedResponse {
-  trace_id: string;
+export type SpanItem = {
   span_id: string;
-  name?: string;
-  status?: string;
-}
+  parent_id: string | null;
+  name: string;
+  status: string;
+  start_time: number | null;
+  end_time: number | null;
+  metadata: Record<string, unknown>;
+  created_at: number;
+};
 
-export interface CreateRunRequest {
-  run_id?: string;
+export type TraceDetail = {
+  trace_id: string;
+  prompt_name: string | null;
+  version_tag: string | null;
+  metadata: Record<string, unknown>;
+  created_at: number;
+  spans: SpanItem[];
+};
+
+export type RunItem = {
+  run_id: string;
   workflow_name: string;
-  status?: 'running' | 'completed' | 'failed';
-  input?: Record<string, unknown>;
-  output?: Record<string, unknown>;
-  trace_id?: string;
-  metadata?: Record<string, string | number | boolean>;
-}
+  status: string;
+  input: unknown | null;
+  output: unknown | null;
+  trace_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: number;
+  updated_at: number;
+};
 
-export interface RunCreatedResponse {
-  run_id: string;
-  workflow_name?: string;
-  status?: string;
-}
-
-export interface RunResponse {
-  run_id: string;
-  workflow_name?: string;
-  status?: string;
-  input?: Record<string, unknown>;
-  output?: Record<string, unknown>;
-  trace_id?: string;
-  metadata?: Record<string, unknown>;
-  created_at?: number;
-  updated_at?: number;
-}
-
-export interface PaginatedRunList {
-  items: RunResponse[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface CreateLabelRequest {
+export type LabelItem = {
+  id?: number;
+  prompt_name: string;
   name: string;
   version_tag: string;
-}
+  created_at: number;
+};
 
-export interface LabelResponse {
-  prompt_name?: string;
-  name?: string;
-  version_tag?: string;
-  created_at?: number;
-}
-
-export interface PaginatedLabelList {
-  items: LabelResponse[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface AuditLogEntry {
+export type EvaluationItem = {
   id: number;
-  action?: string;
-  prompt_name?: string;
+  name: string;
+  description?: string;
+  prompt_name: string;
   version_tag?: string;
-  api_key_name?: string;
-  ip_address?: string;
-  timestamp?: number;
-}
-
-export interface PaginatedAuditLogList {
-  items: AuditLogEntry[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface HealthStatus {
-  status: string;
-}
-
-export interface DeepHealthStatus {
-  status: string;
-  checks?: Record<string, string>;
-}
-
-let apiKey = '';
-
-export function setApiKey(key: string) {
-  apiKey = key;
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('pm_api_key', key);
-  }
-}
-
-export function getApiKey(): string {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('pm_api_key') || apiKey;
-  }
-  return apiKey;
-}
-
-async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE}${path}`;
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
-  };
-  const key = getApiKey();
-  if (key) {
-    headers['X-API-Key'] = key;
-  }
-  const res = await fetch(url, { ...options, headers });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`${res.status}: ${body}`);
-  }
-  if (res.status === 204) {
-    return undefined as T;
-  }
-  return res.json() as Promise<T>;
-}
-
-export const promptsApi = {
-  list: (params?: { page?: number; limit?: number; q?: string }) =>
-    api<PaginatedPromptList>(`/v1/prompts?${new URLSearchParams(params as Record<string, string>)}`),
-  get: (name: string, params?: { version?: string; render?: string; variables?: Record<string, string> }) => {
-    const search = new URLSearchParams();
-    if (params?.version) search.set('version', params.version);
-    if (params?.render) search.set('render', params.render);
-    if (params?.variables) {
-      Object.entries(params.variables).forEach(([k, v]) => search.set(`variables[${k}]`, v));
-    }
-    return api<PromptResponse>(`/v1/prompts/${encodeURIComponent(name)}?${search}`);
-  },
-  versions: (name: string, params?: { page?: number; limit?: number }) =>
-    api<PaginatedVersionList>(`/v1/prompts/${encodeURIComponent(name)}/versions?${new URLSearchParams(params as Record<string, string>)}`),
-  create: (body: CreatePromptRequest) => api<PromptVersion>('/v1/prompts', { method: 'POST', body: JSON.stringify(body) }),
+  criteria?: Record<string, unknown>;
+  created_at: number;
 };
 
-export const logsApi = {
-  create: (body: CreateLogRequest) => api<LogAcceptedResponse>('/v1/logs', { method: 'POST', body: JSON.stringify(body) }),
-};
+export const api = {
+  getHealth: () => fetchJson<{ status: string }>("/health"),
+  getDeepHealth: () =>
+    fetchJson<{ status: string; checks: unknown }>("/health/deep"),
 
-export const tracesApi = {
-  create: (body: CreateTraceRequest) => api<TraceCreatedResponse>('/v1/traces', { method: 'POST', body: JSON.stringify(body) }),
-  get: (traceId: string) => api<TraceResponse>(`/v1/traces/${traceId}`),
-  addSpan: (traceId: string, body: CreateSpanRequest) =>
-    api<SpanCreatedResponse>(`/v1/traces/${traceId}/spans`, { method: 'POST', body: JSON.stringify(body) }),
-};
+  getPrompts: (params?: { page?: number; limit?: number }) =>
+    fetchJson<PaginatedResponse<PromptItem>>(`/v1/prompts${buildQuery(params)}`),
+  getPrompt: (name: string) =>
+    fetchJson<PromptDetail>(`/v1/prompts/${encodeURIComponent(name)}`),
+  getLogs: (params?: { page?: number; limit?: number }) =>
+    fetchJson<PaginatedResponse<LogEntry>>(`/v1/logs${buildQuery(params)}`),
+  getTraces: (params?: { page?: number; limit?: number }) =>
+    fetchJson<PaginatedResponse<TraceItem>>(`/v1/traces${buildQuery(params)}`),
+  getTrace: (traceId: string) =>
+    fetchJson<TraceDetail>(`/v1/traces/${encodeURIComponent(traceId)}`),
+  getRuns: (params?: { page?: number; limit?: number }) =>
+    fetchJson<PaginatedResponse<RunItem>>(`/v1/runs${buildQuery(params)}`),
+  getRun: (runId: string) =>
+    fetchJson<RunItem>(`/v1/runs/${encodeURIComponent(runId)}`),
+  getEvaluations: (params?: { page?: number; limit?: number }) =>
+    fetchJson<PaginatedResponse<EvaluationItem>>(
+      `/v1/evaluations${buildQuery(params)}`
+    ),
+  getEvaluation: (id: number) =>
+    fetchJson<EvaluationItem>(`/v1/evaluations/${id}`),
+  getLabels: (promptName: string, params?: { page?: number; limit?: number }) =>
+    fetchJson<PaginatedResponse<LabelItem>>(`/v1/prompts/${encodeURIComponent(promptName)}/labels${buildQuery(params)}`),
+  getAuditLogs: (params?: { page?: number; limit?: number }) =>
+    fetchJson<PaginatedResponse<unknown>>(
+      `/v1/audit-logs${buildQuery(params)}`
+    ),
 
-export const runsApi = {
-  list: (params?: { page?: number; limit?: number }) =>
-    api<PaginatedRunList>(`/v1/runs?${new URLSearchParams(params as Record<string, string>)}`),
-  get: (runId: string) => api<RunResponse>(`/v1/runs/${runId}`),
-  create: (body: CreateRunRequest) => api<RunCreatedResponse>('/v1/runs', { method: 'POST', body: JSON.stringify(body) }),
-  update: (runId: string, body: Partial<CreateRunRequest>) =>
-    api<RunResponse>(`/v1/runs/${runId}`, { method: 'PATCH', body: JSON.stringify(body) }),
-};
+  createLabel: (promptName: string, data: { name: string; value: string }) =>
+    fetchJson<LabelItem>(`/v1/prompts/${encodeURIComponent(promptName)}/labels`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  deleteLabel: (promptName: string, labelName: string) =>
+    fetchJson<unknown>(`/v1/prompts/${encodeURIComponent(promptName)}/labels/${encodeURIComponent(labelName)}`, { method: "DELETE" }),
 
-export const labelsApi = {
-  list: (promptName: string, params?: { page?: number; limit?: number }) =>
-    api<PaginatedLabelList>(`/v1/prompts/${encodeURIComponent(promptName)}/labels?${new URLSearchParams(params as Record<string, string>)}`),
-  create: (promptName: string, body: CreateLabelRequest) =>
-    api<LabelResponse>(`/v1/prompts/${encodeURIComponent(promptName)}/labels`, { method: 'POST', body: JSON.stringify(body) }),
-};
-
-export const auditApi = {
-  list: (params?: { page?: number; limit?: number }) =>
-    api<PaginatedAuditLogList>(`/v1/audit-logs?${new URLSearchParams(params as Record<string, string>)}`),
-};
-
-export const healthApi = {
-  check: () => api<HealthStatus>('/health'),
-  deep: () => api<DeepHealthStatus>('/health/deep'),
+  getMetricsTimeSeries: (params?: { window?: string }) =>
+    fetchJson<TimeSeriesResponse>(
+      `/v1/metrics/time-series${buildQuery(params)}`
+    ),
+  getMetricsPrompts: (params?: { window?: string; limit?: number }) =>
+    fetchJson<PromptMetricsResponse>(
+      `/v1/metrics/prompts${buildQuery(params)}`
+    ),
+  getMetricsEvaluations: (params?: { window?: string; evaluation_id?: number }) =>
+    fetchJson<EvaluationTrendsResponse>(
+      `/v1/metrics/evaluations${buildQuery(params)}`
+    ),
+  getMetricsActivity: (params?: { window?: string; page?: number; limit?: number }) =>
+    fetchJson<ActivityResponse>(
+      `/v1/metrics/activity${buildQuery(params)}`
+    ),
 };

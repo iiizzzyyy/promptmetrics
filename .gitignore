@@ -11,3 +11,4 @@ prompts/
 .DS_Store
 *.tgz
 promptmetrics.yaml
+.worktrees/
