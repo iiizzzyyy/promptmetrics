@@ -1,5 +1,10 @@
-import { Pool, PoolClient } from 'pg';
+import { Pool, PoolClient, types } from 'pg';
 import { DatabaseAdapter, PreparedStatement } from './database.interface';
+
+// Parse INT8 (bigint) and NUMERIC as JavaScript numbers instead of strings.
+// Values in this application are well within Number.MAX_SAFE_INTEGER.
+types.setTypeParser(types.builtins.INT8, (val: string) => parseInt(val, 10));
+types.setTypeParser(types.builtins.NUMERIC, (val: string) => parseFloat(val));
 
 class PostgresPreparedStatement implements PreparedStatement {
   constructor(
@@ -60,6 +65,7 @@ class PostgresPreparedStatement implements PreparedStatement {
 export class PostgresAdapter implements DatabaseAdapter {
   readonly dialect = 'postgres' as const;
   private readonly pool: Pool;
+  private closed = false;
 
   constructor(connectionString: string) {
     this.pool = new Pool({ connectionString });
@@ -97,6 +103,8 @@ export class PostgresAdapter implements DatabaseAdapter {
   }
 
   async close(): Promise<void> {
+    if (this.closed) return;
+    this.closed = true;
     await this.pool.end();
   }
 }
