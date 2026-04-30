@@ -36,8 +36,9 @@ export function getDb(): DatabaseAdapter {
 
 export async function closeDb(): Promise<void> {
   if (dbInstance) {
-    await dbInstance.close();
+    const toClose = dbInstance;
     dbInstance = null;
+    await toClose.close();
   }
 }
 
@@ -45,7 +46,7 @@ export async function initSchema(): Promise<void> {
   const migrator = createMigrator();
   await migrator.up();
 
-  if (process.env.DATABASE_URL && process.env.JEST_WORKER_ID) {
+  if (process.env.DATABASE_URL && process.env.NODE_ENV === 'test') {
     const db = getDb();
     const rows = (await db
       .prepare("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename != 'migrations'")
