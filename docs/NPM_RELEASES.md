@@ -109,9 +109,51 @@ npm publish
 
 ---
 
-## Unpublished / Planned
+### 1.1.0 — 2026-04-30
 
-### 1.1.0 (Tentative)
+**Status:** Ready to publish
+**Git Tag:** `v1.1.0`
+**Changes:**
+
+#### Added
+
+- **A/B Testing Engine** — Define A/B tests comparing two prompt versions, run both variants through the LLM provider registry, collect performance metrics, and promote the winning version.
+- **Dataset Management** — Create and manage test datasets (collections of input/expected pairs) used by evaluation runs. Datasets are stored with workspace scoping.
+- **Evaluation Runs** — Execute evaluation suites against datasets. `EvalRunService` orchestrates running evaluation criteria over dataset items, tracks completion status, error rates, and scores. Integrated with `BudgetService` for cost tracking.
+- **Compliance Engine** — Built-in rule engine that scans prompt content for PII (email, SSN, phone, credit card), API keys (via Shannon entropy), URLs, and IP addresses. Uses regex patterns and Luhn validation. Produces a 0–100 risk score with severity-weighted deductions. Results stored in `compliance_scores` table.
+- **Playground Proxy** — Direct LLM proxy that routes chat/completion requests through registered provider adapters (OpenAI, Anthropic, Cohere, Ollama, Azure OpenAI). Supports streaming responses. Provider registry uses lazy-loaded dynamic imports.
+- **Observability Dashboard** — Next.js UI with pages for prompts, logs, traces, runs, labels, evaluations, A/B tests, datasets, compliance, playground, and settings. Includes time-series charts, token usage, prompt metrics, and evaluation trends.
+- **Budget Service** — Tracks evaluation run costs against configurable budgets to prevent overspend.
+- **Metrics Dashboard** — Query-time aggregation for time-series metrics (daily request counts, tokens, latency, error rates), per-prompt usage metrics, evaluation score trends, and activity summaries.
+- **LLM Provider Registry** — Lazy-loaded adapter pattern for multiple LLM providers. Adapters are instantiated on first use via dynamic `import()`.
+- **New migrations** for A/B testing (`011`), datasets and eval runs (`012`), compliance (`013`), log run IDs (`014`), A/B test promotion (`015`), cascade deletes (`016`), and cascade eval runs (`017`).
+- **ON DELETE CASCADE** for foreign key relationships.
+- **`safeJsonParse`** utility for robust JSON parsing.
+- **`parseIdParam`** helper for route parameter validation.
+
+#### Changed
+
+- Provider registry uses dynamic `import()` instead of `require()` for lazy loading.
+- CI workflow: PostgreSQL schema reset between test runs for idempotency.
+- CI workflow: npm audit threshold raised to high (moderate vulnerabilities in umzug transitive deps).
+- Migration 005 made idempotent for PostgreSQL via DO EXCEPTION blocks.
+
+#### Fixed
+
+- ESLint `no-undef` errors for DOM globals in Node.js context (used `globalThis.*` prefix).
+- ESLint `no-require-imports` in provider registry (converted to dynamic imports).
+- Regex escape sequence in compliance engine URL pattern.
+- `NodeJS.ErrnoException` type annotation in GitHub driver.
+
+**Publish Command:**
+```bash
+npm run build
+npm publish
+```
+
+---
+
+### 1.2.0 (Tentative)
 
 - [ ] Driver singleton bug fix (pass driver instance from `server.ts` into `createApp()`)
 - [ ] Request ID middleware (`X-Request-Id`)

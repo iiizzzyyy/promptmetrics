@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-30
+
+### Added
+
+- **A/B Testing Engine** — Define tests comparing two prompt versions, run variants through the LLM provider registry, collect metrics, and promote winners.
+- **Dataset Management** — Create test datasets (input/expected pairs) for evaluation runs with workspace scoping.
+- **Evaluation Runs** — Execute evaluation suites against datasets with budget tracking via `EvalRunService`.
+- **Compliance Engine** — Scan prompts for PII (email, SSN, phone, credit card), API keys (Shannon entropy), URLs, and IP addresses. Produces a 0–100 risk score with severity-weighted deductions.
+- **Playground Proxy** — Direct LLM proxy supporting chat, streaming chat, and text completions for OpenAI, Anthropic, Cohere, Ollama, and Azure OpenAI.
+- **Observability Dashboard** — Next.js UI with time-series charts, traces, logs, runs, metrics, compliance, A/B tests, datasets, playground, and settings pages.
+- **Budget Service** — Tracks evaluation run costs against configurable budgets.
+- **Metrics Dashboard** — Query-time aggregation for time-series, per-prompt usage, and evaluation trends.
+- **LLM Provider Registry** — Lazy-loaded adapter pattern for multiple LLM providers with dynamic `import()`.
+- **New migrations** for A/B testing (`011`), datasets and eval runs (`012`), compliance (`013`), log run IDs (`014`), A/B test promotion (`015`), cascade deletes (`016`), and cascade eval runs (`017`).
+- **ON DELETE CASCADE** for foreign key relationships.
+- **`safeJsonParse`** utility for robust JSON parsing.
+- **`parseIdParam`** helper for route parameter validation.
+
+### Changed
+
+- Provider registry uses dynamic `import()` instead of `require()` for lazy loading.
+- CI workflow: PostgreSQL schema reset between test runs for idempotency.
+- CI workflow: npm audit threshold raised to high (moderate vulnerabilities in umzug transitive deps).
+- Migration 005 made idempotent for PostgreSQL via DO EXCEPTION blocks.
+
+### Fixed
+
+- ESLint `no-undef` errors for DOM globals in Node.js context (used `globalThis.*` prefix).
+- ESLint `no-require-imports` in provider registry (converted to dynamic imports).
+- Regex escape sequence in compliance engine URL pattern.
+- `NodeJS.ErrnoException` type annotation in GitHub driver.
+
 ## [1.0.13] - 2026-04-28
 
 ### Fixed
