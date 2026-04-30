@@ -1,9 +1,14 @@
 import nock from 'nock';
 import { GithubDriver } from '@drivers/promptmetrics-github-driver';
 import { PromptFile } from '@drivers/promptmetrics-driver.interface';
+import { initSchema } from '@models/promptmetrics-sqlite';
 
 describe('GithubDriver', () => {
   const originalEnv = process.env;
+
+  beforeAll(async () => {
+    await initSchema();
+  });
 
   beforeEach(() => {
     jest.resetModules();

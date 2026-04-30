@@ -2,10 +2,15 @@ import fs from 'fs';
 import path from 'path';
 import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
 import { PromptFile } from '@drivers/promptmetrics-driver.interface';
+import { initSchema } from '@models/promptmetrics-sqlite';
 
 describe('FilesystemDriver', () => {
   const testBasePath = path.resolve(__dirname, '../../data/test-prompts');
   let driver: FilesystemDriver;
+
+  beforeAll(async () => {
+    await initSchema();
+  });
 
   beforeEach(() => {
     if (fs.existsSync(testBasePath)) {

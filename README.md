@@ -21,8 +21,20 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 
 ---
 
+## What's New in v1.1.0
+
+- **A/B Testing** — Run side-by-side tests against two prompt versions, measure performance, and promote winners.
+- **Datasets & Evaluation Runs** — Create test datasets and execute evaluation suites with built-in budget tracking and cost controls.
+- **Compliance Engine** — Scan prompts for PII (email, SSN, phone, credit card), API keys, URLs, and IP addresses with automated risk scoring.
+- **Playground** — Proxy LLM chat and completion calls through registered providers (OpenAI, Anthropic, Cohere, Ollama, Azure OpenAI).
+- **Observability Dashboard** — Expanded Next.js UI with pages for A/B tests, datasets, compliance, playground, and settings.
+- **Metrics Dashboard** — Time-series metrics, per-prompt usage, evaluation trends, and activity summaries.
+
+---
+
 ## Table of Contents
 
+- [What's New in v1.1.0](#whats-new-in-v110)
 - [Why PromptMetrics?](#why-promptmetrics)
 - [Features](#features)
 - [Architecture](#architecture)
@@ -67,18 +79,20 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 - **Structured Logging** — Log LLM metadata (model, tokens, latency, cost) with validated key-value tags, including nested objects and arrays.
 - **Agent Telemetry** — Built-in traces, spans, and workflow runs without Jaeger, Zipkin, or DataDog.
 - **Evaluations** — Create evaluation suites, record scores, and track prompt quality metrics over time.
+- **Evaluation Runs** — Execute evaluation suites against datasets with built-in budget tracking and cost controls.
+- **Datasets** — Create and manage test datasets for structured evaluation runs.
+- **Budget Service** — Track spend and enforce budget limits during evaluation runs.
+- **A/B Testing** — Run side-by-side tests against two prompt versions, measure performance, and promote winning versions.
+- **Compliance Engine** — Scan prompts for PII (email, SSN, phone, credit card), API keys, URLs, and IP addresses with automated risk scoring.
+- **Playground** — Proxy LLM chat and completion calls through registered providers (OpenAI, Anthropic, Cohere, Ollama, Azure OpenAI) without leaving the dashboard.
 - **Environment Labels** — Tag prompt versions with labels like `production` or `v2-test` and resolve them at runtime.
 - **API Key Auth** — HMAC-SHA256 hashed keys with scoped permissions (`read`, `write`, `admin`), optional expiration, and master keys that can access any workspace.
 - **API Key Management** — Create, list, and revoke keys programmatically via `/v1/api-keys`.
 - **Per-API-Key Rate Limiting** — Sliding window rate limits with Redis or SQLite backends.
 - **Multi-Tenancy** — Workspace isolation via `X-Workspace-Id` header.
 - **OpenTelemetry Export** — Optional OTLP export for operators who already have an observability stack.
-- **A/B Testing** — Define tests comparing two prompt versions, run variants, collect metrics, and promote winners.
-- **Dataset Management** — Create test datasets for evaluation runs with workspace scoping.
-- **Evaluation Runs** — Execute evaluation suites against datasets with budget tracking.
-- **Compliance Engine** — Scan prompts for PII, API keys, URLs, and IP addresses with severity-weighted risk scoring.
-- **Playground Proxy** — Chat and completion proxy for OpenAI, Anthropic, Cohere, Ollama, and Azure OpenAI with streaming support.
-- **Web UI Dashboard** — Next.js observability dashboard with time-series charts, token usage, prompt metrics, evaluation trends, and pages for prompts, logs, traces, runs, labels, evaluations, A/B tests, datasets, compliance, playground, and settings.
+- **Observability Dashboard** — Next.js UI with pages for prompts, logs, traces, runs, labels, evaluations, A/B tests, datasets, compliance, playground, and settings.
+- **Metrics Dashboard** — Time-series metrics, per-prompt usage statistics, evaluation trends, and activity summaries.
 - **Node.js & Python SDKs** — First-class client libraries for programmatic access.
 - **GitHub Webhooks** — Immediate sync on push events via webhook endpoint.
 - **Circuit Breaker** — GitHub API calls wrapped in an Opossum circuit breaker with exponential backoff on 429 responses.
@@ -90,23 +104,24 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 ## Architecture
 
 ```
-+-------------+      +-----------------+      +-----------------------+
-|  API / CLI  |----->|   Express App   |----->|  SQLite / PostgreSQL  |
-+-------------+      +-----------------+      |  - prompts index      |
-       |                   |                   |  - api_keys           |
-       |                   |                   |  - logs               |
-       v                   v                   |  - audit_logs         |
-+-------------+      +-----------------+      |  - traces             |
-|   OTel      |      |  Storage Driver |      |  - spans              |
-|  (opt-in)   |      |  - filesystem   |      |  - runs               |
-+-------------+      |  - github       |      |  - labels             |
-|   Redis     |      |  - s3           |      |  - evaluations        |
-|  (opt-in)   |      +-----------------+      +-----------------------+
-+-------------+            |
-                             v
-                      +------------------+
-                      |   Git / Files    |
-                      |  - content       |
+  +-------------+      +-----------------+      +-----------------------+
+  |  API / CLI  |----->|   Express App   |----->|  SQLite / PostgreSQL  |
+  +-------------+      +-----------------+      |  - prompts index      |
+         |                   |                   |  - api_keys           |
+         |                   |                   |  - logs               |
+         v                   v                   |  - audit_logs         |
+  +-------------+      +-----------------+      |  - traces             |
+  |   OTel      |      |  Storage Driver |      |  - spans              |
+  |  (opt-in)   |      |  - filesystem   |      |  - runs               |
+  +-------------+      |  - github       |      |  - labels             |
+  |   Redis     |      |  - s3           |      |  - evaluations        |
+  |  (opt-in)   |      +-----------------+      |  - datasets           |
+  +-------------+            |                  |  - ab_tests           |
+                             |                  |  - eval_runs          |
+                             v                  |  - compliance_scans   |
+                      +------------------+      |  - budget_tracking    |
+                      |   Git / Files    |      |  - playground         |
+                      |  - content       |      +-----------------------+
                       |  - history       |
                       +------------------+
 ```
