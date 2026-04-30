@@ -4,6 +4,7 @@ import path from 'path';
 import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
+import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
 
 describe('Trace API Integration', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-traces.db');
@@ -31,7 +32,8 @@ describe('Trace API Integration', () => {
       .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)')
       .run(keyHash, 'test-trace-key', 'read,write');
 
-    app = createApp();
+    const driver = new FilesystemDriver(testPromptsPath);
+    app = createApp(driver);
   });
 
   afterEach(() => {

@@ -106,7 +106,7 @@ export default function OverviewPage() {
           <div className="flex items-center gap-4 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
             <span>Failed to load dashboard data.</span>
             <Button variant="outline" size="sm" onClick={handleRetry}>
-              <RotateCcw className="h-4 w-4" />
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
               Retry
             </Button>
           </div>

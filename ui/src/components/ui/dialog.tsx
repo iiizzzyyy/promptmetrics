@@ -2,14 +2,12 @@ import * as React from "react";
 
 type DialogRootProps = {
   open?: boolean;
-  modal_class?: string;
   onOpenChange?: (open: boolean) => void;
   children?: React.ReactNode;
 };
 
 export const Dialog = ({
   open = false,
-  modal_class,
   onOpenChange,
   children,
 }: DialogRootProps) => {
@@ -37,7 +35,7 @@ export const Dialog = ({
         onClick={() => onOpenChange?.(false)}
       />
       <div
-        className={`relative w-full sm:max-w-lg mx-auto z-50 ${modal_class}`}
+        className="relative w-full sm:max-w-lg mx-auto z-50"
       >
         {children}
       </div>

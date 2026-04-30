@@ -3,12 +3,14 @@ import express, { Router } from 'express';
 import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
+import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
 import { rateLimitPerKey } from '@middlewares/rate-limit-per-key.middleware';
 import fs from 'fs';
 import path from 'path';
 
 describe('Per-API-Key Rate Limiting', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-rate-limit.db');
+  const testPromptsPath = path.resolve(__dirname, '../../data/test-rate-limit-prompts');
   let app: ReturnType<typeof createApp>;
   let keyA: string;
   let keyB: string;
@@ -34,11 +36,13 @@ describe('Per-API-Key Rate Limiting', () => {
       .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)')
       .run(hashApiKey(keyB), 'key-b', 'read,write');
 
-    app = createApp();
+    const driver = new FilesystemDriver(testPromptsPath);
+    app = createApp(driver);
   });
 
   afterAll(() => {
     closeDb();
+    if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');

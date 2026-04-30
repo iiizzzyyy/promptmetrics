@@ -4,9 +4,11 @@ import path from 'path';
 import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
+import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
 
 describe('Auth Integration', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-auth.db');
+  const testPromptsPath = path.resolve(__dirname, '../../data/test-auth-prompts');
   let app: ReturnType<typeof createApp>;
   let validKey: string;
   let expiredKey: string;
@@ -48,11 +50,13 @@ describe('Auth Integration', () => {
       .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
       .run(hashApiKey(defaultWorkspaceKey), 'default-workspace-key', 'read,write', 'default');
 
-    app = createApp();
+    const driver = new FilesystemDriver(testPromptsPath);
+    app = createApp(driver);
   });
 
   afterAll(() => {
     closeDb();
+    if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');

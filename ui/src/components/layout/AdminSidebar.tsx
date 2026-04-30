@@ -12,6 +12,9 @@ import {
   Shield,
   Tags,
   Settings,
+  FlaskConical,
+  Database,
+  Lock,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -27,6 +30,9 @@ export const AdminSidebar = () => {
     { href: "/traces", icon: Activity, label: "Traces" },
     { href: "/runs", icon: BarChart3, label: "Runs" },
     { href: "/evaluations", icon: Shield, label: "Evaluations" },
+    { href: "/ab-tests", icon: FlaskConical, label: "A/B Tests" },
+    { href: "/datasets", icon: Database, label: "Datasets" },
+    { href: "/compliance", icon: Lock, label: "Compliance" },
     { href: "/labels", icon: Tags, label: "Labels" },
     { href: "/settings", icon: Settings, label: "Settings" },
   ];

@@ -4,6 +4,7 @@ import path from 'path';
 import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
+import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
 
 describe('Log API Integration', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-logs.db');
@@ -33,7 +34,8 @@ describe('Log API Integration', () => {
       'read,write',
     );
 
-    app = createApp();
+    const driver = new FilesystemDriver(testPromptsPath);
+    app = createApp(driver);
   });
 
   afterEach(() => {

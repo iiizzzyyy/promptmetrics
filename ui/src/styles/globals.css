@@ -265,3 +265,9 @@ input:-webkit-autofill:active {
 .wrap-anywhere {
   overflow-wrap: anywhere;
 }
+
+.mustache-variable-highlight {
+  background-color: rgba(92, 193, 92, 0.12);
+  color: #5cc15c;
+  border-radius: 2px;
+}

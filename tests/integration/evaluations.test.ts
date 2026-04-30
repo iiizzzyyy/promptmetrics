@@ -2,6 +2,7 @@ import request from 'supertest';
 import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
+import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
 
 const testDbPath = require('path').resolve(__dirname, '../../data/test-evaluations.db');
 
@@ -23,7 +24,16 @@ describe('Evaluations API', () => {
       'read,write',
     );
     apiKey = 'pm_test_eval_key';
-    app = createApp();
+
+    // Read-only key for scope tests
+    db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+      hashApiKey('pm_readonly_eval_key'),
+      'eval-readonly',
+      'read',
+    );
+
+    const driver = new FilesystemDriver(require('path').resolve(__dirname, '../../data/test-evaluations-prompts'));
+    app = createApp(driver);
   });
 
   afterAll(() => {
@@ -111,6 +121,57 @@ describe('Evaluations API', () => {
     });
     expect(res.status).toBe(422);
     expect(res.body.code).toBe('VALIDATION_FAILED');
+  });
+
+  it('should return 403 when creating evaluation with read-only scope', async () => {
+    const res = await request(app)
+      .post('/v1/evaluations')
+      .set('X-API-Key', 'pm_readonly_eval_key')
+      .send({ name: 'readonly-test', prompt_name: 'hello' });
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('FORBIDDEN');
+  });
+
+  it('should return 403 when deleting evaluation with read-only scope', async () => {
+    const createRes = await request(app).post('/v1/evaluations').set('X-API-Key', apiKey).send({
+      name: 'delete-scope-test',
+      prompt_name: 'hello',
+    });
+    const evalId = createRes.body.id;
+
+    const res = await request(app).delete(`/v1/evaluations/${evalId}`).set('X-API-Key', 'pm_readonly_eval_key');
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('FORBIDDEN');
+  });
+
+  it('should return 403 when adding result with read-only scope', async () => {
+    const createRes = await request(app).post('/v1/evaluations').set('X-API-Key', apiKey).send({
+      name: 'result-scope-test',
+      prompt_name: 'hello',
+    });
+    const evalId = createRes.body.id;
+
+    const res = await request(app)
+      .post(`/v1/evaluations/${evalId}/results`)
+      .set('X-API-Key', 'pm_readonly_eval_key')
+      .send({ score: 0.9 });
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('FORBIDDEN');
+  });
+
+  it('should return 403 when running evaluation with read-only scope', async () => {
+    const createRes = await request(app).post('/v1/evaluations').set('X-API-Key', apiKey).send({
+      name: 'run-scope-test',
+      prompt_name: 'hello',
+    });
+    const evalId = createRes.body.id;
+
+    const res = await request(app)
+      .post(`/v1/evaluations/${evalId}/run`)
+      .set('X-API-Key', 'pm_readonly_eval_key')
+      .send({});
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('FORBIDDEN');
   });
 
   it('should delete an evaluation and cascade results', async () => {

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 const API_KEY_STORAGE_KEY = "pm-api-key";
+const WORKSPACE_STORAGE_KEY = "pm-workspace";
 
 export default function SettingsPage() {
   const [apiKey, setApiKey] = useState("");
@@ -15,12 +16,21 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem(API_KEY_STORAGE_KEY);
-    if (stored) setApiKey(stored);
+    const storedKey = sessionStorage.getItem(API_KEY_STORAGE_KEY);
+    if (storedKey) {
+      setApiKey(storedKey);
+    } else if (process.env.NEXT_PUBLIC_DEMO_API_KEY) {
+      sessionStorage.setItem(API_KEY_STORAGE_KEY, process.env.NEXT_PUBLIC_DEMO_API_KEY);
+      setApiKey(process.env.NEXT_PUBLIC_DEMO_API_KEY);
+    }
+
+    const storedWorkspace = sessionStorage.getItem(WORKSPACE_STORAGE_KEY);
+    if (storedWorkspace) setWorkspace(storedWorkspace);
   }, []);
 
   const handleSave = () => {
-    localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
+    sessionStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
+    sessionStorage.setItem(WORKSPACE_STORAGE_KEY, workspace);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -46,6 +56,9 @@ export default function SettingsPage() {
               />
               <p className="text-xs text-muted-foreground">
                 The API key is used to authenticate requests to the PromptMetrics backend.
+              </p>
+              <p className="text-xs text-amber-600">
+                Warning: The API key is stored only for this browser session and will be cleared when you close the tab.
               </p>
             </div>
 

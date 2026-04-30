@@ -35,6 +35,10 @@ export class AppError extends Error {
     return new AppError(message || 'Internal server error', 500, 'INTERNAL_ERROR');
   }
 
+  static notImplemented(message = 'Not yet implemented'): AppError {
+    return new AppError(message, 501, 'NOT_IMPLEMENTED');
+  }
+
   toJSON() {
     return {
       message: this.message,
