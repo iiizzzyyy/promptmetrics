@@ -28,7 +28,7 @@ describe('Playground API Integration', () => {
     const db = getDb();
     apiKey = 'pm_testkey_playground';
     const keyHash = hashApiKey(apiKey);
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
       keyHash,
       'test-key-playground',
       'read,write',

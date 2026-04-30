@@ -30,10 +30,10 @@ describe('Per-API-Key Rate Limiting', () => {
     keyA = 'pm_key_a';
     keyB = 'pm_key_b';
     await db
-      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)')
+      .prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes')
       .run(hashApiKey(keyA), 'key-a', 'read,write');
     await db
-      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)')
+      .prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes')
       .run(hashApiKey(keyB), 'key-b', 'read,write');
 
     const driver = new FilesystemDriver(testPromptsPath);

@@ -35,7 +35,7 @@ describe('Metrics API Integration', () => {
     const db = getDb();
     apiKey = 'pm_testkey_metrics';
     const keyHash = hashApiKey(apiKey);
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
+    db.prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id').run(
       keyHash,
       'test-key-metrics',
       'read,write',

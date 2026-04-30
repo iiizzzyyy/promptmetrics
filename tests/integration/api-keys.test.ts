@@ -29,11 +29,11 @@ describe('API Key Management', () => {
     readWriteKey = 'pm_rw_key_456';
 
     await db
-      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
+      .prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id')
       .run(hashApiKey(adminKey), 'admin-key', 'read,write,admin', 'default');
 
     await db
-      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
+      .prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id')
       .run(hashApiKey(readWriteKey), 'rw-key', 'read,write', 'default');
 
     const driver = new FilesystemDriver(testPromptsPath);
@@ -98,7 +98,7 @@ describe('API Key Management', () => {
   it('master key can create keys for any workspace', async () => {
     const masterKey = 'pm_master_key_789';
     const db = getDb();
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
+    db.prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id').run(
       hashApiKey(masterKey),
       'master-key',
       'read,write,admin',

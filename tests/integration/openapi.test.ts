@@ -28,7 +28,7 @@ describe('OpenAPI Documentation', () => {
 
     const db = getDb();
     apiKey = 'pm_testopenapi456';
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
       hashApiKey(apiKey),
       'test-openapi-key',
       'read,write',

@@ -30,7 +30,7 @@ describe('Prompt Creation Transaction', () => {
     const db = getDb();
     apiKey = 'pm_testtrans456';
     await db
-      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)')
+      .prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes')
       .run(hashApiKey(apiKey), 'test-key', 'read,write');
 
     driver = new FilesystemDriver(testPromptsPath);

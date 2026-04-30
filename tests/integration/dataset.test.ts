@@ -141,7 +141,7 @@ describe('Dataset API', () => {
   it('should isolate datasets per workspace', async () => {
     const db = getDb();
     const workspaceKey = 'pm_workspace_dataset_key';
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
+    db.prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id').run(
       hashApiKey(workspaceKey),
       'workspace-dataset-key',
       'read,write',

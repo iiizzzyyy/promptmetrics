@@ -29,7 +29,7 @@ describe('Trace API Integration', () => {
     apiKey = 'pm_testtrace789';
     const keyHash = hashApiKey(apiKey);
     await db
-      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)')
+      .prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes')
       .run(keyHash, 'test-trace-key', 'read,write');
 
     const driver = new FilesystemDriver(testPromptsPath);
