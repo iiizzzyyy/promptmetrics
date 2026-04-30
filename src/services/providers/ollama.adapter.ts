@@ -31,8 +31,8 @@ export class OllamaAdapter implements LLMProviderAdapter {
     this.baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
   }
 
-  private async fetchJson(path: string, init?: RequestInit): Promise<unknown> {
-    const res = await fetch(`${this.baseUrl}${path}`, {
+  private async fetchJson(path: string, init?: globalThis.RequestInit): Promise<unknown> {
+    const res = await globalThis.fetch(`${this.baseUrl}${path}`, {
       ...init,
       headers: { 'Content-Type': 'application/json', ...init?.headers },
     });
@@ -108,7 +108,7 @@ export class OllamaAdapter implements LLMProviderAdapter {
     }
   }
 
-  async *streamChatCompletion(request: ChatCompletionRequest, signal?: AbortSignal): AsyncGenerator<StreamChunk> {
+  async *streamChatCompletion(request: ChatCompletionRequest, signal?: globalThis.AbortSignal): AsyncGenerator<StreamChunk> {
     const startTime = Date.now();
 
     try {
@@ -128,7 +128,7 @@ export class OllamaAdapter implements LLMProviderAdapter {
         },
       };
 
-      const res = await fetch(`${this.baseUrl}/api/chat`, {
+      const res = await globalThis.fetch(`${this.baseUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -145,7 +145,7 @@ export class OllamaAdapter implements LLMProviderAdapter {
         throw new Error('No response body');
       }
 
-      const decoder = new TextDecoder();
+      const decoder = new globalThis.TextDecoder();
       let buffer = '';
       let tokensOut = 0;
       let finishReason = 'stop';

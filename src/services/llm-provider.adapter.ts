@@ -41,7 +41,7 @@ export interface LLMProviderAdapter {
   readonly provider: string;
   listModels(): Promise<LLMModel[]>;
   chatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse>;
-  streamChatCompletion(request: ChatCompletionRequest, signal?: AbortSignal): AsyncGenerator<StreamChunk>;
+  streamChatCompletion(request: ChatCompletionRequest, signal?: globalThis.AbortSignal): AsyncGenerator<StreamChunk>;
   estimateCost(model: string, tokensIn: number, tokensOut: number): number;
 }
 

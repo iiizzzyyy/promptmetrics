@@ -38,19 +38,19 @@ export class ProviderRegistry {
 
 export const providerRegistry = new ProviderRegistry();
 
-export function registerBuiltinProviders(): void {
-  const { OpenAIAdapter } = require('./openai.adapter');
+export async function registerBuiltinProviders(): Promise<void> {
+  const { OpenAIAdapter } = await import('./openai.adapter');
   providerRegistry.register('openai', () => new OpenAIAdapter());
 
-  const { AnthropicAdapter } = require('./anthropic.adapter');
+  const { AnthropicAdapter } = await import('./anthropic.adapter');
   providerRegistry.register('anthropic', () => new AnthropicAdapter());
 
-  const { CohereAdapter } = require('./cohere.adapter');
+  const { CohereAdapter } = await import('./cohere.adapter');
   providerRegistry.register('cohere', () => new CohereAdapter());
 
-  const { OllamaAdapter } = require('./ollama.adapter');
+  const { OllamaAdapter } = await import('./ollama.adapter');
   providerRegistry.register('ollama', () => new OllamaAdapter());
 
-  const { AzureOpenAIAdapter } = require('./azure-openai.adapter');
+  const { AzureOpenAIAdapter } = await import('./azure-openai.adapter');
   providerRegistry.register('azure_openai', () => new AzureOpenAIAdapter());
 }

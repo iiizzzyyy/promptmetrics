@@ -19,7 +19,7 @@ async function main(): Promise<void> {
 
   initOtel();
   auditLogService.start();
-  registerBuiltinProviders();
+  await registerBuiltinProviders();
 
   const driver = createDriver();
   const app = createApp(driver);

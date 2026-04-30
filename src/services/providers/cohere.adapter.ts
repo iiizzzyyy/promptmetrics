@@ -113,7 +113,7 @@ export class CohereAdapter implements LLMProviderAdapter {
     }
   }
 
-  async *streamChatCompletion(request: ChatCompletionRequest, signal?: AbortSignal): AsyncGenerator<StreamChunk> {
+  async *streamChatCompletion(request: ChatCompletionRequest, signal?: globalThis.AbortSignal): AsyncGenerator<StreamChunk> {
     const startTime = Date.now();
 
     try {

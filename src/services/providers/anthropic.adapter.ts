@@ -105,7 +105,7 @@ export class AnthropicAdapter implements LLMProviderAdapter {
     }
   }
 
-  async *streamChatCompletion(request: ChatCompletionRequest, signal?: AbortSignal): AsyncGenerator<StreamChunk> {
+  async *streamChatCompletion(request: ChatCompletionRequest, signal?: globalThis.AbortSignal): AsyncGenerator<StreamChunk> {
     const startTime = Date.now();
 
     try {

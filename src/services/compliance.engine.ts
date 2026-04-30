@@ -58,7 +58,7 @@ export class ComplianceEngine {
       },
       {
         name: 'URL Detection',
-        pattern: /\bhttps?:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?\b/g,
+        pattern: /\bhttps?:\/\/[a-zA-Z0-9\-.]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?\b/g,
         severity: 'low',
         category: 'security',
       },

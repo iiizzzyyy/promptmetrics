@@ -74,8 +74,8 @@ describe('ProviderRegistry', () => {
       providerRegistry.clearCache();
     });
 
-    it('registers all builtin providers lazily', () => {
-      registerBuiltinProviders();
+    it('registers all builtin providers lazily', async () => {
+      await registerBuiltinProviders();
       expect(providerRegistry.hasProvider('openai')).toBe(true);
       expect(providerRegistry.hasProvider('anthropic')).toBe(true);
       expect(providerRegistry.hasProvider('cohere')).toBe(true);
@@ -83,10 +83,10 @@ describe('ProviderRegistry', () => {
       expect(providerRegistry.hasProvider('azure_openai')).toBe(true);
     });
 
-    it('does not instantiate providers eagerly', () => {
-      // Since registerBuiltinProviders uses require() inside factories,
+    it('does not instantiate providers eagerly', async () => {
+      // Since registerBuiltinProviders uses dynamic import() inside factories,
       // merely registering should not throw or instantiate.
-      expect(() => registerBuiltinProviders()).not.toThrow();
+      await expect(registerBuiltinProviders()).resolves.not.toThrow();
     });
   });
 });
