@@ -231,9 +231,7 @@ export class MetricsService {
     const dialect = db.dialect;
     const dateBucket = this.getDateBucket('r.created_at', dialect);
 
-    const rows = (await db
-      .prepare(
-        `
+    let evalSql = `
       SELECT
         e.id as evaluation_id,
         e.name,
@@ -246,12 +244,17 @@ export class MetricsService {
       FROM evaluations e
       JOIN evaluation_results r ON e.id = r.evaluation_id
       WHERE e.workspace_id = ? AND r.workspace_id = ? AND r.created_at >= ? AND r.created_at <= ?
-        AND (? IS NULL OR e.id = ?)
-      GROUP BY e.id, ${dateBucket}
-      ORDER BY e.id, ${dateBucket}
-    `,
-      )
-      .all(workspaceId, workspaceId, start, end, evaluationId ?? null, evaluationId ?? null)) as Array<{
+    `;
+    const evalParams: (string | number)[] = [workspaceId, workspaceId, start, end];
+
+    if (evaluationId !== undefined) {
+      evalSql += ` AND e.id = ?`;
+      evalParams.push(evaluationId);
+    }
+
+    evalSql += ` GROUP BY e.id, ${dateBucket} ORDER BY e.id, ${dateBucket}`;
+
+    const rows = (await db.prepare(evalSql).all(...evalParams)) as Array<{
       evaluation_id: number;
       name: string;
       prompt_name: string;
