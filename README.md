@@ -8,14 +8,16 @@
 
 > Lightweight, self-hosted prompt registry with Git-backed versioning, metadata logging, and evaluations for LLM observability.
 
-PromptMetrics solves four hard problems in LLM application development without adding operational complexity:
+PromptMetrics solves six hard problems in LLM application development without adding operational complexity:
 
 1. **Prompt Versioning** — Store, version, and retrieve prompts via a REST API or CLI. Every change is a commit with full history, branching, and rollback.
 2. **Metadata Logging** — Log structured metadata about every LLM request (model, tokens, latency, cost, custom tags) to stdout JSON or OpenTelemetry.
 3. **Agent Telemetry** — Track agent loops with traces and spans, workflow runs with input/output, and tag prompt versions with environment labels — all without external APM tools.
 4. **Evaluations** — Create, score, and manage prompt evaluations to track quality, latency, and accuracy over time.
+5. **A/B Testing** — Compare two prompt versions statistically, collect metrics, and promote the winner.
+6. **Compliance & Security** — Scan prompts for PII, API keys, and sensitive data with a built-in risk engine.
 
-Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database. Optional Web UI Dashboard included.
+Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database. Optional Web UI Dashboard and LLM Playground included.
 
 ---
 
@@ -48,7 +50,10 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 | Agent debugging | Black box execution | Traces, spans, and runs with full timeline |
 | Environment management | Hardcoded version strings | Label-based resolution (`production`, `staging`) |
 | Evaluations | Manual prompt quality checks | Structured evaluation suites with scoring and history |
-| Dashboard | No central UI for prompt ops | Optional Next.js observability dashboard with charts, traces, logs, runs, and metrics |
+| Dashboard | No central UI for prompt ops | Optional Next.js observability dashboard with charts, traces, logs, runs, A/B tests, compliance, and metrics |
+| A/B Testing | Manual A/B testing with spreadsheets | Built-in statistical comparison with winner promotion |
+| Compliance | Manual security reviews | Automated PII/API key scanning with risk scores |
+| Playground | Separate LLM provider accounts | Unified proxy for OpenAI, Anthropic, Cohere, Ollama, Azure OpenAI |
 | Operational cost | Managed SaaS fees, data egress | Self-hosted, single-node, zero external deps |
 
 ---
@@ -68,7 +73,12 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 - **Per-API-Key Rate Limiting** — Sliding window rate limits with Redis or SQLite backends.
 - **Multi-Tenancy** — Workspace isolation via `X-Workspace-Id` header.
 - **OpenTelemetry Export** — Optional OTLP export for operators who already have an observability stack.
-- **Web UI Dashboard** — Next.js observability dashboard with time-series charts, token usage, prompt metrics, evaluation trends, and pages for prompts, logs, traces, runs, labels, evaluations, and settings.
+- **A/B Testing** — Define tests comparing two prompt versions, run variants, collect metrics, and promote winners.
+- **Dataset Management** — Create test datasets for evaluation runs with workspace scoping.
+- **Evaluation Runs** — Execute evaluation suites against datasets with budget tracking.
+- **Compliance Engine** — Scan prompts for PII, API keys, URLs, and IP addresses with severity-weighted risk scoring.
+- **Playground Proxy** — Chat and completion proxy for OpenAI, Anthropic, Cohere, Ollama, and Azure OpenAI with streaming support.
+- **Web UI Dashboard** — Next.js observability dashboard with time-series charts, token usage, prompt metrics, evaluation trends, and pages for prompts, logs, traces, runs, labels, evaluations, A/B tests, datasets, compliance, playground, and settings.
 - **Node.js & Python SDKs** — First-class client libraries for programmatic access.
 - **GitHub Webhooks** — Immediate sync on push events via webhook endpoint.
 - **Circuit Breaker** — GitHub API calls wrapped in an Opossum circuit breaker with exponential backoff on 429 responses.
@@ -304,7 +314,34 @@ Multi-tenancy: Pass `X-Workspace-Id` header to scope all data. API keys are vali
 - `GET /v1/evaluations/:id` — Get an evaluation
 - `POST /v1/evaluations/:id/results` — Add a result
 - `GET /v1/evaluations/:id/results` — List results
+- `POST /v1/evaluations/:id/run` — Run an evaluation suite
+- `GET /v1/evaluations/:id/run` — List evaluation runs
 - `DELETE /v1/evaluations/:id` — Delete an evaluation
+
+### A/B Tests
+- `POST /v1/ab-tests` — Create an A/B test
+- `GET /v1/ab-tests` — List A/B tests
+- `GET /v1/ab-tests/:id` — Get an A/B test
+- `POST /v1/ab-tests/:id/run` — Run the test
+- `POST /v1/ab-tests/:id/promote` — Promote the winning variant
+- `DELETE /v1/ab-tests/:id` — Delete an A/B test
+
+### Datasets
+- `POST /v1/datasets` — Create a dataset
+- `GET /v1/datasets` — List datasets
+- `GET /v1/datasets/:id` — Get a dataset
+- `DELETE /v1/datasets/:id` — Delete a dataset
+
+### Compliance
+- `POST /v1/compliance/scan` — Scan prompt text for violations
+- `GET /v1/compliance/scores` — List compliance scores
+- `GET /v1/compliance/scores/:id` — Get a compliance score
+
+### Playground
+- `GET /v1/playground/models` — List available LLM models
+- `POST /v1/playground/chat` — Chat completion proxy
+- `POST /v1/playground/chat/stream` — Streaming chat completion proxy
+- `POST /v1/playground/completions` — Text completion proxy
 
 ### Metrics
 - `GET /v1/metrics/time-series` — Daily request counts, tokens, latency, and error rates (window: 7d|30d|90d)
