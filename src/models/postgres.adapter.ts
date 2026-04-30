@@ -24,6 +24,31 @@ class PostgresPreparedStatement implements PreparedStatement {
 
   async run(...params: unknown[]): Promise<{ lastInsertRowid: number | bigint; changes: number }> {
     const sql = this.rewritePlaceholders(this.sql);
+    const isInsert = /^\s*INSERT\s+INTO/i.test(sql);
+    const hasReturning = /\bRETURNING\b/i.test(sql);
+
+    if (isInsert && !hasReturning) {
+      const returningSql = `${sql} RETURNING id`;
+      try {
+        const result = await this.pool.query(returningSql, params);
+        return {
+          lastInsertRowid: result.rows[0]?.id ?? 0,
+          changes: result.rowCount ?? 0,
+        };
+      } catch (err: any) {
+        // If RETURNING id fails because the table has no id column,
+        // retry without RETURNING (e.g., migrations table).
+        if (err.code === '42703' || err.message?.toLowerCase().includes('column "id" does not exist')) {
+          const result = await this.pool.query(sql, params);
+          return {
+            lastInsertRowid: 0,
+            changes: result.rowCount ?? 0,
+          };
+        }
+        throw err;
+      }
+    }
+
     const result = await this.pool.query(sql, params);
     return {
       lastInsertRowid: result.rows[0]?.id ?? 0,
@@ -120,6 +145,31 @@ class TransactionPreparedStatement implements PreparedStatement {
 
   async run(...params: unknown[]): Promise<{ lastInsertRowid: number | bigint; changes: number }> {
     const sql = this.rewritePlaceholders(this.sql);
+    const isInsert = /^\s*INSERT\s+INTO/i.test(sql);
+    const hasReturning = /\bRETURNING\b/i.test(sql);
+
+    if (isInsert && !hasReturning) {
+      const returningSql = `${sql} RETURNING id`;
+      try {
+        const result = await this.client.query(returningSql, params);
+        return {
+          lastInsertRowid: result.rows[0]?.id ?? 0,
+          changes: result.rowCount ?? 0,
+        };
+      } catch (err: any) {
+        // If RETURNING id fails because the table has no id column,
+        // retry without RETURNING (e.g., migrations table).
+        if (err.code === '42703' || err.message?.toLowerCase().includes('column "id" does not exist')) {
+          const result = await this.client.query(sql, params);
+          return {
+            lastInsertRowid: 0,
+            changes: result.rowCount ?? 0,
+          };
+        }
+        throw err;
+      }
+    }
+
     const result = await this.client.query(sql, params);
     return {
       lastInsertRowid: result.rows[0]?.id ?? 0,
