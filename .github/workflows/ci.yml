@@ -81,7 +81,7 @@ jobs:
           PGPASSWORD: promptmetrics
 
       - name: Run tests with PostgreSQL
-        run: npm test
+        run: npm test -- --runInBand
         env:
           API_KEY_SALT: test-salt-for-ci
           DATABASE_URL: postgres://promptmetrics:promptmetrics@localhost:5432/promptmetrics
