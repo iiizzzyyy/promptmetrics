@@ -11,14 +11,14 @@ describe('AuditLogService', () => {
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
-    closeDb();
+    await closeDb();
     await initSchema();
     auditLogService.stop();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     auditLogService.stop();
-    closeDb();
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');

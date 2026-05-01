@@ -2,7 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import { getDb, initSchema, closeDb } from '@models/promptmetrics-sqlite';
 
-describe('SQLite Database', () => {
+const describeIfNotPostgres = process.env.DATABASE_URL ? describe.skip : describe;
+
+describeIfNotPostgres('SQLite Database', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-promptmetrics.db');
 
   beforeEach(async () => {

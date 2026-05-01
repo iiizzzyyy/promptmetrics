@@ -6,6 +6,16 @@ import { DatabaseAdapter, PreparedStatement } from './database.interface';
 types.setTypeParser(types.builtins.INT8, (val: string) => parseInt(val, 10));
 types.setTypeParser(types.builtins.NUMERIC, (val: string) => parseFloat(val));
 
+// Tables that do not have an auto-generated 'id' column; RETURNING id will abort
+// the transaction on PostgreSQL, and retry is not possible inside a transaction.
+const TABLES_WITHOUT_ID = new Set(['config', 'rate_limits', 'migrations']);
+
+function tableHasId(sql: string): boolean {
+  const match = sql.match(/^\s*INSERT\s+INTO\s+["']?([^\s"'(]+)/i);
+  if (!match) return true;
+  return !TABLES_WITHOUT_ID.has(match[1].toLowerCase());
+}
+
 class PostgresPreparedStatement implements PreparedStatement {
   constructor(
     private readonly pool: Pool,
@@ -32,7 +42,7 @@ class PostgresPreparedStatement implements PreparedStatement {
     const isInsert = /^\s*INSERT\s+INTO/i.test(sql);
     const hasReturning = /\bRETURNING\b/i.test(sql);
 
-    if (isInsert && !hasReturning) {
+    if (isInsert && !hasReturning && tableHasId(sql)) {
       const returningSql = `${sql} RETURNING id`;
       try {
         const result = await this.pool.query(returningSql, params);
@@ -156,7 +166,7 @@ class TransactionPreparedStatement implements PreparedStatement {
     const isInsert = /^\s*INSERT\s+INTO/i.test(sql);
     const hasReturning = /\bRETURNING\b/i.test(sql);
 
-    if (isInsert && !hasReturning) {
+    if (isInsert && !hasReturning && tableHasId(sql)) {
       const returningSql = `${sql} RETURNING id`;
       try {
         const result = await this.client.query(returningSql, params);

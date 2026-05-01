@@ -22,7 +22,7 @@ describe('Playground API Integration', () => {
     cleanupDbFiles(testDbPath);
     if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
 
-    closeDb();
+    await closeDb();
     await initSchema();
 
     const db = getDb();
@@ -38,8 +38,8 @@ describe('Playground API Integration', () => {
     app = createApp(driver);
   });
 
-  afterAll(() => {
-    closeDb();
+  afterAll(async () => {
+    await closeDb();
     cleanupDbFiles(testDbPath);
     if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
   });

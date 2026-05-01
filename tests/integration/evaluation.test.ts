@@ -14,7 +14,7 @@ describe('Evaluation Runs API', () => {
     process.env.SQLITE_PATH = testDbPath;
     process.env.DRIVER = 'filesystem';
     process.env.API_KEY_SALT = 'test-eval-run-salt';
-    closeDb();
+    await closeDb();
     await initSchema();
     const db = getDb();
     const keyHash = hashApiKey('pm_test_eval_run_key');
@@ -28,8 +28,8 @@ describe('Evaluation Runs API', () => {
     app = createApp(driver);
   });
 
-  afterAll(() => {
-    closeDb();
+  afterAll(async () => {
+    await closeDb();
     const fs = require('fs');
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
   });

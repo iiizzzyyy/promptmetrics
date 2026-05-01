@@ -19,7 +19,7 @@ describe('Audit Logging Integration', () => {
     process.env.DRIVER = 'filesystem';
     process.env.API_KEY_SALT = 'test-salt';
 
-    closeDb();
+    await closeDb();
 
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
@@ -46,8 +46,8 @@ describe('Audit Logging Integration', () => {
     app = createApp(new FilesystemDriver(testPromptsPath));
   });
 
-  afterAll(() => {
-    closeDb();
+  afterAll(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');

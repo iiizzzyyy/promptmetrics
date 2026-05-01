@@ -12,13 +12,13 @@ describe('MetricsService', () => {
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
-    closeDb();
+    await closeDb();
     await initSchema();
     service = new MetricsService();
   });
 
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
@@ -30,60 +30,58 @@ describe('MetricsService', () => {
     const twoDaysAgo = now - 2 * 86400;
     const oneDayAgo = now - 86400;
 
-    db.prepare('INSERT INTO prompts (name, version_tag, driver, status, workspace_id) VALUES (?, ?, ?, ?, ?)').run(
-      promptName,
-      'v1.0',
-      'filesystem',
-      'active',
-      workspaceId,
-    );
+    await db
+      .prepare('INSERT INTO prompts (name, version_tag, driver, status, workspace_id) VALUES (?, ?, ?, ?, ?)')
+      .run(promptName, 'v1.0', 'filesystem', 'active', workspaceId);
 
-    db.prepare(
-      `
+    await db
+      .prepare(
+        `
       INSERT INTO logs (prompt_name, version_tag, tokens_in, tokens_out, latency_ms, cost_usd, created_at, workspace_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `,
-    ).run(promptName, 'v1.0', 100, 50, 200, 0.01, twoDaysAgo, workspaceId);
-    db.prepare(
-      `
+      )
+      .run(promptName, 'v1.0', 100, 50, 200, 0.01, twoDaysAgo, workspaceId);
+    await db
+      .prepare(
+        `
       INSERT INTO logs (prompt_name, version_tag, tokens_in, tokens_out, latency_ms, cost_usd, created_at, workspace_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `,
-    ).run(promptName, 'v1.0', 200, 100, 400, 0.02, oneDayAgo, workspaceId);
+      )
+      .run(promptName, 'v1.0', 200, 100, 400, 0.02, oneDayAgo, workspaceId);
 
-    db.prepare('INSERT INTO runs (run_id, workflow_name, status, created_at, workspace_id) VALUES (?, ?, ?, ?, ?)').run(
-      `run-${workspaceId}-1`,
-      'wf-1',
-      'completed',
-      twoDaysAgo,
-      workspaceId,
-    );
-    db.prepare('INSERT INTO runs (run_id, workflow_name, status, created_at, workspace_id) VALUES (?, ?, ?, ?, ?)').run(
-      `run-${workspaceId}-2`,
-      'wf-1',
-      'failed',
-      oneDayAgo,
-      workspaceId,
-    );
+    await db
+      .prepare('INSERT INTO runs (run_id, workflow_name, status, created_at, workspace_id) VALUES (?, ?, ?, ?, ?)')
+      .run(`run-${workspaceId}-1`, 'wf-1', 'completed', twoDaysAgo, workspaceId);
+    await db
+      .prepare('INSERT INTO runs (run_id, workflow_name, status, created_at, workspace_id) VALUES (?, ?, ?, ?, ?)')
+      .run(`run-${workspaceId}-2`, 'wf-1', 'failed', oneDayAgo, workspaceId);
 
-    db.prepare(
-      'INSERT INTO traces (trace_id, prompt_name, version_tag, created_at, workspace_id) VALUES (?, ?, ?, ?, ?)',
-    ).run(`trace-${workspaceId}`, promptName, 'v1.0', twoDaysAgo, workspaceId);
+    await db
+      .prepare(
+        'INSERT INTO traces (trace_id, prompt_name, version_tag, created_at, workspace_id) VALUES (?, ?, ?, ?, ?)',
+      )
+      .run(`trace-${workspaceId}`, promptName, 'v1.0', twoDaysAgo, workspaceId);
 
-    db.prepare('UPDATE runs SET trace_id = ? WHERE run_id = ?').run(`trace-${workspaceId}`, `run-${workspaceId}-1`);
-    db.prepare('UPDATE runs SET trace_id = ? WHERE run_id = ?').run(`trace-${workspaceId}`, `run-${workspaceId}-2`);
+    await db
+      .prepare('UPDATE runs SET trace_id = ? WHERE run_id = ?')
+      .run(`trace-${workspaceId}`, `run-${workspaceId}-1`);
+    await db
+      .prepare('UPDATE runs SET trace_id = ? WHERE run_id = ?')
+      .run(`trace-${workspaceId}`, `run-${workspaceId}-2`);
 
     const evalResult = await db
       .prepare('INSERT INTO evaluations (name, prompt_name, created_at, workspace_id) VALUES (?, ?, ?, ?)')
       .run('Eval A', promptName, twoDaysAgo, workspaceId);
     const evalId = Number(evalResult.lastInsertRowid);
 
-    db.prepare(
-      'INSERT INTO evaluation_results (evaluation_id, score, created_at, workspace_id) VALUES (?, ?, ?, ?)',
-    ).run(evalId, 4.0, twoDaysAgo, workspaceId);
-    db.prepare(
-      'INSERT INTO evaluation_results (evaluation_id, score, created_at, workspace_id) VALUES (?, ?, ?, ?)',
-    ).run(evalId, 5.0, oneDayAgo, workspaceId);
+    await db
+      .prepare('INSERT INTO evaluation_results (evaluation_id, score, created_at, workspace_id) VALUES (?, ?, ?, ?)')
+      .run(evalId, 4.0, twoDaysAgo, workspaceId);
+    await db
+      .prepare('INSERT INTO evaluation_results (evaluation_id, score, created_at, workspace_id) VALUES (?, ?, ?, ?)')
+      .run(evalId, 5.0, oneDayAgo, workspaceId);
 
     return { now, twoDaysAgo, oneDayAgo };
   }

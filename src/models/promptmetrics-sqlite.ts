@@ -53,7 +53,7 @@ export async function initSchema(): Promise<void> {
       .all()) as Array<{ tablename: string }>;
     const tableList = rows.map((r) => `"${r.tablename}"`).join(', ');
     if (tableList) {
-      await db.exec(`TRUNCATE TABLE ${tableList} CASCADE`);
+      await db.exec(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
     }
   }
 }

@@ -76,9 +76,10 @@ describe('GithubDriver', () => {
       .post('/repos/test-org/test-repo/git/refs')
       .reply(201, { ref: 'refs/tags/prompt-welcome-v1.0.0' });
 
-    // Mock get latest sha
+    // Mock get latest sha (called twice: once inside createGithubContent, once after)
     nock('https://api.github.com')
       .get('/repos/test-org/test-repo/git/refs/heads/main')
+      .times(2)
       .reply(200, { object: { sha: 'def456' } });
 
     const result = await driver!.createPrompt(samplePrompt);
@@ -118,9 +119,10 @@ describe('GithubDriver', () => {
       .post('/repos/test-org/test-repo/git/refs')
       .reply(201, { ref: 'refs/tags/prompt-welcome-v1.0.0' });
 
-    // Mock get latest sha
+    // Mock get latest sha (called twice: once inside createGithubContent, once after)
     nock('https://api.github.com')
       .get('/repos/test-org/test-repo/git/refs/heads/main')
+      .times(2)
       .reply(200, { object: { sha: 'def456' } });
 
     const result = await driver!.createPrompt(samplePrompt);

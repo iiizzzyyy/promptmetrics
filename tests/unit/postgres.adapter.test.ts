@@ -40,19 +40,12 @@ describe('PostgresAdapter', () => {
     expect(result.changes).toBe(1);
   });
 
-  it('should retry without RETURNING id when table has no id column', async () => {
-    pool.query.mockImplementation((sql: string) => {
-      if (sql.includes('RETURNING id')) {
-        const err: any = new Error('column "id" does not exist');
-        err.code = '42703';
-        return Promise.reject(err);
-      }
-      return Promise.resolve({ rows: [], rowCount: 1 });
-    });
+  it('should skip RETURNING id for tables without an id column', async () => {
+    pool.query.mockResolvedValue({ rows: [], rowCount: 1 });
     const stmt = adapter.prepare('INSERT INTO migrations (name) VALUES (?)');
     const result = await stmt.run('001_test');
 
-    expect(pool.query).toHaveBeenCalledWith('INSERT INTO migrations (name) VALUES ($1) RETURNING id', ['001_test']);
+    expect(pool.query).toHaveBeenCalledTimes(1);
     expect(pool.query).toHaveBeenCalledWith('INSERT INTO migrations (name) VALUES ($1)', ['001_test']);
     expect(result.lastInsertRowid).toBe(0);
     expect(result.changes).toBe(1);

@@ -30,12 +30,12 @@ describe('RunController', () => {
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
-    closeDb();
+    await closeDb();
     await initSchema();
   });
 
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
@@ -83,9 +83,9 @@ describe('RunController', () => {
   it('gets a run by id', async () => {
     const runId = '550e8400-e29b-41d4-a716-446655440001';
     const db = getDb();
-    db.prepare(
-      'INSERT INTO runs (run_id, workflow_name, status, input_json, metadata_json) VALUES (?, ?, ?, ?, ?)',
-    ).run(runId, 'wf-1', 'running', JSON.stringify({ user: 'Alice' }), JSON.stringify({ agent: 'test' }));
+    await db
+      .prepare('INSERT INTO runs (run_id, workflow_name, status, input_json, metadata_json) VALUES (?, ?, ?, ?, ?)')
+      .run(runId, 'wf-1', 'running', JSON.stringify({ user: 'Alice' }), JSON.stringify({ agent: 'test' }));
 
     const req = mockReq({}, { run_id: runId });
     const res = mockRes();
@@ -110,7 +110,7 @@ describe('RunController', () => {
   it('updates run status and output', async () => {
     const runId = '550e8400-e29b-41d4-a716-446655440002';
     const db = getDb();
-    db.prepare('INSERT INTO runs (run_id, workflow_name, status) VALUES (?, ?, ?)').run(runId, 'wf-1', 'running');
+    await db.prepare('INSERT INTO runs (run_id, workflow_name, status) VALUES (?, ?, ?)').run(runId, 'wf-1', 'running');
 
     const req = mockReq({ status: 'completed', output: { result: 'ok' } }, { run_id: runId });
     const res = mockRes();
@@ -138,11 +138,9 @@ describe('RunController', () => {
   it('lists runs with pagination', async () => {
     const db = getDb();
     for (let i = 0; i < 5; i++) {
-      db.prepare('INSERT INTO runs (run_id, workflow_name, status) VALUES (?, ?, ?)').run(
-        `run-${i}`,
-        `wf-${i}`,
-        'running',
-      );
+      await db
+        .prepare('INSERT INTO runs (run_id, workflow_name, status) VALUES (?, ?, ?)')
+        .run(`run-${i}`, `wf-${i}`, 'running');
     }
 
     const req = mockReq({}, {}, { page: '1', limit: '3' });

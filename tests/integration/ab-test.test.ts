@@ -16,7 +16,7 @@ describe('A/B Test API', () => {
     process.env.SQLITE_PATH = testDbPath;
     process.env.DRIVER = 'filesystem';
     process.env.API_KEY_SALT = 'test-ab-test-salt';
-    closeDb();
+    await closeDb();
     await initSchema();
     const db = getDb();
     apiKey = 'pm_test_ab_test_key';
@@ -30,8 +30,8 @@ describe('A/B Test API', () => {
     app = createApp(driver);
   });
 
-  afterAll(() => {
-    closeDb();
+  afterAll(async () => {
+    await closeDb();
     const fs = require('fs');
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
   });

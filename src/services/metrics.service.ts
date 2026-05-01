@@ -64,7 +64,7 @@ export class MetricsService {
     if (dialect === 'sqlite') {
       return `date(${column}, 'unixepoch')`;
     }
-    return `TO_TIMESTAMP(${column})::DATE`;
+    return `TO_CHAR(TO_TIMESTAMP(${column}), 'YYYY-MM-DD')`;
   }
 
   async getTimeSeries(workspaceId: string = 'default', start: number, end: number): Promise<TimeSeriesPoint[]> {

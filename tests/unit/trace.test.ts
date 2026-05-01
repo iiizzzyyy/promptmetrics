@@ -26,12 +26,12 @@ describe('TraceController', () => {
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
-    closeDb();
+    await closeDb();
     await initSchema();
   });
 
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
@@ -69,14 +69,12 @@ describe('TraceController', () => {
   it('gets a trace with its spans', async () => {
     const traceId = '550e8400-e29b-41d4-a716-446655440001';
     const db = getDb();
-    db.prepare('INSERT INTO traces (trace_id, prompt_name, metadata_json) VALUES (?, ?, ?)').run(
-      traceId,
-      'test-prompt',
-      JSON.stringify({ agent: 'test' }),
-    );
-    db.prepare(
-      'INSERT INTO spans (trace_id, span_id, name, status, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)',
-    ).run(traceId, 'span-1', 'step-1', 'ok', 1000, 2000);
+    await db
+      .prepare('INSERT INTO traces (trace_id, prompt_name, metadata_json) VALUES (?, ?, ?)')
+      .run(traceId, 'test-prompt', JSON.stringify({ agent: 'test' }));
+    await db
+      .prepare('INSERT INTO spans (trace_id, span_id, name, status, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(traceId, 'span-1', 'step-1', 'ok', 1000, 2000);
 
     const req = mockReq({}, { trace_id: traceId });
     const res = mockRes();
@@ -101,7 +99,7 @@ describe('TraceController', () => {
   it('creates a span under a trace', async () => {
     const traceId = '550e8400-e29b-41d4-a716-446655440002';
     const db = getDb();
-    db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
+    await db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
 
     const req = mockReq(
       { name: 'agent-step-1', status: 'ok', start_time: 1000, end_time: 2000 },
@@ -138,10 +136,10 @@ describe('TraceController', () => {
     const traceId = '550e8400-e29b-41d4-a716-446655440003';
     const spanId = '550e8400-e29b-41d4-a716-446655440004';
     const db = getDb();
-    db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
-    db.prepare(
-      'INSERT INTO spans (trace_id, span_id, name, status, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)',
-    ).run(traceId, spanId, 'step-2', 'error', 3000, 4000);
+    await db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
+    await db
+      .prepare('INSERT INTO spans (trace_id, span_id, name, status, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(traceId, spanId, 'step-2', 'error', 3000, 4000);
 
     const req = mockReq({}, { trace_id: traceId, span_id: spanId });
     const res = mockRes();

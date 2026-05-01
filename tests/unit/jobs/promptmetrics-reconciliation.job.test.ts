@@ -25,12 +25,9 @@ describe('PromptReconciliationJob', () => {
       listVersions: jest.fn(),
       search: jest.fn(),
     } as unknown as PromptDriver;
-
-    jest.useFakeTimers();
   });
 
   afterEach(async () => {
-    jest.useRealTimers();
     await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
@@ -47,16 +44,16 @@ describe('PromptReconciliationJob', () => {
     const oldTime = Math.floor(Date.now() / 1000) - 300;
     await db
       .prepare(
-        "INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        'INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, ?, ?, ?)',
       )
       .run('exists', '1.0.0', 'default', 'pending', 'filesystem', oldTime);
 
     job = new PromptReconciliationJob(driver, 60000);
     await job.runReconcile();
 
-    const row = (await db.prepare("SELECT status FROM prompts WHERE name = ? AND version_tag = ?").get('exists', '1.0.0')) as
-      | { status: string }
-      | undefined;
+    const row = (await db
+      .prepare('SELECT status FROM prompts WHERE name = ? AND version_tag = ?')
+      .get('exists', '1.0.0')) as { status: string } | undefined;
     expect(row?.status).toBe('active');
   });
 
@@ -67,14 +64,14 @@ describe('PromptReconciliationJob', () => {
     const oldTime = Math.floor(Date.now() / 1000) - 300;
     await db
       .prepare(
-        "INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        'INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, ?, ?, ?)',
       )
       .run('missing', '1.0.0', 'default', 'pending', 'filesystem', oldTime);
 
     job = new PromptReconciliationJob(driver, 60000);
     await job.runReconcile();
 
-    const row = await db.prepare("SELECT 1 FROM prompts WHERE name = ? AND version_tag = ?").get('missing', '1.0.0');
+    const row = await db.prepare('SELECT 1 FROM prompts WHERE name = ? AND version_tag = ?').get('missing', '1.0.0');
     expect(row).toBeUndefined();
   });
 
@@ -85,56 +82,55 @@ describe('PromptReconciliationJob', () => {
     const recentTime = Math.floor(Date.now() / 1000) - 10;
     await db
       .prepare(
-        "INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        'INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, ?, ?, ?)',
       )
       .run('recent', '1.0.0', 'default', 'pending', 'filesystem', recentTime);
 
     job = new PromptReconciliationJob(driver, 60000);
     await job.runReconcile();
 
-    const row = (await db.prepare("SELECT status FROM prompts WHERE name = ? AND version_tag = ?").get('recent', '1.0.0')) as
-      | { status: string }
-      | undefined;
+    const row = (await db
+      .prepare('SELECT status FROM prompts WHERE name = ? AND version_tag = ?')
+      .get('recent', '1.0.0')) as { status: string } | undefined;
     expect(row?.status).toBe('pending');
     expect(driver.getPrompt).not.toHaveBeenCalled();
   });
 
   it('should handle driver errors gracefully and continue processing', async () => {
-    (driver.getPrompt as jest.Mock)
-      .mockRejectedValueOnce(new Error('Storage error'))
-      .mockResolvedValueOnce({
-        content: { name: 'ok', version: '1.0.0', messages: [] },
-        version: { name: 'ok', version_tag: '1.0.0', created_at: Math.floor(Date.now() / 1000) },
-      });
+    (driver.getPrompt as jest.Mock).mockRejectedValueOnce(new Error('Storage error')).mockResolvedValueOnce({
+      content: { name: 'ok', version: '1.0.0', messages: [] },
+      version: { name: 'ok', version_tag: '1.0.0', created_at: Math.floor(Date.now() / 1000) },
+    });
 
     const db = getDb();
     const oldTime = Math.floor(Date.now() / 1000) - 300;
     await db
       .prepare(
-        "INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        'INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, ?, ?, ?)',
       )
       .run('err', '1.0.0', 'default', 'pending', 'filesystem', oldTime);
     await db
       .prepare(
-        "INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        'INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, ?, ?, ?)',
       )
       .run('ok', '1.0.0', 'default', 'pending', 'filesystem', oldTime);
 
     job = new PromptReconciliationJob(driver, 60000);
     await job.runReconcile();
 
-    const errRow = (await db.prepare("SELECT status FROM prompts WHERE name = ? AND version_tag = ?").get('err', '1.0.0')) as
-      | { status: string }
-      | undefined;
+    const errRow = (await db
+      .prepare('SELECT status FROM prompts WHERE name = ? AND version_tag = ?')
+      .get('err', '1.0.0')) as { status: string } | undefined;
     expect(errRow?.status).toBe('pending');
 
-    const okRow = (await db.prepare("SELECT status FROM prompts WHERE name = ? AND version_tag = ?").get('ok', '1.0.0')) as
-      | { status: string }
-      | undefined;
+    const okRow = (await db
+      .prepare('SELECT status FROM prompts WHERE name = ? AND version_tag = ?')
+      .get('ok', '1.0.0')) as { status: string } | undefined;
     expect(okRow?.status).toBe('active');
   });
 
   it('should call reconcile on interval when started', () => {
+    jest.useFakeTimers();
     const spy = jest.spyOn(PromptReconciliationJob.prototype, 'runReconcile').mockResolvedValue();
     job = new PromptReconciliationJob(driver, 1000);
     job.start();
@@ -148,9 +144,11 @@ describe('PromptReconciliationJob', () => {
 
     job.stop();
     spy.mockRestore();
+    jest.useRealTimers();
   });
 
   it('should stop calling reconcile after stop', () => {
+    jest.useFakeTimers();
     const spy = jest.spyOn(PromptReconciliationJob.prototype, 'runReconcile').mockResolvedValue();
     job = new PromptReconciliationJob(driver, 1000);
     job.start();
@@ -160,5 +158,6 @@ describe('PromptReconciliationJob', () => {
     expect(spy).toHaveBeenCalledTimes(1);
 
     spy.mockRestore();
+    jest.useRealTimers();
   });
 });

@@ -24,29 +24,33 @@ describe('Compliance API Integration', () => {
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
 
-    closeDb();
+    await closeDb();
     await initSchema();
 
     const db = getDb();
     apiKey = 'pm_testkey_compliance';
     const keyHash = hashApiKey(apiKey);
-    db.prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id').run(
-      keyHash,
-      'test-key-compliance',
-      'read,write',
-      '*',
-    );
+    db.prepare(
+      'INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id',
+    ).run(keyHash, 'test-key-compliance', 'read,write', '*');
 
     const driver = new FilesystemDriver(testPromptsPath);
     app = createApp(driver);
   });
 
-  afterAll(() => {
-    closeDb();
+  afterAll(async () => {
+    await closeDb();
     if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
+  });
+
+  beforeEach(async () => {
+    if (process.env.DATABASE_URL) {
+      const db = getDb();
+      await db.exec('TRUNCATE TABLE compliance_scores CASCADE');
+    }
   });
 
   it('POST /v1/compliance/scan without API key returns 401', async () => {

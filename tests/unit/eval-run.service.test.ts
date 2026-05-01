@@ -12,42 +12,35 @@ describe('EvalRunService', () => {
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
-    closeDb();
+    await closeDb();
     await initSchema();
     service = new EvalRunService();
   });
 
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
   });
 
-  function seedEvaluation(id: number, workspaceId: string = 'default') {
+  async function seedEvaluation(id: number, workspaceId: string = 'default') {
     const db = getDb();
-    db.prepare(`INSERT INTO evaluations (id, name, prompt_name, created_at, workspace_id) VALUES (?, ?, ?, ?, ?)`).run(
-      id,
-      `eval-${id}`,
-      'prompt-a',
-      Math.floor(Date.now() / 1000),
-      workspaceId,
-    );
+    await db
+      .prepare(`INSERT INTO evaluations (id, name, prompt_name, created_at, workspace_id) VALUES (?, ?, ?, ?, ?)`)
+      .run(id, `eval-${id}`, 'prompt-a', Math.floor(Date.now() / 1000), workspaceId);
   }
 
-  function seedDataset(id: number, workspaceId: string = 'default') {
+  async function seedDataset(id: number, workspaceId: string = 'default') {
     const db = getDb();
-    db.prepare(`INSERT INTO datasets (id, name, workspace_id, row_count) VALUES (?, ?, ?, ?)`).run(
-      id,
-      `dataset-${id}`,
-      workspaceId,
-      0,
-    );
+    await db
+      .prepare(`INSERT INTO datasets (id, name, workspace_id, row_count) VALUES (?, ?, ?, ?)`)
+      .run(id, `dataset-${id}`, workspaceId, 0);
   }
 
   describe('createRun', () => {
     it('inserts row with status running and returns run with id', async () => {
-      seedEvaluation(1);
+      await seedEvaluation(1);
       const run = await service.createRun(1, undefined, 'default');
 
       expect(run.id).toBeDefined();
@@ -57,14 +50,14 @@ describe('EvalRunService', () => {
     });
 
     it('uses default workspace_id when omitted', async () => {
-      seedEvaluation(1);
+      await seedEvaluation(1);
       const run = await service.createRun(1, undefined);
       expect(run.workspace_id).toBe('default');
     });
 
     it('accepts an optional dataset_id', async () => {
-      seedEvaluation(1);
-      seedDataset(42);
+      await seedEvaluation(1);
+      await seedDataset(42);
       const run = await service.createRun(1, 42, 'default');
       expect(run.dataset_id).toBe(42);
     });
@@ -72,7 +65,7 @@ describe('EvalRunService', () => {
 
   describe('completeRun', () => {
     it('updates status to completed, sets score and results_json', async () => {
-      seedEvaluation(1);
+      await seedEvaluation(1);
       const created = await service.createRun(1, undefined, 'default');
 
       const completed = await service.completeRun(created.id, 0.95, JSON.stringify({ accuracy: 0.95 }), 'default');
@@ -82,7 +75,7 @@ describe('EvalRunService', () => {
     });
 
     it('uses default workspace_id when omitted', async () => {
-      seedEvaluation(1);
+      await seedEvaluation(1);
       const created = await service.createRun(1, undefined, 'default');
       const completed = await service.completeRun(created.id, 0.95, JSON.stringify({ accuracy: 0.95 }));
       expect(completed.status).toBe('completed');
@@ -96,7 +89,7 @@ describe('EvalRunService', () => {
     });
 
     it('throws notFound when completing a run from a different workspace', async () => {
-      seedEvaluation(1, 'ws-a');
+      await seedEvaluation(1, 'ws-a');
       const created = await service.createRun(1, undefined, 'ws-a');
       await expect(service.completeRun(created.id, 0.5, '{}', 'ws-b')).rejects.toMatchObject({
         code: 'NOT_FOUND',
@@ -107,7 +100,7 @@ describe('EvalRunService', () => {
 
   describe('failRun', () => {
     it('updates status to failed and sets results_json with reason', async () => {
-      seedEvaluation(1);
+      await seedEvaluation(1);
       const created = await service.createRun(1, undefined, 'default');
 
       const failed = await service.failRun(created.id, 'Model timeout', 'default');
@@ -116,7 +109,7 @@ describe('EvalRunService', () => {
     });
 
     it('uses default workspace_id when omitted', async () => {
-      seedEvaluation(1);
+      await seedEvaluation(1);
       const created = await service.createRun(1, undefined, 'default');
       const failed = await service.failRun(created.id, 'Model timeout');
       expect(failed.status).toBe('failed');
@@ -132,8 +125,8 @@ describe('EvalRunService', () => {
 
   describe('listRuns', () => {
     it('paginates correctly and filters by evaluation_id and workspace_id', async () => {
-      seedEvaluation(1);
-      seedEvaluation(2);
+      await seedEvaluation(1);
+      await seedEvaluation(2);
       // Seed runs for evaluation 1
       for (let i = 0; i < 5; i++) {
         await service.createRun(1, undefined, 'default');
@@ -163,7 +156,7 @@ describe('EvalRunService', () => {
     });
 
     it('uses default workspace_id when omitted', async () => {
-      seedEvaluation(1);
+      await seedEvaluation(1);
       await service.createRun(1, undefined, 'default');
       const result = await service.listRuns(1, 1, 10);
       expect(result.items.length).toBe(1);
@@ -181,7 +174,7 @@ describe('EvalRunService', () => {
 
   describe('workspace isolation', () => {
     it('run from workspace A is not visible in workspace B', async () => {
-      seedEvaluation(1, 'ws-a');
+      await seedEvaluation(1, 'ws-a');
       const runA = await service.createRun(1, undefined, 'ws-a');
       await service.createRun(1, undefined, 'ws-b');
 
@@ -195,7 +188,7 @@ describe('EvalRunService', () => {
     });
 
     it('getRun enforces workspace isolation on complete/fail', async () => {
-      seedEvaluation(1, 'ws-a');
+      await seedEvaluation(1, 'ws-a');
       const run = await service.createRun(1, undefined, 'ws-a');
 
       await expect(service.completeRun(run.id, 0.9, '{}', 'ws-b')).rejects.toMatchObject({

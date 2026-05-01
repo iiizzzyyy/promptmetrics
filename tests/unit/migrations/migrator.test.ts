@@ -3,7 +3,9 @@ import path from 'path';
 import { getDb, initSchema, closeDb } from '@models/promptmetrics-sqlite';
 import { createMigrator } from '@migrations/migrator';
 
-describe('createMigrator', () => {
+const describeIfNotPostgres = process.env.DATABASE_URL ? describe.skip : describe;
+
+describeIfNotPostgres('createMigrator', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-migrator.db');
 
   beforeEach(async () => {

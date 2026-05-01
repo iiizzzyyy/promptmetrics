@@ -8,7 +8,7 @@ afterAll(async () => {
         .prepare("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename != 'migrations'")
         .all()) as Array<{ tablename: string }>;
       for (const row of tables) {
-        await db.exec(`TRUNCATE TABLE "${row.tablename}" CASCADE`);
+        await db.exec(`TRUNCATE TABLE "${row.tablename}" RESTART IDENTITY CASCADE`);
       }
     } catch {
       // ignore cleanup errors (e.g., connection already closed)
