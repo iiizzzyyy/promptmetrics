@@ -472,6 +472,41 @@ See [docs/sdk.md](docs/sdk.md) for full documentation.
 
 ---
 
+## Dashboard
+
+PromptMetrics includes an optional Next.js observability dashboard in the `ui/` directory. It provides a visual interface for:
+
+- Monitoring prompt usage, costs, and latency with time-series charts
+- Browsing execution logs with token and cost breakdowns
+- Inspecting agent traces and their span trees
+- Tracking evaluation scores over time
+- Managing A/B tests, datasets, compliance scans, and the LLM playground
+
+### Quick Start
+
+```bash
+# 1. Start the backend API (port 3000)
+npm run build
+npm start
+
+# 2. Generate an API key
+node dist/scripts/generate-api-key.js --workspace default read,write
+
+# 3. (Optional) Seed demo data for a populated dashboard
+node dist/scripts/seed-demo-data.js
+
+# 4. Start the UI (port 3001)
+cd ui
+npm install
+npm run dev
+```
+
+Open [http://localhost:3001](http://localhost:3001) and paste your API key.
+
+See [`ui/README.md`](ui/README.md) for the complete user guide: authentication, page-by-page walkthrough, metrics API reference, workspace switching, and common workflows.
+
+---
+
 ## Documentation
 
 | Document | Purpose |
@@ -480,6 +515,7 @@ See [docs/sdk.md](docs/sdk.md) for full documentation.
 | [docs/api.md](docs/api.md) | Complete REST API reference |
 | [docs/cli.md](docs/cli.md) | CLI commands and usage |
 | [docs/sdk.md](docs/sdk.md) | Node.js SDK reference |
+| [ui/README.md](ui/README.md) | Dashboard UI user guide |
 | [SECURITY.md](SECURITY.md) | Security policy and best practices |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
 | [docs/adr](docs/adr) | Architecture Decision Records |
