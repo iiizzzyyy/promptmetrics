@@ -29,7 +29,7 @@ describe('Dataset API', () => {
     await initSchema();
     const db = getDb();
     apiKey = 'pm_test_dataset_key';
-    db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
       hashApiKey(apiKey),
       'dataset-test',
       'read,write',
@@ -141,7 +141,7 @@ describe('Dataset API', () => {
   it('should isolate datasets per workspace', async () => {
     const db = getDb();
     const workspaceKey = 'pm_workspace_dataset_key';
-    db.prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id').run(
       hashApiKey(workspaceKey),
       'workspace-dataset-key',
       'read,write',

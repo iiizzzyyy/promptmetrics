@@ -18,7 +18,7 @@ describe('Evaluation Runs API', () => {
     await initSchema();
     const db = getDb();
     const keyHash = hashApiKey('pm_test_eval_run_key');
-    db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
       keyHash,
       'eval-run-test',
       'read,write',

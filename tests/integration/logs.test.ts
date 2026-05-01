@@ -28,7 +28,7 @@ describe('Log API Integration', () => {
     const db = getDb();
     apiKey = 'pm_testlog789';
     const keyHash = hashApiKey(apiKey);
-    db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
       keyHash,
       'test-log-key',
       'read,write',
@@ -63,7 +63,7 @@ describe('Log API Integration', () => {
   it('GET /v1/logs lists logs with pagination', async () => {
     const db = getDb();
     for (let i = 0; i < 5; i++) {
-      db.prepare(
+      await db.prepare(
         'INSERT INTO logs (prompt_name, version_tag, provider, model, tokens_in, tokens_out, latency_ms, cost_usd, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       ).run(`prompt-${i}`, `v${i}`, 'openai', 'gpt-4', i * 10, i * 5, i * 100, i * 0.001, 'default');
     }
@@ -90,7 +90,7 @@ describe('Log API Integration', () => {
 
   it('GET /v1/logs parses metadata_json in response', async () => {
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       'INSERT INTO logs (prompt_name, version_tag, metadata_json, provider, model, workspace_id) VALUES (?, ?, ?, ?, ?, ?)',
     ).run('test-prompt', '1.0.0', JSON.stringify({ agent: 'test' }), 'openai', 'gpt-4', 'default');
 

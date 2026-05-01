@@ -30,7 +30,7 @@ describe('Prompt API Integration', () => {
     const db = getDb();
     apiKey = 'pm_testkey123';
     const keyHash = hashApiKey(apiKey);
-    db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
       keyHash,
       'test-key',
       'read,write',

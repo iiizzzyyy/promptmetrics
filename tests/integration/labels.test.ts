@@ -28,7 +28,7 @@ describe('Label API Integration', () => {
     const db = getDb();
     apiKey = 'pm_testlabel789';
     const keyHash = hashApiKey(apiKey);
-    db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
       keyHash,
       'test-label-key',
       'read,write',
@@ -60,7 +60,7 @@ describe('Label API Integration', () => {
 
   it('POST /v1/prompts/:name/labels updates existing label (upsert)', async () => {
     const db = getDb();
-    db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
       'welcome',
       'production',
       '1.0.0',
@@ -77,12 +77,12 @@ describe('Label API Integration', () => {
 
   it('GET /v1/prompts/:name/labels lists labels', async () => {
     const db = getDb();
-    db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
       'welcome',
       'production',
       '1.0.0',
     );
-    db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
       'welcome',
       'staging',
       '1.1.0',
@@ -97,7 +97,7 @@ describe('Label API Integration', () => {
 
   it('GET /v1/prompts/:name/labels/:label_name returns a label', async () => {
     const db = getDb();
-    db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
       'welcome',
       'production',
       '1.0.0',
@@ -118,7 +118,7 @@ describe('Label API Integration', () => {
 
   it('DELETE /v1/prompts/:name/labels/:label_name deletes a label', async () => {
     const db = getDb();
-    db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
       'welcome',
       'production',
       '1.0.0',

@@ -30,7 +30,7 @@ describe('Compliance API Integration', () => {
     const db = getDb();
     apiKey = 'pm_testkey_compliance';
     const keyHash = hashApiKey(apiKey);
-    db.prepare(
+    await db.prepare(
       'INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id',
     ).run(keyHash, 'test-key-compliance', 'read,write', '*');
 

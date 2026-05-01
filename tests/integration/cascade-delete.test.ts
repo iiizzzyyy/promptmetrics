@@ -30,9 +30,9 @@ describe('ON DELETE CASCADE', () => {
       .run('test-prompt', 'v1', 'v2', 'default');
     const testId = Number(testInsert.lastInsertRowid);
 
-    await db.prepare('INSERT INTO ab_test_results (ab_test_id, workspace_id) VALUES (?, ?)').run(testId, 'default');
+   await db.prepare('INSERT INTO ab_test_results (ab_test_id, workspace_id) VALUES (?, ?)').run(testId, 'default');
 
-    await db.prepare('DELETE FROM ab_tests WHERE id = ?').run(testId);
+   await db.prepare('DELETE FROM ab_tests WHERE id = ?').run(testId);
 
     const remaining = (await db
       .prepare('SELECT COUNT(*) as c FROM ab_test_results WHERE ab_test_id = ?')
@@ -51,7 +51,7 @@ describe('ON DELETE CASCADE', () => {
       .prepare('INSERT INTO dataset_rows (dataset_id, input_json, workspace_id) VALUES (?, ?, ?)')
       .run(dsId, JSON.stringify({ hello: 'world' }), 'default');
 
-    await db.prepare('DELETE FROM datasets WHERE id = ?').run(dsId);
+   await db.prepare('DELETE FROM datasets WHERE id = ?').run(dsId);
 
     const remaining = (await db.prepare('SELECT COUNT(*) as c FROM dataset_rows WHERE dataset_id = ?').get(dsId)) as {
       c: number;
@@ -70,7 +70,7 @@ describe('ON DELETE CASCADE', () => {
       .prepare('INSERT INTO eval_runs (evaluation_id, status, workspace_id) VALUES (?, ?, ?)')
       .run(evalId, 'running', 'default');
 
-    await db.prepare('DELETE FROM evaluations WHERE id = ?').run(evalId);
+   await db.prepare('DELETE FROM evaluations WHERE id = ?').run(evalId);
 
     const remaining = (await db.prepare('SELECT COUNT(*) as c FROM eval_runs WHERE evaluation_id = ?').get(evalId)) as {
       c: number;
@@ -94,7 +94,7 @@ describe('ON DELETE CASCADE', () => {
       .prepare('INSERT INTO eval_runs (evaluation_id, dataset_id, status, workspace_id) VALUES (?, ?, ?, ?)')
       .run(evalId, dsId, 'running', 'default');
 
-    await db.prepare('DELETE FROM datasets WHERE id = ?').run(dsId);
+   await db.prepare('DELETE FROM datasets WHERE id = ?').run(dsId);
 
     const remaining = (await db.prepare('SELECT COUNT(*) as c FROM eval_runs WHERE dataset_id = ?').get(dsId)) as {
       c: number;

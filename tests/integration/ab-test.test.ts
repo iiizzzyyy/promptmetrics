@@ -20,7 +20,7 @@ describe('A/B Test API', () => {
     await initSchema();
     const db = getDb();
     apiKey = 'pm_test_ab_test_key';
-    db.prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
       hashApiKey(apiKey),
       'ab-test-test',
       'read,write',
@@ -216,7 +216,7 @@ describe('A/B Test API', () => {
   it('should isolate A/B tests per workspace', async () => {
     const db = getDb();
     const workspaceKey = 'pm_workspace_ab_test_key';
-    db.prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id').run(
       hashApiKey(workspaceKey),
       'workspace-ab-test-key',
       'read,write',

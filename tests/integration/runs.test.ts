@@ -28,7 +28,7 @@ describe('Run API Integration', () => {
     const db = getDb();
     apiKey = 'pm_testrun789';
     const keyHash = hashApiKey(apiKey);
-    db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
       keyHash,
       'test-run-key',
       'read,write',
@@ -82,7 +82,7 @@ describe('Run API Integration', () => {
   it('GET /v1/runs/:run_id returns a run', async () => {
     const runId = '550e8400-e29b-41d4-a716-446655440001';
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       'INSERT INTO runs (run_id, workflow_name, status, input_json, metadata_json) VALUES (?, ?, ?, ?, ?)',
     ).run(runId, 'wf-1', 'running', JSON.stringify({ user: 'Alice' }), JSON.stringify({ agent: 'test' }));
 
@@ -103,7 +103,7 @@ describe('Run API Integration', () => {
   it('PATCH /v1/runs/:run_id updates status and output', async () => {
     const runId = '550e8400-e29b-41d4-a716-446655440002';
     const db = getDb();
-    db.prepare('INSERT INTO runs (run_id, workflow_name, status) VALUES (?, ?, ?)').run(runId, 'wf-1', 'running');
+    await db.prepare('INSERT INTO runs (run_id, workflow_name, status) VALUES (?, ?, ?)').run(runId, 'wf-1', 'running');
 
     const res = await request(app)
       .patch(`/v1/runs/${runId}`)
@@ -130,7 +130,7 @@ describe('Run API Integration', () => {
   it('GET /v1/runs lists runs with pagination', async () => {
     const db = getDb();
     for (let i = 0; i < 5; i++) {
-      db.prepare('INSERT INTO runs (run_id, workflow_name, status) VALUES (?, ?, ?)').run(
+      await db.prepare('INSERT INTO runs (run_id, workflow_name, status) VALUES (?, ?, ?)').run(
         `run-${i}`,
         `wf-${i}`,
         'running',

@@ -18,7 +18,7 @@ describe('Evaluations API', () => {
     await initSchema();
     const db = getDb();
     const keyHash = hashApiKey('pm_test_eval_key');
-    db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
       keyHash,
       'eval-test',
       'read,write',
@@ -26,7 +26,7 @@ describe('Evaluations API', () => {
     apiKey = 'pm_test_eval_key';
 
     // Read-only key for scope tests
-    db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
       hashApiKey('pm_readonly_eval_key'),
       'eval-readonly',
       'read',
