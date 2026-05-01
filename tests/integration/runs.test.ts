@@ -4,6 +4,7 @@ import path from 'path';
 import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
+import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
 
 describe('Run API Integration', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-runs.db');
@@ -21,23 +22,24 @@ describe('Run API Integration', () => {
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
     if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
 
-    closeDb();
+    await closeDb();
     await initSchema();
 
     const db = getDb();
     apiKey = 'pm_testrun789';
     const keyHash = hashApiKey(apiKey);
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
       keyHash,
       'test-run-key',
       'read,write',
     );
 
-    app = createApp();
+    const driver = new FilesystemDriver(testPromptsPath);
+    app = createApp(driver);
   });
 
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
@@ -80,7 +82,7 @@ describe('Run API Integration', () => {
   it('GET /v1/runs/:run_id returns a run', async () => {
     const runId = '550e8400-e29b-41d4-a716-446655440001';
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       'INSERT INTO runs (run_id, workflow_name, status, input_json, metadata_json) VALUES (?, ?, ?, ?, ?)',
     ).run(runId, 'wf-1', 'running', JSON.stringify({ user: 'Alice' }), JSON.stringify({ agent: 'test' }));
 
@@ -101,7 +103,7 @@ describe('Run API Integration', () => {
   it('PATCH /v1/runs/:run_id updates status and output', async () => {
     const runId = '550e8400-e29b-41d4-a716-446655440002';
     const db = getDb();
-    db.prepare('INSERT INTO runs (run_id, workflow_name, status) VALUES (?, ?, ?)').run(runId, 'wf-1', 'running');
+    await db.prepare('INSERT INTO runs (run_id, workflow_name, status) VALUES (?, ?, ?)').run(runId, 'wf-1', 'running');
 
     const res = await request(app)
       .patch(`/v1/runs/${runId}`)
@@ -128,7 +130,7 @@ describe('Run API Integration', () => {
   it('GET /v1/runs lists runs with pagination', async () => {
     const db = getDb();
     for (let i = 0; i < 5; i++) {
-      db.prepare('INSERT INTO runs (run_id, workflow_name, status) VALUES (?, ?, ?)').run(
+      await db.prepare('INSERT INTO runs (run_id, workflow_name, status) VALUES (?, ?, ?)').run(
         `run-${i}`,
         `wf-${i}`,
         'running',

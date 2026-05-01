@@ -22,8 +22,8 @@ describe('withTransaction', () => {
   });
 
   it('should commit on success', async () => {
-    await withTransaction((db) => {
-      db.prepare('INSERT INTO config (key, value) VALUES (?, ?)').run('foo', 'bar');
+    await withTransaction(async (db) => {
+      await db.prepare('INSERT INTO config (key, value) VALUES (?, ?)').run('foo', 'bar');
     });
 
     const db = getDb();
@@ -35,8 +35,8 @@ describe('withTransaction', () => {
 
   it('should rollback on error', async () => {
     await expect(
-      withTransaction((db) => {
-        db.prepare('INSERT INTO config (key, value) VALUES (?, ?)').run('rollback-key', 'before');
+      withTransaction(async (db) => {
+        await db.prepare('INSERT INTO config (key, value) VALUES (?, ?)').run('rollback-key', 'before');
         throw new Error('forced failure');
       }),
     ).rejects.toThrow('forced failure');
@@ -47,8 +47,8 @@ describe('withTransaction', () => {
   });
 
   it('should return the callback result', async () => {
-    const result = await withTransaction((db) => {
-      db.prepare('INSERT INTO config (key, value) VALUES (?, ?)').run('return-key', 'return-value');
+    const result = await withTransaction(async (db) => {
+      await db.prepare('INSERT INTO config (key, value) VALUES (?, ?)').run('return-key', 'return-value');
       return 42;
     });
     expect(result).toBe(42);

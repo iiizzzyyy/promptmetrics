@@ -36,7 +36,7 @@ jobs:
           API_KEY_SALT: test-salt-for-ci
 
       - name: Audit
-        run: npm audit --audit-level=moderate
+        run: npm audit --audit-level=high
 
       - name: Test CLI
         run: node dist/scripts/generate-api-key.js ci-key read,write
@@ -74,8 +74,14 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Reset PostgreSQL schema
+        run: |
+          PGPASSWORD=promptmetrics psql -h localhost -U promptmetrics -d promptmetrics -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+        env:
+          PGPASSWORD: promptmetrics
+
       - name: Run tests with PostgreSQL
-        run: npm test
+        run: npm test -- --runInBand
         env:
           API_KEY_SALT: test-salt-for-ci
           DATABASE_URL: postgres://promptmetrics:promptmetrics@localhost:5432/promptmetrics

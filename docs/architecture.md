@@ -81,6 +81,13 @@ The clone is bare (no working tree) to save disk space. The `git show` command r
 | `prompt_labels` | Tags prompt versions with environment labels: `prompt_name`, `name`, `version_tag`, `created_at`. UNIQUE on (`prompt_name`, `name`) |
 | `evaluations` | Tracks evaluation suites: `id`, `name`, `description`, `prompt_name`, `version_tag`, `criteria_json`, `workspace_id`, `created_at` |
 | `evaluation_results` | Stores individual scores: `id`, `evaluation_id`, `run_id`, `score`, `metadata_json`, `workspace_id`, `created_at` |
+| `ab_tests` | Defines A/B tests comparing two prompt versions: `prompt_name`, `version_a`, `version_b`, `dataset_id`, `metric`, `status`, `workspace_id` |
+| `ab_test_results` | Stores statistical analysis results: `ab_test_id`, `version_a_score`, `version_b_score`, `p_value`, `winner`, `workspace_id` |
+| `datasets` | Stores dataset metadata: `name`, `row_count`, `schema_json`, `workspace_id`, `created_at` |
+| `dataset_rows` | Stores individual input/expected pairs: `dataset_id`, `input_json`, `expected_output_json`, `workspace_id` |
+| `eval_runs` | Tracks execution of evaluation suites against datasets: `evaluation_id`, `dataset_id`, `status`, `score`, `results_json`, `workspace_id` |
+| `compliance_scores` | Stores prompt compliance scan results: `prompt_name`, `version_tag`, `score`, `violations_json`, `workspace_id` |
+| `compliance_rules` | Custom compliance rules: `name`, `pattern`, `severity`, `category`, `workspace_id` |
 
 **SQLite Mode:** When using SQLite, WAL (Write-Ahead Logging) enables concurrent readers and a single writer without locks blocking reads.
 
@@ -249,6 +256,192 @@ The evaluations system lets teams define quality checks for prompts and record s
 2. Controller performs a cascading delete: results are removed first, then the evaluation
 3. Response returns `204 No Content`
 
+## A/B Testing Engine
+
+The A/B Testing Engine lets teams compare two prompt versions statistically. A test defines the versions, an optional dataset, and a metric (`latency`, `cost`, or `win_rate`). Clients run both variants externally, submit score arrays, and the engine computes significance.
+
+**Create an A/B Test:**
+1. Client sends `POST /v1/ab-tests` with `prompt_name`, `version_a`, `version_b`, optional `dataset_id`, and optional `metric`
+2. Auth middleware validates the API key and checks `write` scope
+3. Controller validates the body via Joi schema
+4. Row inserted into `ab_tests` with `status = 'running'`
+5. Response returns `201 Created` with test metadata
+
+**Run a Test:**
+1. Client sends `POST /v1/ab-tests/:id/run` with `scoresA` and `scoresB` arrays
+2. Controller validates that both arrays contain at least one numeric score
+3. `ABTestEngine` analyzes the results:
+   - For `win_rate` metric: two-proportion z-test
+   - For `latency` and `cost` metrics: Welch's t-test and bootstrap confidence intervals
+4. Result inserted into `ab_test_results` with `p_value`, `winner`, and mean scores
+5. `ab_tests.status` updated to `completed`
+6. Response returns the analysis
+
+**Promote the Winner:**
+1. Client sends `POST /v1/ab-tests/:id/promote`
+2. Controller fetches the latest result from `ab_test_results`
+3. If a winner exists (`A` or `B`), the corresponding version is recorded in `ab_tests.promoted_version`
+4. Response returns the winner and version tag
+
+**Delete a Test:**
+1. Client sends `DELETE /v1/ab-tests/:id`
+2. Controller removes results from `ab_test_results` first, then the test from `ab_tests`
+3. Response returns `204 No Content`
+
+## Dataset Management
+
+Datasets are collections of input/expected-output pairs used by evaluation runs and A/B tests. They are stored in the database with workspace scoping.
+
+**Create a Dataset:**
+1. Client sends `POST /v1/datasets` with `name` and `rows` array
+2. Auth middleware validates the API key and checks `write` scope
+3. Controller validates the payload (max 10,000 rows, max 10 MB)
+4. Row inserted into `datasets` table
+5. Each row inserted into `dataset_rows` with `input_json` and optional `expected_output_json`
+6. `datasets.row_count` updated to reflect the total
+7. Response returns `201 Created` with dataset metadata
+
+**List Datasets:**
+1. Client sends `GET /v1/datasets?page=1&limit=50`
+2. Controller returns paginated datasets ordered by `created_at DESC`
+3. Response includes `row_count` and optional `schema`
+
+**Get a Dataset:**
+1. Client sends `GET /v1/datasets/:id`
+2. Controller fetches dataset metadata plus a preview of the first 5 rows from `dataset_rows`
+3. Response returns the dataset with parsed `input` and `expectedOutput` objects
+
+**Delete a Dataset:**
+1. Client sends `DELETE /v1/datasets/:id`
+2. Controller removes rows from `dataset_rows`, then the dataset from `datasets`
+3. Response returns `204 No Content`
+
+## Evaluation Runs
+
+Evaluation runs connect an evaluation suite to a dataset and track execution status. The `EvalRunService` creates and updates runs; an external orchestrator typically executes the criteria and reports back.
+
+**Create a Run:**
+1. Client sends `POST /v1/evaluations/:id/runs` with optional `dataset_id`
+2. Auth middleware validates the API key and checks `write` scope
+3. `EvalRunService` inserts a row into `eval_runs` with `status = 'running'`
+4. Response returns `201 Created` with run metadata
+
+**Complete a Run:**
+1. External orchestrator executes evaluation criteria against dataset items
+2. Orchestrator reports completion with `score` and `results_json`
+3. `EvalRunService` updates the row to `status = 'completed'`
+4. Response returns the updated run
+
+**Fail a Run:**
+1. If execution fails, orchestrator reports the failure with a reason
+2. `EvalRunService` updates the row to `status = 'failed'` with error details in `results_json`
+3. Response returns the updated run
+
+**List Runs:**
+1. Client sends `GET /v1/evaluations/:id/runs?page=1&limit=50`
+2. Controller returns paginated runs for the evaluation ordered by `created_at DESC`
+3. Response includes `status`, `score`, and `dataset_id`
+
+## Compliance Engine
+
+The Compliance Engine is a built-in rule engine that scans prompt content for sensitive data and security risks. It uses regex patterns, Shannon entropy heuristics, and Luhn validation to detect issues and produces a 0-100 risk score.
+
+**Built-in Rules:**
+- **PII**: Email addresses, SSNs, phone numbers, credit card numbers (with Luhn check)
+- **Security**: API keys (detected via Shannon entropy > 4.5), URLs, IPv4 and IPv6 addresses
+
+**Scan a Prompt:**
+1. Client sends `POST /v1/compliance/scan` with `prompt_name`, `version_tag`, and `text`
+2. Auth middleware validates the API key
+3. `ComplianceEngine.score()` iterates all built-in rules against the text
+4. Each violation deducts a severity-weighted value from 100 (`critical`=25, `high`=15, `medium`=10, `low`=5, `info`=1)
+5. Result stored in `compliance_scores` table with `violations_json`
+6. Response returns `score`, `riskLevel` (`low`, `medium`, `high`, `critical`), and `violations` array
+
+**List Scores:**
+1. Client sends `GET /v1/compliance/scores?page=1&limit=50`
+2. Controller returns paginated scores ordered by `created_at DESC`
+3. Each item includes computed `risk_level`
+
+**Get a Score:**
+1. Client sends `GET /v1/compliance/scores/:id`
+2. Controller returns the specific compliance scan result with violations and metadata
+
+## Playground Proxy
+
+The Playground Proxy routes chat and completion requests directly to registered LLM provider adapters. It supports streaming responses, Mustache variable substitution, and per-provider circuit breakers. Provider adapters are lazy-loaded via dynamic imports.
+
+**Supported Providers:** OpenAI, Anthropic, Cohere, Ollama, Azure OpenAI.
+
+**Chat Completion:**
+1. Client sends `POST /v1/playground/chat` with `provider`, `model`, `messages`, optional `variables`, `temperature`, `maxTokens`, `topP`
+2. Auth middleware validates the API key
+3. `BudgetService` checks workspace budget before proceeding
+4. Messages are rendered through Mustache variable substitution (`strict: true`)
+5. Provider adapter is resolved via `providerRegistry` (lazy-loaded on first use and cached)
+6. Request is executed through an Opossum circuit breaker with a 10-minute timeout
+7. Response is logged via `LogService` with token counts, latency, and cost
+8. Response returns generated `output`, `tokensIn`, `tokensOut`, `latencyMs`, `costUsd`, and `finishReason`
+
+**Streaming Chat Completion:**
+1. Client sends `POST /v1/playground/chat/stream` with the same parameters
+2. Response headers are set to `application/x-ndjson` for newline-delimited JSON streaming
+3. Budget check passes before streaming begins
+4. Provider's `streamChatCompletion` yields chunks of type `token`, `tool_call`, `metrics`, `done`, or `error`
+5. Each chunk is written to the response as a JSON line
+6. After the stream completes, the `metrics` chunk is logged via `LogService`
+
+**Text Completion:**
+1. Client sends `POST /v1/playground/completion` with `provider`, `model`, `prompt`, and optional parameters
+2. Internally converted to a single user message and routed through the chat completion pipeline
+3. Response returns the same format as chat completion
+
+**List Models:**
+1. Client sends `GET /v1/playground/models?page=1&limit=50`
+2. `PlaygroundProxyService` queries all registered providers for available models
+3. Results are cached in memory for 60 seconds
+4. Response returns a paginated list of `LLMModel` objects with `id`, `name`, `provider`, and `contextWindow`
+
+## Metrics Dashboard
+
+The Metrics Dashboard provides query-time aggregation for observability without requiring an external analytics pipeline. All endpoints accept a `window` parameter of `7d`, `30d`, or `90d`.
+
+**Time-Series Metrics:**
+1. Client sends `GET /v1/metrics/time-series?window=30d`
+2. `MetricsService` aggregates daily buckets from `logs` and `runs`
+3. For each day: request count, total tokens, total cost, average latency, and error rate
+4. PostgreSQL deployments also receive `p50` and `p95` latency percentiles via `PERCENTILE_CONT`
+5. Response returns `window`, `start`, `end`, and `daily` array
+
+**Per-Prompt Metrics:**
+1. Client sends `GET /v1/metrics/prompts?window=30d&limit=50`
+2. Controller aggregates metrics from `logs` grouped by `prompt_name` and `version_tag`
+3. Includes request count, token totals, cost, average latency, and error rate derived from linked runs
+4. Response returns prompts ordered by total cost descending
+
+**Evaluation Trends:**
+1. Client sends `GET /v1/metrics/evaluations?window=30d&evaluation_id=123`
+2. Controller aggregates `evaluation_results` joined to `evaluations` by day
+3. For each evaluation: daily `avg_score`, `result_count`, `min_score`, `max_score`
+4. Optional `evaluation_id` filter scopes to a single evaluation
+5. Response returns evaluation trend arrays grouped by `evaluation_id`
+
+**Activity Summary:**
+1. Client sends `GET /v1/metrics/activity?window=30d&page=1&limit=10`
+2. Controller computes workspace-wide totals: runs, traces, logs, evaluations, active prompts, and failed runs
+3. Includes paginated recent runs with parsed `input`, `output`, and `metadata`
+4. Response returns `window`, `summary`, and `recent_runs`
+
+## Budget Service
+
+`BudgetService` tracks workspace spend against configurable monthly budgets and prevents over-budget inference.
+
+- **Spend Calculation**: Sums `cost_usd` from the `logs` table for the current calendar month per workspace
+- **Budget Resolution**: Reads per-workspace budget from the `config` table (`workspace_budget:{workspace_id}`), defaulting to `DEFAULT_WORKSPACE_MONTHLY_BUDGET_USD` (default $100)
+- **Enforcement**: `checkBudget` throws a `BUDGET_EXCEEDED` error if spend meets or exceeds the budget
+- **Integration**: Called by `PlaygroundProxyService` before every LLM request to prevent over-budget inference; evaluation and A/B test runs that incur provider costs should also check the budget before execution
+- **Endpoint**: Not directly exposed via HTTP; consumed internally by services that incur costs
+
 ## Additional Systems
 
 ### Redis Integration
@@ -268,10 +461,19 @@ Set `DRIVER=s3` to store prompt JSON as objects in S3 with keys like `prompts/{n
 All tables include a `workspace_id` column. The `tenantMiddleware` reads the `X-Workspace-Id` header and attaches it to `req.workspaceId`. API keys are scoped to workspaces. If no header is provided, the `default` workspace is used.
 
 ### Circuit Breaker
-GitHub API calls are wrapped in an Opossum circuit breaker with exponential backoff on 429 responses. This prevents cascading failures when GitHub's API is rate-limiting.
+GitHub API calls are wrapped in an Opossum circuit breaker with exponential backoff on 429 responses. This prevents cascading failures when GitHub's API is rate-limiting. Playground provider calls also use per-provider circuit breakers.
 
 ### Async Audit Log Queue
 The `AuditLogService` batches audit entries in memory and flushes them to the database asynchronously via `setImmediate`. This keeps the request path fast while ensuring durable audit records.
+
+### Compliance Engine
+In addition to on-demand scans via the API, the Compliance Engine can be integrated into CI pipelines to gate prompt deployments. The 0-100 score and severity-weighted deductions give teams a quantitative threshold for blocking releases.
+
+### Playground Proxy
+The Playground Proxy doubles as a direct LLM integration point for teams that want to route inference through PromptMetrics rather than calling providers directly. All proxy requests are logged automatically, giving operators unified cost and usage visibility. Provider adapters are registered lazily via `registerBuiltinProviders()` to keep startup fast and memory low.
+
+### Budget Service
+The Budget Service provides a lightweight cost-control layer for self-hosted deployments. It relies on the `logs` table as the source of truth for spend, so any system that writes to `logs` (including the Playground Proxy and external clients) contributes to budget enforcement.
 
 ## Security
 

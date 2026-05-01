@@ -19,7 +19,7 @@ describe('Audit Logging Integration', () => {
     process.env.DRIVER = 'filesystem';
     process.env.API_KEY_SALT = 'test-salt';
 
-    closeDb();
+    await closeDb();
 
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
@@ -32,12 +32,12 @@ describe('Audit Logging Integration', () => {
     writeApiKey = 'pm_testwrite789';
     adminApiKey = 'pm_testadmin999';
 
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
       hashApiKey(writeApiKey),
       'test-write-key',
       'read,write',
     );
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
       hashApiKey(adminApiKey),
       'test-admin-key',
       'read,write,admin',
@@ -46,8 +46,8 @@ describe('Audit Logging Integration', () => {
     app = createApp(new FilesystemDriver(testPromptsPath));
   });
 
-  afterAll(() => {
-    closeDb();
+  afterAll(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');

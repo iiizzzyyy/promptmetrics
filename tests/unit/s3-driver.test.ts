@@ -7,11 +7,16 @@ import {
   PutObjectCommand,
   HeadObjectCommand,
 } from '@aws-sdk/client-s3';
+import { initSchema } from '@models/promptmetrics-sqlite';
 
 const s3Mock = mockClient(S3Client);
 
 describe('S3Driver', () => {
   let driver: S3Driver;
+
+  beforeAll(async () => {
+    await initSchema();
+  });
 
   beforeEach(() => {
     s3Mock.reset();

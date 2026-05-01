@@ -9,6 +9,7 @@ import { auditLogService } from '@services/audit-log.service';
 import { GitSyncJob } from '@jobs/promptmetrics-git-sync.job';
 import { PromptReconciliationJob } from '@jobs/promptmetrics-reconciliation.job';
 import { createDriver } from '@drivers/promptmetrics-driver.factory';
+import { registerBuiltinProviders } from '@services/providers/provider.registry';
 
 async function main(): Promise<void> {
   console.log('Starting PromptMetrics...');
@@ -18,6 +19,7 @@ async function main(): Promise<void> {
 
   initOtel();
   auditLogService.start();
+  await registerBuiltinProviders();
 
   const driver = createDriver();
   const app = createApp(driver);

@@ -4,6 +4,7 @@ import path from 'path';
 import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
+import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
 
 describe('Log API Integration', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-logs.db');
@@ -21,23 +22,24 @@ describe('Log API Integration', () => {
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
     if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
 
-    closeDb();
+    await closeDb();
     await initSchema();
 
     const db = getDb();
     apiKey = 'pm_testlog789';
     const keyHash = hashApiKey(apiKey);
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
       keyHash,
       'test-log-key',
       'read,write',
     );
 
-    app = createApp();
+    const driver = new FilesystemDriver(testPromptsPath);
+    app = createApp(driver);
   });
 
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
@@ -61,7 +63,7 @@ describe('Log API Integration', () => {
   it('GET /v1/logs lists logs with pagination', async () => {
     const db = getDb();
     for (let i = 0; i < 5; i++) {
-      db.prepare(
+      await db.prepare(
         'INSERT INTO logs (prompt_name, version_tag, provider, model, tokens_in, tokens_out, latency_ms, cost_usd, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       ).run(`prompt-${i}`, `v${i}`, 'openai', 'gpt-4', i * 10, i * 5, i * 100, i * 0.001, 'default');
     }
@@ -88,7 +90,7 @@ describe('Log API Integration', () => {
 
   it('GET /v1/logs parses metadata_json in response', async () => {
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       'INSERT INTO logs (prompt_name, version_tag, metadata_json, provider, model, workspace_id) VALUES (?, ?, ?, ?, ?, ?)',
     ).run('test-prompt', '1.0.0', JSON.stringify({ agent: 'test' }), 'openai', 'gpt-4', 'default');
 

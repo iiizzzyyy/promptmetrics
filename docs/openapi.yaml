@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: PromptMetrics API
   description: Lightweight, self-hosted prompt registry with GitHub-backed versioning and metadata logging.
-  version: 1.0.1
+  version: 1.1.0
   contact:
     name: PromptMetrics Support
 servers:
@@ -721,6 +721,452 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+
+  /v1/ab-tests:
+    get:
+      summary: List A/B tests
+      description: Returns a paginated list of A/B tests for the workspace.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated list of A/B tests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedABTestList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: Create an A/B test
+      description: Creates a new A/B test comparing two prompt versions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateABTestRequest'
+      responses:
+        '201':
+          description: A/B test created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ABTest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/ab-tests/{id}:
+    get:
+      summary: Get an A/B test
+      description: Retrieves an A/B test by ID, including the latest result.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: A/B test details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ABTestWithResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete an A/B test
+      description: Deletes an A/B test and its results.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: A/B test deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/ab-tests/{id}/run:
+    post:
+      summary: Run an A/B test
+      description: Executes an A/B test with provided scores for both versions.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunABTestRequest'
+      responses:
+        '200':
+          description: A/B test result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ABTestResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/ab-tests/{id}/promote:
+    post:
+      summary: Promote A/B test winner
+      description: Promotes the winning version of an A/B test.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Promotion result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  winner:
+                    type: string
+                    enum: [A, B, tie]
+                  version:
+                    type: string
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/datasets:
+    get:
+      summary: List datasets
+      description: Returns a paginated list of datasets.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated list of datasets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDatasetList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: Create a dataset
+      description: Creates a new dataset with rows.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDatasetRequest'
+      responses:
+        '201':
+          description: Dataset created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetWithPreview'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/datasets/{id}:
+    get:
+      summary: Get a dataset
+      description: Retrieves a dataset by ID with a preview of rows.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Dataset details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetWithPreview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete a dataset
+      description: Deletes a dataset and its rows.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Dataset deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/compliance/scan:
+    post:
+      summary: Scan text for compliance
+      description: Scans prompt output text for PII and policy violations.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComplianceScanRequest'
+      responses:
+        '200':
+          description: Scan result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceScanResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/compliance/scores:
+    get:
+      summary: List compliance scores
+      description: Returns a paginated list of compliance scores.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated list of compliance scores
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedComplianceScoreList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/compliance/scores/{id}:
+    get:
+      summary: Get a compliance score
+      description: Retrieves a compliance score by ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Compliance score details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceScore'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/playground/models:
+    get:
+      summary: List playground models
+      description: Returns a paginated list of available LLM models.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated list of models
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPlaygroundModelList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/playground/chat:
+    post:
+      summary: Chat completion
+      description: Runs a chat completion through the playground proxy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaygroundChatRequest'
+      responses:
+        '200':
+          description: Chat completion response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaygroundChatResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Provider error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/playground/completions:
+    post:
+      summary: Text completion
+      description: Runs a text completion through the playground proxy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaygroundCompletionRequest'
+      responses:
+        '200':
+          description: Text completion response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaygroundChatResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Provider error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/playground/chat/stream:
+    post:
+      summary: Stream chat completion
+      description: Streams a chat completion via NDJSON.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaygroundChatRequest'
+      responses:
+        '200':
+          description: NDJSON stream of completion chunks
+          content:
+            application/x-ndjson:
+              schema:
+                $ref: '#/components/schemas/PlaygroundStreamChunk'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Provider error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/evaluations/{id}/run:
+    get:
+      summary: List evaluation runs
+      description: Returns a paginated list of evaluation runs.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated list of evaluation runs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEvalRunList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: Run an evaluation
+      description: Starts an evaluation run against an optional dataset.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunEvaluationRequest'
+      responses:
+        '201':
+          description: Evaluation run created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalRun'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
 components:
   securitySchemes:
@@ -1519,6 +1965,415 @@ components:
           $ref: '#/components/schemas/ActivitySummary'
         recent_runs:
           $ref: '#/components/schemas/PaginatedRunList'
+
+    ABTest:
+      type: object
+      properties:
+        id:
+          type: integer
+        prompt_name:
+          type: string
+        version_a:
+          type: string
+        version_b:
+          type: string
+        dataset_id:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [running, completed, cancelled]
+        metric:
+          type: string
+        created_at:
+          type: integer
+        updated_at:
+          type: integer
+        workspace_id:
+          type: string
+
+    ABTestResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        ab_test_id:
+          type: integer
+        version_a_score:
+          type: number
+          nullable: true
+        version_b_score:
+          type: number
+          nullable: true
+        p_value:
+          type: number
+          nullable: true
+        winner:
+          type: string
+          nullable: true
+        created_at:
+          type: integer
+        workspace_id:
+          type: string
+
+    ABTestWithResult:
+      allOf:
+        - $ref: '#/components/schemas/ABTest'
+        - type: object
+          properties:
+            latest_result:
+              $ref: '#/components/schemas/ABTestResult'
+
+    CreateABTestRequest:
+      type: object
+      required: [prompt_name, version_a, version_b]
+      properties:
+        prompt_name:
+          type: string
+        version_a:
+          type: string
+        version_b:
+          type: string
+        dataset_id:
+          type: integer
+        metric:
+          type: string
+          enum: [latency, cost, win_rate]
+
+    RunABTestRequest:
+      type: object
+      required: [scoresA, scoresB]
+      properties:
+        scoresA:
+          type: array
+          items:
+            type: number
+        scoresB:
+          type: array
+          items:
+            type: number
+
+    PaginatedABTestList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ABTest'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    Dataset:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        row_count:
+          type: integer
+        schema:
+          type: object
+          nullable: true
+        created_at:
+          type: integer
+
+    DatasetRow:
+      type: object
+      properties:
+        id:
+          type: integer
+        input:
+          type: object
+        expectedOutput:
+          type: object
+          nullable: true
+
+    DatasetWithPreview:
+      allOf:
+        - $ref: '#/components/schemas/Dataset'
+        - type: object
+          properties:
+            preview:
+              type: array
+              items:
+                $ref: '#/components/schemas/DatasetRow'
+
+    CreateDatasetRequest:
+      type: object
+      required: [name, rows]
+      properties:
+        name:
+          type: string
+        rows:
+          type: array
+          items:
+            type: object
+            properties:
+              input:
+                type: object
+              expectedOutput:
+                type: object
+                nullable: true
+
+    PaginatedDatasetList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dataset'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    ComplianceScanRequest:
+      type: object
+      required: [prompt_name, version_tag, text]
+      properties:
+        prompt_name:
+          type: string
+        version_tag:
+          type: string
+        text:
+          type: string
+
+    ComplianceScanResponse:
+      type: object
+      properties:
+        score:
+          type: number
+        riskLevel:
+          type: string
+        violations:
+          type: array
+          items:
+            type: object
+            properties:
+              rule:
+                type: string
+              severity:
+                type: string
+              category:
+                type: string
+              matchedText:
+                type: string
+
+    ComplianceScore:
+      type: object
+      properties:
+        id:
+          type: integer
+        prompt_name:
+          type: string
+        version_tag:
+          type: string
+        score:
+          type: number
+        risk_level:
+          type: string
+        violations:
+          type: array
+          items:
+            type: object
+        created_at:
+          type: integer
+
+    PaginatedComplianceScoreList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComplianceScore'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    PlaygroundChatRequest:
+      type: object
+      required: [provider, model, messages]
+      properties:
+        provider:
+          type: string
+        model:
+          type: string
+        messages:
+          type: array
+          items:
+            type: object
+            required: [role, content]
+            properties:
+              role:
+                type: string
+                enum: [system, user, assistant]
+              content:
+                type: string
+        variables:
+          type: object
+        temperature:
+          type: number
+        maxTokens:
+          type: integer
+        topP:
+          type: number
+
+    PlaygroundCompletionRequest:
+      type: object
+      required: [provider, model, prompt]
+      properties:
+        provider:
+          type: string
+        model:
+          type: string
+        prompt:
+          type: string
+        variables:
+          type: object
+        temperature:
+          type: number
+        maxTokens:
+          type: integer
+        topP:
+          type: number
+
+    PlaygroundChatResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        model:
+          type: string
+        output:
+          type: string
+        tokensIn:
+          type: integer
+        tokensOut:
+          type: integer
+        latencyMs:
+          type: number
+        costUsd:
+          type: number
+        finishReason:
+          type: string
+
+    PlaygroundModel:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        provider:
+          type: string
+        contextWindow:
+          type: integer
+
+    PaginatedPlaygroundModelList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlaygroundModel'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    PlaygroundStreamChunk:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [token, tool_call, metrics, done, error]
+        content:
+          type: string
+        name:
+          type: string
+        arguments:
+          type: string
+        tokensIn:
+          type: integer
+        tokensOut:
+          type: integer
+        latencyMs:
+          type: number
+        costUsd:
+          type: number
+        finishReason:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+
+    EvalRun:
+      type: object
+      properties:
+        id:
+          type: integer
+        evaluation_id:
+          type: integer
+        dataset_id:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [running, completed, failed]
+        score:
+          type: number
+          nullable: true
+        results_json:
+          type: object
+          nullable: true
+        created_at:
+          type: integer
+        workspace_id:
+          type: string
+
+    RunEvaluationRequest:
+      type: object
+      properties:
+        dataset_id:
+          type: integer
+
+    PaginatedEvalRunList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvalRun'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
 
     ErrorResponse:
       type: object

@@ -24,7 +24,7 @@ export function SummaryCard({
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        {icon && <div className="text-muted-foreground">{icon}</div>}
+        {icon && <div className="text-muted-foreground" aria-hidden="true">{icon}</div>}
       </CardHeader>
       <CardContent>
         {isLoading ? (

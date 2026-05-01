@@ -9,7 +9,6 @@ import yaml from 'js-yaml';
 import fs from 'fs';
 import path from 'path';
 import { PromptDriver } from '@drivers/promptmetrics-driver.interface';
-import { createDriver } from '@drivers/promptmetrics-driver.factory';
 import { createPromptRoutes } from '@routes/promptmetrics-prompt.route';
 import { createLogRoutes } from '@routes/promptmetrics-log.route';
 import { createTraceRoutes } from '@routes/promptmetrics-trace.route';
@@ -19,17 +18,18 @@ import { createWebhookRoutes } from '@routes/webhook.route';
 import { createEvaluationRoutes } from '@routes/evaluation.route';
 import { createApiKeyRoutes } from '@routes/api-key.route';
 import { createAuditLogRoutes } from '@routes/audit-log.route';
+import { createComplianceRoutes } from '@routes/compliance.route';
 import { createMetricsRoutes } from '@routes/metrics.route';
+import { createDatasetRoutes } from '@routes/dataset.route';
+import { createPlaygroundRoutes } from '@routes/playground.route';
+import { createABTestRoutes } from '@routes/ab-test.route';
 import { requestIdMiddleware } from '@middlewares/promptmetrics-request-id.middleware';
 import { errorHandlerMiddleware } from '@middlewares/promptmetrics-error-handler.middleware';
 import { tenantMiddleware } from '@middlewares/tenant.middleware';
 
-export function createApp(driver?: PromptDriver): Application {
+export function createApp(driver: PromptDriver): Application {
   const app = express();
   app.set('query parser', 'extended');
-  if (!driver) {
-    driver = createDriver();
-  }
 
   app.use(requestIdMiddleware);
   app.use(tenantMiddleware);
@@ -55,7 +55,11 @@ export function createApp(driver?: PromptDriver): Application {
   app.use('/', createEvaluationRoutes());
   app.use('/', createApiKeyRoutes());
   app.use('/', createAuditLogRoutes());
+  app.use('/', createComplianceRoutes());
   app.use('/', createMetricsRoutes());
+  app.use('/', createDatasetRoutes());
+  app.use('/', createPlaygroundRoutes());
+  app.use('/', createABTestRoutes());
 
   app.use(errorHandlerMiddleware);
 

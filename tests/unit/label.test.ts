@@ -31,12 +31,12 @@ describe('LabelController', () => {
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
-    closeDb();
+    await closeDb();
     await initSchema();
   });
 
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
@@ -56,11 +56,9 @@ describe('LabelController', () => {
 
   it('updates existing label on duplicate (upsert)', async () => {
     const db = getDb();
-    db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
-      'welcome',
-      'production',
-      '1.0.0',
-    );
+    await db
+      .prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)')
+      .run('welcome', 'production', '1.0.0');
 
     const req = mockReq({ name: 'production', version_tag: '1.1.0' }, { name: 'welcome' });
     const res = mockRes();
@@ -81,16 +79,12 @@ describe('LabelController', () => {
 
   it('lists labels for a prompt', async () => {
     const db = getDb();
-    db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
-      'welcome',
-      'production',
-      '1.0.0',
-    );
-    db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
-      'welcome',
-      'staging',
-      '1.1.0',
-    );
+    await db
+      .prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)')
+      .run('welcome', 'production', '1.0.0');
+    await db
+      .prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)')
+      .run('welcome', 'staging', '1.1.0');
 
     const req = mockReq({}, { name: 'welcome' });
     const res = mockRes();
@@ -104,11 +98,9 @@ describe('LabelController', () => {
 
   it('gets a specific label', async () => {
     const db = getDb();
-    db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
-      'welcome',
-      'production',
-      '1.0.0',
-    );
+    await db
+      .prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)')
+      .run('welcome', 'production', '1.0.0');
 
     const req = mockReq({}, { name: 'welcome', label_name: 'production' });
     const res = mockRes();
@@ -130,11 +122,9 @@ describe('LabelController', () => {
 
   it('deletes a label', async () => {
     const db = getDb();
-    db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
-      'welcome',
-      'production',
-      '1.0.0',
-    );
+    await db
+      .prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)')
+      .run('welcome', 'production', '1.0.0');
 
     const req = mockReq({}, { name: 'welcome', label_name: 'production' });
     const res = mockRes();

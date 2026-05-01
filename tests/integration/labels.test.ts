@@ -4,6 +4,7 @@ import path from 'path';
 import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
+import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
 
 describe('Label API Integration', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-labels.db');
@@ -21,23 +22,24 @@ describe('Label API Integration', () => {
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
     if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
 
-    closeDb();
+    await closeDb();
     await initSchema();
 
     const db = getDb();
     apiKey = 'pm_testlabel789';
     const keyHash = hashApiKey(apiKey);
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
       keyHash,
       'test-label-key',
       'read,write',
     );
 
-    app = createApp();
+    const driver = new FilesystemDriver(testPromptsPath);
+    app = createApp(driver);
   });
 
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
@@ -58,7 +60,7 @@ describe('Label API Integration', () => {
 
   it('POST /v1/prompts/:name/labels updates existing label (upsert)', async () => {
     const db = getDb();
-    db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
       'welcome',
       'production',
       '1.0.0',
@@ -75,12 +77,12 @@ describe('Label API Integration', () => {
 
   it('GET /v1/prompts/:name/labels lists labels', async () => {
     const db = getDb();
-    db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
       'welcome',
       'production',
       '1.0.0',
     );
-    db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
       'welcome',
       'staging',
       '1.1.0',
@@ -95,7 +97,7 @@ describe('Label API Integration', () => {
 
   it('GET /v1/prompts/:name/labels/:label_name returns a label', async () => {
     const db = getDb();
-    db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
       'welcome',
       'production',
       '1.0.0',
@@ -116,7 +118,7 @@ describe('Label API Integration', () => {
 
   it('DELETE /v1/prompts/:name/labels/:label_name deletes a label', async () => {
     const db = getDb();
-    db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
       'welcome',
       'production',
       '1.0.0',

@@ -30,11 +30,22 @@ describe('PostgresAdapter', () => {
     ]);
   });
 
-  it('should NOT automatically append RETURNING id to INSERTs', async () => {
+  it('should automatically append RETURNING id to INSERTs', async () => {
+    pool.query.mockResolvedValue({ rows: [{ id: 99 }], rowCount: 1 });
+    const stmt = adapter.prepare('INSERT INTO prompts (name) VALUES (?)');
+    const result = await stmt.run('hello');
+
+    expect(pool.query).toHaveBeenCalledWith('INSERT INTO prompts (name) VALUES ($1) RETURNING id', ['hello']);
+    expect(result.lastInsertRowid).toBe(99);
+    expect(result.changes).toBe(1);
+  });
+
+  it('should skip RETURNING id for tables without an id column', async () => {
     pool.query.mockResolvedValue({ rows: [], rowCount: 1 });
     const stmt = adapter.prepare('INSERT INTO migrations (name) VALUES (?)');
     const result = await stmt.run('001_test');
 
+    expect(pool.query).toHaveBeenCalledTimes(1);
     expect(pool.query).toHaveBeenCalledWith('INSERT INTO migrations (name) VALUES ($1)', ['001_test']);
     expect(result.lastInsertRowid).toBe(0);
     expect(result.changes).toBe(1);

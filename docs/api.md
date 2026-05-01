@@ -599,6 +599,61 @@ Get a single evaluation.
 }
 ```
 
+#### POST /v1/evaluations/:id/run
+Run an evaluation suite.
+
+**Request Body:**
+```json
+{
+  "dataset_id": 1
+}
+```
+
+- `dataset_id` is optional. When provided, the evaluation runs against the specified dataset.
+
+**Response:** `201 Created`
+```json
+{
+  "id": 1,
+  "evaluation_id": 1,
+  "dataset_id": 1,
+  "status": "running",
+  "created_at": 1776849966,
+  "workspace_id": "default"
+}
+```
+
+#### GET /v1/evaluations/:id/run
+List evaluation runs.
+
+**Query Parameters:**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 50 | Items per page (max 100) |
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "evaluation_id": 1,
+      "dataset_id": 1,
+      "status": "completed",
+      "score": 0.95,
+      "results_json": "{...}",
+      "created_at": 1776849966,
+      "workspace_id": "default"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 50,
+  "totalPages": 1
+}
+```
+
 #### POST /v1/evaluations/:id/results
 Add a result to an evaluation.
 
@@ -653,6 +708,471 @@ List results for an evaluation.
 Delete an evaluation and cascade its results.
 
 **Response:** `204 No Content`
+
+### A/B Tests
+
+#### POST /v1/ab-tests
+Create an A/B test comparing two prompt versions.
+
+**Request Body:**
+```json
+{
+  "prompt_name": "welcome",
+  "version_a": "1.0.0",
+  "version_b": "1.1.0",
+  "dataset_id": 1,
+  "metric": "latency"
+}
+```
+
+- `prompt_name` is required. Max 255 chars.
+- `version_a` is required. Max 255 chars.
+- `version_b` is required. Max 255 chars.
+- `dataset_id` is optional.
+- `metric` is optional. Valid values: `latency`, `cost`, `win_rate`. Defaults to `latency`.
+
+**Response:** `201 Created`
+```json
+{
+  "id": 1,
+  "prompt_name": "welcome",
+  "version_a": "1.0.0",
+  "version_b": "1.1.0",
+  "dataset_id": 1,
+  "status": "running",
+  "metric": "latency",
+  "created_at": 1776849966,
+  "updated_at": 1776849966,
+  "workspace_id": "default"
+}
+```
+
+#### GET /v1/ab-tests
+List A/B tests with pagination.
+
+**Query Parameters:**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 50 | Items per page (max 100) |
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "prompt_name": "welcome",
+      "version_a": "1.0.0",
+      "version_b": "1.1.0",
+      "dataset_id": 1,
+      "status": "running",
+      "metric": "latency",
+      "created_at": 1776849966,
+      "updated_at": 1776849966,
+      "workspace_id": "default"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 50,
+  "totalPages": 1
+}
+```
+
+#### GET /v1/ab-tests/:id
+Get an A/B test, including its latest result if available.
+
+**Response:**
+```json
+{
+  "id": 1,
+  "prompt_name": "welcome",
+  "version_a": "1.0.0",
+  "version_b": "1.1.0",
+  "dataset_id": 1,
+  "status": "completed",
+  "metric": "latency",
+  "created_at": 1776849966,
+  "updated_at": 1776849970,
+  "workspace_id": "default",
+  "latest_result": {
+    "id": 1,
+    "ab_test_id": 1,
+    "version_a_score": 245.5,
+    "version_b_score": 198.2,
+    "p_value": 0.03,
+    "winner": "B",
+    "created_at": 1776849970,
+    "workspace_id": "default"
+  }
+}
+```
+
+#### POST /v1/ab-tests/:id/run
+Run the A/B test by submitting scores for both variants. The test status is updated to `completed` and a statistical analysis is stored.
+
+**Request Body:**
+```json
+{
+  "scoresA": [250, 240, 260, 245, 255],
+  "scoresB": [200, 195, 205, 190, 210]
+}
+```
+
+- `scoresA` is required. Array of numbers with at least one element.
+- `scoresB` is required. Array of numbers with at least one element.
+
+**Response:** `200 OK`
+```json
+{
+  "id": 1,
+  "ab_test_id": 1,
+  "version_a_score": 250,
+  "version_b_score": 200,
+  "p_value": 0.0012,
+  "winner": "B",
+  "created_at": 1776849966,
+  "workspace_id": "default"
+}
+```
+
+#### POST /v1/ab-tests/:id/promote
+Promote the winning variant of a completed A/B test.
+
+**Response:** `200 OK`
+```json
+{
+  "winner": "B",
+  "version": "1.1.0"
+}
+```
+
+**Error:** `400 Bad Request` if the test has not been run or no winner was determined.
+
+#### DELETE /v1/ab-tests/:id
+Delete an A/B test and its results.
+
+**Response:** `204 No Content`
+
+### Datasets
+
+#### POST /v1/datasets
+Create a dataset for evaluation or A/B testing.
+
+**Request Body:**
+```json
+{
+  "name": "qa-dataset",
+  "rows": [
+    {
+      "input": { "question": "What is the capital of France?" },
+      "expectedOutput": { "answer": "Paris" }
+    },
+    {
+      "input": { "question": "What is 2 + 2?" },
+      "expectedOutput": { "answer": "4" }
+    }
+  ]
+}
+```
+
+- `name` is required. Max 128 chars.
+- `rows` is required. Array of objects, each with:
+  - `input` (required): free-form object
+  - `expectedOutput` (optional): free-form object
+- `rows` is limited to 10,000 items.
+- Total payload size is limited to 10 MB.
+
+**Response:** `201 Created`
+```json
+{
+  "id": 1,
+  "name": "qa-dataset",
+  "row_count": 2,
+  "created_at": 1776849966
+}
+```
+
+#### GET /v1/datasets
+List datasets with pagination.
+
+**Query Parameters:**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 50 | Items per page (max 100) |
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "name": "qa-dataset",
+      "row_count": 2,
+      "schema": {},
+      "created_at": 1776849966
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 50,
+  "totalPages": 1
+}
+```
+
+#### GET /v1/datasets/:id
+Get a dataset, including a preview of the first 5 rows.
+
+**Response:**
+```json
+{
+  "id": 1,
+  "name": "qa-dataset",
+  "row_count": 2,
+  "schema": {},
+  "created_at": 1776849966,
+  "preview": [
+    {
+      "id": 1,
+      "input": { "question": "What is the capital of France?" },
+      "expectedOutput": { "answer": "Paris" }
+    }
+  ]
+}
+```
+
+#### DELETE /v1/datasets/:id
+Delete a dataset and its rows.
+
+**Response:** `204 No Content`
+
+### Compliance
+
+#### POST /v1/compliance/scan
+Scan prompt text for compliance violations (PII, security risks, and sensitive data).
+
+**Request Body:**
+```json
+{
+  "prompt_name": "welcome",
+  "version_tag": "1.0.0",
+  "text": "Hello, my email is alice@example.com and my SSN is 123-45-6789."
+}
+```
+
+- `prompt_name` is required.
+- `version_tag` is required.
+- `text` is required. Max 100,000 characters.
+
+**Response:** `200 OK`
+```json
+{
+  "score": 45,
+  "riskLevel": "high",
+  "violations": [
+    {
+      "rule": "Email Detection",
+      "severity": "high",
+      "category": "pii",
+      "matchedText": "alice@example.com"
+    },
+    {
+      "rule": "SSN Detection",
+      "severity": "critical",
+      "category": "pii",
+      "matchedText": "123-45-6789"
+    }
+  ]
+}
+```
+
+- `score` ranges from 0 to 100. Higher is better (fewer violations).
+- `riskLevel` is derived from the score: `low` (>=90), `medium` (>=70), `high` (>=40), `critical` (<40).
+- The scan result is persisted to the `compliance_scores` table.
+
+#### GET /v1/compliance/scores
+List persisted compliance scores with pagination.
+
+**Query Parameters:**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 50 | Items per page (max 100) |
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "prompt_name": "welcome",
+      "version_tag": "1.0.0",
+      "score": 45,
+      "risk_level": "high",
+      "violations": [
+        {
+          "rule": "Email Detection",
+          "severity": "high",
+          "category": "pii",
+          "matchedText": "alice@example.com"
+        }
+      ],
+      "created_at": 1776849966
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 50,
+  "totalPages": 1
+}
+```
+
+#### GET /v1/compliance/scores/:id
+Get a single compliance score by ID.
+
+**Response:**
+```json
+{
+  "id": 1,
+  "prompt_name": "welcome",
+  "version_tag": "1.0.0",
+  "score": 45,
+  "risk_level": "high",
+  "violations": [
+    {
+      "rule": "Email Detection",
+      "severity": "high",
+      "category": "pii",
+      "matchedText": "alice@example.com"
+    }
+  ],
+  "created_at": 1776849966
+}
+```
+
+### Playground
+
+#### GET /v1/playground/models
+List available LLM models from all registered providers.
+
+**Query Parameters:**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 50 | Items per page (max 100) |
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "id": "gpt-4o",
+      "name": "GPT-4o",
+      "provider": "openai",
+      "contextWindow": 128000
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 50,
+  "totalPages": 1
+}
+```
+
+#### POST /v1/playground/chat
+Chat completion proxy.
+
+**Request Body:**
+```json
+{
+  "provider": "openai",
+  "model": "gpt-4o",
+  "messages": [
+    { "role": "system", "content": "You are a helpful assistant." },
+    { "role": "user", "content": "Hello {{name}}!" }
+  ],
+  "variables": { "name": "Alice" },
+  "temperature": 0.7,
+  "maxTokens": 256,
+  "topP": 1.0
+}
+```
+
+- `provider` is required. Max 64 chars.
+- `model` is required. Max 128 chars.
+- `messages` is required. Array of objects with `role` (`system`, `user`, or `assistant`) and `content`.
+- `variables` is optional. Used for Mustache variable substitution in message content.
+- `temperature` is optional. Range: 0 to 2.
+- `maxTokens` is optional. Minimum 1.
+- `topP` is optional. Range: 0 to 1.
+
+**Response:** `200 OK`
+```json
+{
+  "id": "chatcmpl-123",
+  "model": "gpt-4o",
+  "output": "Hello Alice! How can I help you today?",
+  "tokensIn": 15,
+  "tokensOut": 10,
+  "latencyMs": 420,
+  "costUsd": 0.00015,
+  "finishReason": "stop"
+}
+```
+
+**Error Responses:**
+- `429 Too Many Requests` — provider rate limit exceeded
+- `400 Bad Request` — content policy violation or invalid request
+- `504 Gateway Timeout` — provider timeout
+- `502 Bad Gateway` — provider error
+
+#### POST /v1/playground/chat/stream
+Streaming chat completion proxy. Response is `application/x-ndjson`.
+
+**Request Body:**
+Same as `POST /v1/playground/chat`.
+
+**Response Stream:**
+Each line is a JSON object:
+```json
+{ "type": "token", "content": "Hello" }
+{ "type": "token", "content": " Alice" }
+{ "type": "metrics", "tokensIn": 15, "tokensOut": 10, "latencyMs": 420, "costUsd": 0.00015 }
+{ "type": "done", "finishReason": "stop" }
+```
+
+Possible chunk types:
+- `token`: `{ type: "token", content: string }`
+- `tool_call`: `{ type: "tool_call", name: string, arguments: string }`
+- `metrics`: `{ type: "metrics", tokensIn: number, tokensOut: number, latencyMs: number, costUsd: number }`
+- `done`: `{ type: "done", finishReason: string }`
+- `error`: `{ type: "error", message: string, code?: string }`
+
+#### POST /v1/playground/completions
+Text completion proxy.
+
+**Request Body:**
+```json
+{
+  "provider": "openai",
+  "model": "gpt-4o",
+  "prompt": "Write a haiku about {{topic}}.",
+  "variables": { "topic": "clouds" },
+  "temperature": 0.7,
+  "maxTokens": 256,
+  "topP": 1.0
+}
+```
+
+- `provider` is required. Max 64 chars.
+- `model` is required. Max 128 chars.
+- `prompt` is required.
+- `variables`, `temperature`, `maxTokens`, and `topP` follow the same rules as the chat endpoint.
+
+**Response:** `200 OK`
+Same shape as `POST /v1/playground/chat`.
 
 ### API Keys
 

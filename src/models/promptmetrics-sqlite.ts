@@ -36,14 +36,26 @@ export function getDb(): DatabaseAdapter {
 
 export async function closeDb(): Promise<void> {
   if (dbInstance) {
-    await dbInstance.close();
+    const toClose = dbInstance;
     dbInstance = null;
+    await toClose.close();
   }
 }
 
 export async function initSchema(): Promise<void> {
   const migrator = createMigrator();
   await migrator.up();
+
+  if (process.env.DATABASE_URL && process.env.NODE_ENV === 'test') {
+    const db = getDb();
+    const rows = (await db
+      .prepare("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename != 'migrations'")
+      .all()) as Array<{ tablename: string }>;
+    const tableList = rows.map((r) => `"${r.tablename}"`).join(', ');
+    if (tableList) {
+      await db.exec(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
+    }
+  }
 }
 
 export async function withTransaction<T>(fn: (db: DatabaseAdapter) => T | Promise<T>): Promise<T> {

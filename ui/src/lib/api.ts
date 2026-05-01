@@ -8,16 +8,64 @@ type PaginatedResponse<T> = {
   totalPages: number;
 };
 
+export class ApiError extends Error {
+  status: number;
+  statusText: string;
+  body: unknown;
+
+  constructor(status: number, statusText: string, body: unknown) {
+    super(`API error: ${status} ${statusText}`);
+    this.name = "ApiError";
+    this.status = status;
+    this.statusText = statusText;
+    this.body = body;
+  }
+}
+
 async function fetchJson<T>(path: string, options?: RequestInit): Promise<T> {
+  const apiKey =
+    typeof window !== "undefined"
+      ? (sessionStorage.getItem("pm-api-key") || process.env.NEXT_PUBLIC_DEMO_API_KEY || "")
+      : "";
+  const workspaceId =
+    typeof window !== "undefined"
+      ? (sessionStorage.getItem("pm-workspace") || "default")
+      : "default";
+
+  const timeoutSignal =
+    typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
+      ? AbortSignal.timeout(10000)
+      : undefined;
+
+  let signal: AbortSignal | undefined = timeoutSignal;
+  if (options?.signal && timeoutSignal) {
+    signal =
+      typeof AbortSignal !== "undefined" && "any" in AbortSignal
+        ? AbortSignal.any([timeoutSignal, options.signal])
+        : options.signal;
+  } else if (options?.signal) {
+    signal = options.signal;
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...((options?.headers || {}) as Record<string, string>),
-    },
     ...options,
+    signal,
+    headers: {
+      ...(options?.headers || {}),
+      "Content-Type": "application/json",
+      ...(apiKey ? { "X-API-Key": apiKey } : {}),
+      ...(workspaceId ? { "X-Workspace-Id": workspaceId } : {}),
+    },
   });
+
   if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`);
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      body = null;
+    }
+    throw new ApiError(res.status, res.statusText, body);
   }
   return res.json();
 }
@@ -209,6 +257,80 @@ export type EvaluationItem = {
   created_at: number;
 };
 
+export type EvalRunItem = {
+  id: number;
+  evaluation_id: number;
+  dataset_id?: number;
+  status: string;
+  score?: number;
+  created_at: number;
+};
+
+export type LLMModel = {
+  id: string;
+  provider: string;
+  name: string;
+  slug: string;
+};
+
+export type ABTestItem = {
+  id: number;
+  prompt_name: string;
+  version_a: string;
+  version_b: string;
+  dataset_id: number | null;
+  status: 'running' | 'completed' | 'cancelled';
+  metric: string;
+  created_at: number;
+  updated_at: number;
+};
+
+export type ABTestResultItem = {
+  id: number;
+  ab_test_id: number;
+  version_a_score: number | null;
+  version_b_score: number | null;
+  p_value: number | null;
+  winner: string | null;
+  created_at: number;
+};
+
+export type ABTestWithResult = ABTestItem & {
+  latest_result?: ABTestResultItem;
+};
+
+export type DatasetItem = {
+  id: number;
+  name: string;
+  row_count: number;
+  created_at: number;
+};
+
+export type DatasetRow = {
+  id: number;
+  input: Record<string, unknown>;
+  expectedOutput?: Record<string, unknown>;
+};
+
+export type DatasetDetail = DatasetItem & {
+  preview: DatasetRow[];
+};
+
+export type ComplianceScoreItem = {
+  id?: number;
+  prompt_name: string;
+  version_tag: string;
+  score: number;
+  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  violations: Array<{
+    rule: string;
+    severity: string;
+    category: string;
+    matchedText: string;
+  }>;
+  created_at: number;
+};
+
 export const api = {
   getHealth: () => fetchJson<{ status: string }>("/health"),
   getDeepHealth: () =>
@@ -217,7 +339,9 @@ export const api = {
   getPrompts: (params?: { page?: number; limit?: number }) =>
     fetchJson<PaginatedResponse<PromptItem>>(`/v1/prompts${buildQuery(params)}`),
   getPrompt: (name: string) =>
-    fetchJson<PromptDetail>(`/v1/prompts/${encodeURIComponent(name)}`),
+    fetchJson<PromptDetail>(`/v1/prompts/${encodeURIComponent(name)}?render=false`),
+  getPromptVersions: (name: string, params?: { page?: number; limit?: number }) =>
+    fetchJson<PaginatedResponse<PromptVersion>>(`/v1/prompts/${encodeURIComponent(name)}/versions${buildQuery(params)}`),
   getLogs: (params?: { page?: number; limit?: number }) =>
     fetchJson<PaginatedResponse<LogEntry>>(`/v1/logs${buildQuery(params)}`),
   getTraces: (params?: { page?: number; limit?: number }) =>
@@ -234,6 +358,21 @@ export const api = {
     ),
   getEvaluation: (id: number) =>
     fetchJson<EvaluationItem>(`/v1/evaluations/${id}`),
+  createEvaluation: (data: {
+    name: string;
+    description?: string;
+    prompt_name: string;
+    version_tag?: string;
+  }) =>
+    fetchJson<EvaluationItem>("/v1/evaluations", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  runEvaluation: (id: number, data?: { dataset_id?: string }) =>
+    fetchJson<EvalRunItem>(`/v1/evaluations/${id}/run`, {
+      method: "POST",
+      body: data ? JSON.stringify(data) : undefined,
+    }),
   getLabels: (promptName: string, params?: { page?: number; limit?: number }) =>
     fetchJson<PaginatedResponse<LabelItem>>(`/v1/prompts/${encodeURIComponent(promptName)}/labels${buildQuery(params)}`),
   getAuditLogs: (params?: { page?: number; limit?: number }) =>
@@ -264,5 +403,65 @@ export const api = {
   getMetricsActivity: (params?: { window?: string; page?: number; limit?: number }) =>
     fetchJson<ActivityResponse>(
       `/v1/metrics/activity${buildQuery(params)}`
+    ),
+
+  getPlaygroundModels: () =>
+    fetchJson<PaginatedResponse<LLMModel>>("/v1/playground/models"),
+
+  getABTests: (params?: { page?: number; limit?: number }) =>
+    fetchJson<PaginatedResponse<ABTestItem>>(`/v1/ab-tests${buildQuery(params)}`),
+  getABTest: (id: number) =>
+    fetchJson<ABTestWithResult>(`/v1/ab-tests/${id}`),
+  createABTest: (data: {
+    prompt_name: string;
+    version_a: string;
+    version_b: string;
+    dataset_id?: number;
+    metric?: string;
+  }) =>
+    fetchJson<ABTestItem>("/v1/ab-tests", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  runABTest: (id: number) =>
+    fetchJson<ABTestResultItem>(`/v1/ab-tests/${id}/run`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+  promoteABTest: (id: number) =>
+    fetchJson<{ winner: 'A' | 'B' | 'tie'; version: string | null }>(
+      `/v1/ab-tests/${id}/promote`,
+      { method: "POST" }
+    ),
+  deleteABTest: (id: number) =>
+    fetchJson<unknown>(`/v1/ab-tests/${id}`, { method: "DELETE" }),
+
+  getDatasets: (params?: { page?: number; limit?: number }) =>
+    fetchJson<PaginatedResponse<DatasetItem>>(`/v1/datasets${buildQuery(params)}`),
+  getDataset: (id: number) =>
+    fetchJson<DatasetDetail>(`/v1/datasets/${id}`),
+  createDataset: (data: {
+    name: string;
+    rows: Array<{ input: Record<string, unknown>; expectedOutput?: Record<string, unknown> }>;
+  }) =>
+    fetchJson<DatasetItem>("/v1/datasets", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  deleteDataset: (id: number) =>
+    fetchJson<unknown>(`/v1/datasets/${id}`, { method: "DELETE" }),
+
+  scanCompliance: (data: {
+    prompt_name: string;
+    version_tag: string;
+    text: string;
+  }) =>
+    fetchJson<ComplianceScoreItem>("/v1/compliance/scan", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  getComplianceScores: (params?: { page?: number; limit?: number }) =>
+    fetchJson<PaginatedResponse<ComplianceScoreItem>>(
+      `/v1/compliance/scores${buildQuery(params)}`
     ),
 };

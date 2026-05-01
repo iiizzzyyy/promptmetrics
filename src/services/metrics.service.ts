@@ -1,5 +1,6 @@
 import { getDb } from '@models/promptmetrics-sqlite';
 import { parsePagination, buildPaginatedResponse, PaginatedResponse, parseCountRow } from '@utils/pagination';
+import { safeJsonParse } from '@utils/safe-json';
 
 export interface TimeSeriesPoint {
   date: string;
@@ -63,7 +64,7 @@ export class MetricsService {
     if (dialect === 'sqlite') {
       return `date(${column}, 'unixepoch')`;
     }
-    return `TO_TIMESTAMP(${column})::DATE`;
+    return `TO_CHAR(TO_TIMESTAMP(${column}), 'YYYY-MM-DD')`;
   }
 
   async getTimeSeries(workspaceId: string = 'default', start: number, end: number): Promise<TimeSeriesPoint[]> {
@@ -78,8 +79,12 @@ export class MetricsService {
         COALESCE(SUM(l.tokens_in + l.tokens_out), 0) as total_tokens,
         COALESCE(SUM(l.cost_usd), 0) as total_cost_usd,
         COALESCE(AVG(l.latency_ms), 0) as avg_latency_ms
-        ${dialect === 'postgres' ? `, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY l.latency_ms) as p50_latency_ms
-        , PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY l.latency_ms) as p95_latency_ms` : ''}
+        ${
+          dialect === 'postgres'
+            ? `, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY l.latency_ms) as p50_latency_ms
+        , PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY l.latency_ms) as p95_latency_ms`
+            : ''
+        }
       FROM logs l
       WHERE l.workspace_id = ? AND l.created_at >= ? AND l.created_at <= ?
       GROUP BY ${dateBucket}
@@ -97,7 +102,9 @@ export class MetricsService {
     }>;
 
     const runDateBucket = this.getDateBucket('r.created_at', dialect);
-    const runRows = (await db.prepare(`
+    const runRows = (await db
+      .prepare(
+        `
       SELECT
         ${runDateBucket} as date,
         COUNT(*) as total_runs,
@@ -105,7 +112,9 @@ export class MetricsService {
       FROM runs r
       WHERE r.workspace_id = ? AND r.created_at >= ? AND r.created_at <= ?
       GROUP BY ${runDateBucket}
-    `).all(workspaceId, start, end)) as Array<{
+    `,
+      )
+      .all(workspaceId, start, end)) as Array<{
       date: unknown;
       total_runs: number;
       failed_runs: number;
@@ -140,7 +149,9 @@ export class MetricsService {
     limit: number = 50,
   ): Promise<PromptMetric[]> {
     const db = getDb();
-    const rows = (await db.prepare(`
+    const rows = (await db
+      .prepare(
+        `
       SELECT
         l.prompt_name,
         l.version_tag,
@@ -154,7 +165,9 @@ export class MetricsService {
       GROUP BY l.prompt_name, l.version_tag
       ORDER BY total_cost_usd DESC
       LIMIT ?
-    `).all(workspaceId, start, end, limit)) as Array<{
+    `,
+      )
+      .all(workspaceId, start, end, limit)) as Array<{
       prompt_name: string;
       version_tag: string;
       request_count: number;
@@ -164,16 +177,48 @@ export class MetricsService {
       avg_latency_ms: number;
     }>;
 
-    return rows.map((r) => ({
-      prompt_name: r.prompt_name,
-      version_tag: r.version_tag,
-      request_count: r.request_count,
-      total_tokens_in: r.total_tokens_in,
-      total_tokens_out: r.total_tokens_out,
-      total_cost_usd: r.total_cost_usd,
-      avg_latency_ms: r.avg_latency_ms,
-      error_rate: 0,
-    }));
+    const runRows = (await db
+      .prepare(
+        `
+      SELECT
+        t.prompt_name,
+        t.version_tag,
+        COUNT(*) as total_runs,
+        SUM(CASE WHEN r.status = 'failed' THEN 1 ELSE 0 END) as failed_runs
+      FROM runs r
+      LEFT JOIN traces t ON r.trace_id = t.trace_id
+      WHERE r.workspace_id = ? AND r.created_at >= ? AND r.created_at <= ?
+      GROUP BY t.prompt_name, t.version_tag
+    `,
+      )
+      .all(workspaceId, start, end)) as Array<{
+      prompt_name: string | null;
+      version_tag: string | null;
+      total_runs: number;
+      failed_runs: number;
+    }>;
+
+    const errorRateMap = new Map<string, number>();
+    for (const r of runRows) {
+      if (r.prompt_name && r.version_tag) {
+        const key = `${r.prompt_name}::${r.version_tag}`;
+        errorRateMap.set(key, r.total_runs > 0 ? r.failed_runs / r.total_runs : 0);
+      }
+    }
+
+    return rows.map((r) => {
+      const key = `${r.prompt_name}::${r.version_tag}`;
+      return {
+        prompt_name: r.prompt_name,
+        version_tag: r.version_tag,
+        request_count: r.request_count,
+        total_tokens_in: r.total_tokens_in,
+        total_tokens_out: r.total_tokens_out,
+        total_cost_usd: r.total_cost_usd,
+        avg_latency_ms: r.avg_latency_ms,
+        error_rate: errorRateMap.get(key) ?? 0,
+      };
+    });
   }
 
   async getEvaluationTrends(
@@ -186,7 +231,7 @@ export class MetricsService {
     const dialect = db.dialect;
     const dateBucket = this.getDateBucket('r.created_at', dialect);
 
-    const rows = (await db.prepare(`
+    let evalSql = `
       SELECT
         e.id as evaluation_id,
         e.name,
@@ -199,10 +244,17 @@ export class MetricsService {
       FROM evaluations e
       JOIN evaluation_results r ON e.id = r.evaluation_id
       WHERE e.workspace_id = ? AND r.workspace_id = ? AND r.created_at >= ? AND r.created_at <= ?
-        AND (? IS NULL OR e.id = ?)
-      GROUP BY e.id, ${dateBucket}
-      ORDER BY e.id, ${dateBucket}
-    `).all(workspaceId, workspaceId, start, end, evaluationId ?? null, evaluationId ?? null)) as Array<{
+    `;
+    const evalParams: (string | number)[] = [workspaceId, workspaceId, start, end];
+
+    if (evaluationId !== undefined) {
+      evalSql += ` AND e.id = ?`;
+      evalParams.push(evaluationId);
+    }
+
+    evalSql += ` GROUP BY e.id, ${dateBucket} ORDER BY e.id, ${dateBucket}`;
+
+    const rows = (await db.prepare(evalSql).all(...evalParams)) as Array<{
       evaluation_id: number;
       name: string;
       prompt_name: string;
@@ -247,32 +299,48 @@ export class MetricsService {
     const db = getDb();
 
     const totalRuns = parseCountRow(
-      await db.prepare('SELECT COUNT(*) as c FROM runs WHERE workspace_id = ? AND created_at >= ?').get(workspaceId, windowStart),
+      await db
+        .prepare('SELECT COUNT(*) as c FROM runs WHERE workspace_id = ? AND created_at >= ?')
+        .get(workspaceId, windowStart),
     );
     const totalTraces = parseCountRow(
-      await db.prepare('SELECT COUNT(*) as c FROM traces WHERE workspace_id = ? AND created_at >= ?').get(workspaceId, windowStart),
+      await db
+        .prepare('SELECT COUNT(*) as c FROM traces WHERE workspace_id = ? AND created_at >= ?')
+        .get(workspaceId, windowStart),
     );
     const totalLogs = parseCountRow(
-      await db.prepare('SELECT COUNT(*) as c FROM logs WHERE workspace_id = ? AND created_at >= ?').get(workspaceId, windowStart),
+      await db
+        .prepare('SELECT COUNT(*) as c FROM logs WHERE workspace_id = ? AND created_at >= ?')
+        .get(workspaceId, windowStart),
     );
     const totalEvaluations = parseCountRow(
-      await db.prepare('SELECT COUNT(*) as c FROM evaluation_results WHERE workspace_id = ? AND created_at >= ?').get(workspaceId, windowStart),
+      await db
+        .prepare('SELECT COUNT(*) as c FROM evaluation_results WHERE workspace_id = ? AND created_at >= ?')
+        .get(workspaceId, windowStart),
     );
     const activePrompts = parseCountRow(
-      await db.prepare("SELECT COUNT(DISTINCT name) as c FROM prompts WHERE workspace_id = ? AND status = 'active'").get(workspaceId),
+      await db
+        .prepare("SELECT COUNT(DISTINCT name) as c FROM prompts WHERE workspace_id = ? AND status = 'active'")
+        .get(workspaceId),
     );
     const failedRuns = parseCountRow(
-      await db.prepare("SELECT COUNT(*) as c FROM runs WHERE workspace_id = ? AND created_at >= ? AND status = 'failed'").get(workspaceId, windowStart),
+      await db
+        .prepare("SELECT COUNT(*) as c FROM runs WHERE workspace_id = ? AND created_at >= ? AND status = 'failed'")
+        .get(workspaceId, windowStart),
     );
 
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const recentRunItems = (await db.prepare(`
+    const recentRunItems = (await db
+      .prepare(
+        `
       SELECT run_id, workflow_name, status, input_json, output_json, trace_id, metadata_json, created_at, updated_at
       FROM runs
       WHERE workspace_id = ? AND created_at >= ?
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
-    `).all(workspaceId, windowStart, limit, offset)) as Array<{
+    `,
+      )
+      .all(workspaceId, windowStart, limit, offset)) as Array<{
       run_id: string;
       workflow_name: string;
       status: string;
@@ -289,10 +357,10 @@ export class MetricsService {
         run_id: r.run_id,
         workflow_name: r.workflow_name,
         status: r.status,
-        input: r.input_json ? JSON.parse(r.input_json) : null,
-        output: r.output_json ? JSON.parse(r.output_json) : null,
+        input: safeJsonParse(r.input_json, null),
+        output: safeJsonParse(r.output_json, null),
         trace_id: r.trace_id,
-        metadata: r.metadata_json ? JSON.parse(r.metadata_json) : {},
+        metadata: safeJsonParse(r.metadata_json, {}),
         created_at: r.created_at,
         updated_at: r.updated_at,
       })),

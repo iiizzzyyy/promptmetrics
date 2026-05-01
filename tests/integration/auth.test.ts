@@ -4,9 +4,11 @@ import path from 'path';
 import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
+import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
 
 describe('Auth Integration', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-auth.db');
+  const testPromptsPath = path.resolve(__dirname, '../../data/test-auth-prompts');
   let app: ReturnType<typeof createApp>;
   let validKey: string;
   let expiredKey: string;
@@ -21,7 +23,7 @@ describe('Auth Integration', () => {
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
 
-    closeDb();
+    await closeDb();
     await initSchema();
 
     const db = getDb();
@@ -31,28 +33,30 @@ describe('Auth Integration', () => {
     defaultWorkspaceKey = 'pm_default_workspace_key_abc';
 
     await db
-      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
+      .prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id')
       .run(hashApiKey(validKey), 'valid-key', 'read,write', 'default');
 
     await db
       .prepare(
-        'INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, expires_at, workspace_id) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO api_keys (key_hash, name, scopes, expires_at, workspace_id) VALUES (?, ?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, expires_at = excluded.expires_at, workspace_id = excluded.workspace_id',
       )
       .run(hashApiKey(expiredKey), 'expired-key', 'read,write', Math.floor(Date.now() / 1000) - 1, 'default');
 
     await db
-      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
+      .prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id')
       .run(hashApiKey(masterKey), 'master-key', 'read,write,admin', '*');
 
     await db
-      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
+      .prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id')
       .run(hashApiKey(defaultWorkspaceKey), 'default-workspace-key', 'read,write', 'default');
 
-    app = createApp();
+    const driver = new FilesystemDriver(testPromptsPath);
+    app = createApp(driver);
   });
 
-  afterAll(() => {
-    closeDb();
+  afterAll(async () => {
+    await closeDb();
+    if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');

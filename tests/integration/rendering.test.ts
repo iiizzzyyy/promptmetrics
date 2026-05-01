@@ -17,7 +17,7 @@ describe('Template Rendering Integration', () => {
     process.env.DRIVER = 'filesystem';
     process.env.API_KEY_SALT = 'test-salt';
 
-    closeDb();
+    await closeDb();
 
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
@@ -29,7 +29,7 @@ describe('Template Rendering Integration', () => {
     const db = getDb();
     apiKey = 'pm_testrender456';
     const keyHash = hashApiKey(apiKey);
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
       keyHash,
       'test-render-key',
       'read,write',
@@ -38,8 +38,8 @@ describe('Template Rendering Integration', () => {
     app = createApp(new FilesystemDriver(testPromptsPath));
   });
 
-  afterAll(() => {
-    closeDb();
+  afterAll(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');

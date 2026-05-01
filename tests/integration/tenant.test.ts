@@ -24,7 +24,7 @@ describe('Multi-Tenancy Integration', () => {
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
     if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
 
-    closeDb();
+    await closeDb();
     await initSchema();
 
     const db = getDb();
@@ -32,19 +32,19 @@ describe('Multi-Tenancy Integration', () => {
     workspaceBKey = 'pm_workspace_b_key';
 
     await db
-      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
+      .prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id')
       .run(hashApiKey(workspaceAKey), 'workspace-a-key', 'read,write', 'workspace-a');
 
     await db
-      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
+      .prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id')
       .run(hashApiKey(workspaceBKey), 'workspace-b-key', 'read,write', 'workspace-b');
 
     driver = new FilesystemDriver(testPromptsPath);
     app = createApp(driver);
   });
 
-  afterAll(() => {
-    closeDb();
+  afterAll(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');

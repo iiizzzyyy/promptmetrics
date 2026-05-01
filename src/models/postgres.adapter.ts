@@ -1,5 +1,20 @@
-import { Pool, PoolClient } from 'pg';
+import { Pool, PoolClient, types } from 'pg';
 import { DatabaseAdapter, PreparedStatement } from './database.interface';
+
+// Parse INT8 (bigint) and NUMERIC as JavaScript numbers instead of strings.
+// Values in this application are well within Number.MAX_SAFE_INTEGER.
+types.setTypeParser(types.builtins.INT8, (val: string) => parseInt(val, 10));
+types.setTypeParser(types.builtins.NUMERIC, (val: string) => parseFloat(val));
+
+// Tables that do not have an auto-generated 'id' column; RETURNING id will abort
+// the transaction on PostgreSQL, and retry is not possible inside a transaction.
+const TABLES_WITHOUT_ID = new Set(['config', 'rate_limits', 'migrations']);
+
+function tableHasId(sql: string): boolean {
+  const match = sql.match(/^\s*INSERT\s+INTO\s+["']?([^\s"'(]+)/i);
+  if (!match) return true;
+  return !TABLES_WITHOUT_ID.has(match[1].toLowerCase());
+}
 
 class PostgresPreparedStatement implements PreparedStatement {
   constructor(
@@ -24,6 +39,31 @@ class PostgresPreparedStatement implements PreparedStatement {
 
   async run(...params: unknown[]): Promise<{ lastInsertRowid: number | bigint; changes: number }> {
     const sql = this.rewritePlaceholders(this.sql);
+    const isInsert = /^\s*INSERT\s+INTO/i.test(sql);
+    const hasReturning = /\bRETURNING\b/i.test(sql);
+
+    if (isInsert && !hasReturning && tableHasId(sql)) {
+      const returningSql = `${sql} RETURNING id`;
+      try {
+        const result = await this.pool.query(returningSql, params);
+        return {
+          lastInsertRowid: result.rows[0]?.id ?? 0,
+          changes: result.rowCount ?? 0,
+        };
+      } catch (err: any) {
+        // If RETURNING id fails because the table has no id column,
+        // retry without RETURNING (e.g., migrations table).
+        if (err.code === '42703' || err.message?.toLowerCase().includes('column "id" does not exist')) {
+          const result = await this.pool.query(sql, params);
+          return {
+            lastInsertRowid: 0,
+            changes: result.rowCount ?? 0,
+          };
+        }
+        throw err;
+      }
+    }
+
     const result = await this.pool.query(sql, params);
     return {
       lastInsertRowid: result.rows[0]?.id ?? 0,
@@ -35,6 +75,7 @@ class PostgresPreparedStatement implements PreparedStatement {
 export class PostgresAdapter implements DatabaseAdapter {
   readonly dialect = 'postgres' as const;
   private readonly pool: Pool;
+  private closed = false;
 
   constructor(connectionString: string) {
     this.pool = new Pool({ connectionString });
@@ -72,6 +113,8 @@ export class PostgresAdapter implements DatabaseAdapter {
   }
 
   async close(): Promise<void> {
+    if (this.closed) return;
+    this.closed = true;
     await this.pool.end();
   }
 }
@@ -120,6 +163,31 @@ class TransactionPreparedStatement implements PreparedStatement {
 
   async run(...params: unknown[]): Promise<{ lastInsertRowid: number | bigint; changes: number }> {
     const sql = this.rewritePlaceholders(this.sql);
+    const isInsert = /^\s*INSERT\s+INTO/i.test(sql);
+    const hasReturning = /\bRETURNING\b/i.test(sql);
+
+    if (isInsert && !hasReturning && tableHasId(sql)) {
+      const returningSql = `${sql} RETURNING id`;
+      try {
+        const result = await this.client.query(returningSql, params);
+        return {
+          lastInsertRowid: result.rows[0]?.id ?? 0,
+          changes: result.rowCount ?? 0,
+        };
+      } catch (err: any) {
+        // If RETURNING id fails because the table has no id column,
+        // retry without RETURNING (e.g., migrations table).
+        if (err.code === '42703' || err.message?.toLowerCase().includes('column "id" does not exist')) {
+          const result = await this.client.query(sql, params);
+          return {
+            lastInsertRowid: 0,
+            changes: result.rowCount ?? 0,
+          };
+        }
+        throw err;
+      }
+    }
+
     const result = await this.client.query(sql, params);
     return {
       lastInsertRowid: result.rows[0]?.id ?? 0,

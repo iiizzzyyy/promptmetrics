@@ -10,6 +10,11 @@ export const createEvaluationSchema = Joi.object({
 
 export const createEvaluationResultSchema = Joi.object({
   run_id: Joi.string().max(128).optional(),
-  score: Joi.number().min(0).max(1).optional(),
+  // Score is any non-negative number; scale is determined by the evaluation criteria
+  score: Joi.number().min(0).optional(),
   metadata: Joi.object().optional(),
+}).unknown(true);
+
+export const runEvaluationSchema = Joi.object({
+  dataset_id: Joi.number().integer().optional(),
 }).unknown(true);

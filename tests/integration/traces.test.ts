@@ -4,6 +4,7 @@ import path from 'path';
 import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
+import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
 
 describe('Trace API Integration', () => {
   const testDbPath = path.resolve(__dirname, '../../data/test-traces.db');
@@ -21,21 +22,22 @@ describe('Trace API Integration', () => {
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
     if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
 
-    closeDb();
+    await closeDb();
     await initSchema();
 
     const db = getDb();
     apiKey = 'pm_testtrace789';
     const keyHash = hashApiKey(apiKey);
     await db
-      .prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)')
+      .prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes')
       .run(keyHash, 'test-trace-key', 'read,write');
 
-    app = createApp();
+    const driver = new FilesystemDriver(testPromptsPath);
+    app = createApp(driver);
   });
 
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
@@ -68,12 +70,12 @@ describe('Trace API Integration', () => {
   it('GET /v1/traces/:trace_id returns trace with spans', async () => {
     const traceId = '550e8400-e29b-41d4-a716-446655440001';
     const db = getDb();
-    db.prepare('INSERT INTO traces (trace_id, prompt_name, metadata_json) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO traces (trace_id, prompt_name, metadata_json) VALUES (?, ?, ?)').run(
       traceId,
       'test-prompt',
       JSON.stringify({ agent: 'test' }),
     );
-    db.prepare(
+    await db.prepare(
       'INSERT INTO spans (trace_id, span_id, name, status, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)',
     ).run(traceId, 'span-1', 'step-1', 'ok', 1000, 2000);
 
@@ -94,7 +96,7 @@ describe('Trace API Integration', () => {
   it('POST /v1/traces/:trace_id/spans creates a span', async () => {
     const traceId = '550e8400-e29b-41d4-a716-446655440002';
     const db = getDb();
-    db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
+    await db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
 
     const res = await request(app)
       .post(`/v1/traces/${traceId}/spans`)
@@ -120,8 +122,8 @@ describe('Trace API Integration', () => {
     const traceId = '550e8400-e29b-41d4-a716-446655440003';
     const spanId = '550e8400-e29b-41d4-a716-446655440004';
     const db = getDb();
-    db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
-    db.prepare(
+    await db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
+    await db.prepare(
       'INSERT INTO spans (trace_id, span_id, parent_id, name, status, start_time, end_time, metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     ).run(traceId, spanId, 'parent-1', 'nested-step', 'error', 3000, 4000, JSON.stringify({ retry: 2 }));
 
@@ -151,7 +153,7 @@ describe('Trace API Integration', () => {
   it('POST /v1/traces/:trace_id/spans accepts nested metadata', async () => {
     const traceId = '550e8400-e29b-41d4-a716-446655440006';
     const db = getDb();
-    db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
+    await db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
 
     const res = await request(app)
       .post(`/v1/traces/${traceId}/spans`)
@@ -172,7 +174,7 @@ describe('Trace API Integration', () => {
   it('POST /v1/traces/:trace_id/spans rejects invalid status', async () => {
     const traceId = '550e8400-e29b-41d4-a716-446655440005';
     const db = getDb();
-    db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
+    await db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
 
     const res = await request(app)
       .post(`/v1/traces/${traceId}/spans`)
@@ -185,7 +187,7 @@ describe('Trace API Integration', () => {
   it('GET /v1/traces lists traces with pagination', async () => {
     const db = getDb();
     for (let i = 0; i < 5; i++) {
-      db.prepare('INSERT INTO traces (trace_id, prompt_name, version_tag, workspace_id) VALUES (?, ?, ?, ?)').run(
+      await db.prepare('INSERT INTO traces (trace_id, prompt_name, version_tag, workspace_id) VALUES (?, ?, ?, ?)').run(
         `trace-${i}`,
         `prompt-${i}`,
         `v${i}`,
@@ -215,7 +217,7 @@ describe('Trace API Integration', () => {
 
   it('GET /v1/traces parses metadata_json in response', async () => {
     const db = getDb();
-    db.prepare(
+    await db.prepare(
       'INSERT INTO traces (trace_id, prompt_name, version_tag, metadata_json, workspace_id) VALUES (?, ?, ?, ?, ?)',
     ).run('trace-meta', 'test-prompt', '1.0.0', JSON.stringify({ agent: 'test' }), 'default');
 

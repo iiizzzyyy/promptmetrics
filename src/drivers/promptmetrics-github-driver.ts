@@ -144,7 +144,7 @@ export class GithubDriver implements PromptDriver {
         },
       };
     } catch (err) {
-      if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') {
+      if ((err as Error & { code?: string })?.code === 'ENOENT') {
         return undefined;
       }
       console.error(`GithubDriver.getPrompt failed for ${name}:`, err);

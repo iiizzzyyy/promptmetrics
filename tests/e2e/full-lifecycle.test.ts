@@ -26,7 +26,7 @@ describe('Full Lifecycle E2E', () => {
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
     if (fs.existsSync(testPromptsPath)) fs.rmSync(testPromptsPath, { recursive: true });
 
-    closeDb();
+    await closeDb();
     await initSchema();
 
     const db = getDb();
@@ -35,17 +35,17 @@ describe('Full Lifecycle E2E', () => {
     adminKey = 'pm_adminkey123';
     badKey = 'pm_badkey123';
 
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
       hashApiKey(readKey),
       'read-key',
       'read',
     );
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
       hashApiKey(writeKey),
       'write-key',
       'read,write',
     );
-    db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?)').run(
+    db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
       hashApiKey(adminKey),
       'admin-key',
       'read,write,admin',
@@ -54,8 +54,8 @@ describe('Full Lifecycle E2E', () => {
     app = createApp(new FilesystemDriver(testPromptsPath));
   });
 
-  afterAll(() => {
-    closeDb();
+  afterAll(async () => {
+    await closeDb();
     if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
     if (fs.existsSync(testDbPath + '-wal')) fs.unlinkSync(testDbPath + '-wal');
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
@@ -340,13 +340,13 @@ describe('Full Lifecycle E2E', () => {
       const db = getDb();
       const workspaceAAdminKey = 'pm_ws_a_admin';
       const workspaceBAdminKey = 'pm_ws_b_admin';
-      db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
+      db.prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id').run(
         hashApiKey(workspaceAAdminKey),
         'ws-a-admin',
         'read,write,admin',
         'workspace-a',
       );
-      db.prepare('INSERT OR REPLACE INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
+      db.prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id').run(
         hashApiKey(workspaceBAdminKey),
         'ws-b-admin',
         'read,write,admin',
