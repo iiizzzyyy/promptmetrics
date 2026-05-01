@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-05-01
+
+### Added
+
+- **Dashboard User Guide** — Comprehensive `ui/README.md` with page-by-page walkthroughs for Overview, Logs, Traces, Evaluations, Metrics API reference, workspace switching, and common workflows.
+- **Dashboard Screenshots** — 5 Playwright-captured screenshots with seeded demo data: overview, logs, traces, trace detail, and evaluations.
+- **Dashboard Quick-Start** — Added Dashboard section to root `README.md` with setup instructions and link to the full user guide.
+
 ## [1.1.0] - 2026-04-30
 
 ### Added
