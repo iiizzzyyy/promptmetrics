@@ -2,10 +2,14 @@ import { parseIdParam } from '@utils/validation';
 import { Request, Response } from 'express';
 import { AppError } from '@errors/app.error';
 import { ABTestService } from '@services/ab-test.service';
+import { LogService } from '@services/log.service';
 import { createABTestSchema, runABTestSchema } from '@validation-schemas/ab-test.schema';
 
 export class ABTestController {
-  constructor(private service = new ABTestService()) {}
+  constructor(
+    private service = new ABTestService(),
+    private logService = new LogService(),
+  ) {}
 
   async createTest(req: Request, res: Response): Promise<void> {
     const { error, value } = createABTestSchema.validate(req.body, { abortEarly: false });
@@ -41,7 +45,37 @@ export class ABTestController {
 
     const id = parseIdParam(req.params.id);
     const workspaceId = req.workspaceId || 'default';
-    const result = await this.service.runTest(id, workspaceId, value.scoresA, value.scoresB);
+
+    let scoresA: number[] = value.scoresA;
+    let scoresB: number[] = value.scoresB;
+
+    if (!scoresA || !scoresB) {
+      const test = await this.service.getTest(id, workspaceId);
+      const metric = test.metric || 'latency';
+
+      const logsA = await this.logService.getLogsForPromptVersion(test.prompt_name, test.version_a, workspaceId);
+      const logsB = await this.logService.getLogsForPromptVersion(test.prompt_name, test.version_b, workspaceId);
+
+      const extractScore = (log: { latency_ms?: number | null; cost_usd?: number | null; metadata?: Record<string, unknown> }): number => {
+        if (metric === 'latency') return log.latency_ms ?? 0;
+        if (metric === 'cost') return log.cost_usd ?? 0;
+        if (metric === 'win_rate') {
+          const meta = log.metadata ?? {};
+          const rating = meta.rating ?? meta.score ?? meta.win;
+          return typeof rating === 'number' ? rating : 0;
+        }
+        return log.latency_ms ?? 0;
+      };
+
+      scoresA = logsA.map(extractScore).filter((s) => s > 0);
+      scoresB = logsB.map(extractScore).filter((s) => s > 0);
+
+      if (scoresA.length === 0 || scoresB.length === 0) {
+        throw AppError.badRequest('Insufficient logs to auto-compute scores for this A/B test');
+      }
+    }
+
+    const result = await this.service.runTest(id, workspaceId, scoresA, scoresB);
     res.status(200).json(result);
   }
 

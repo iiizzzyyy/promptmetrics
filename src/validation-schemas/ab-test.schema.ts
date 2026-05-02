@@ -9,6 +9,6 @@ export const createABTestSchema = Joi.object({
 }).unknown(true);
 
 export const runABTestSchema = Joi.object({
-  scoresA: Joi.array().items(Joi.number().required()).min(1).required(),
-  scoresB: Joi.array().items(Joi.number().required()).min(1).required(),
+  scoresA: Joi.array().items(Joi.number()).min(1).optional(),
+  scoresB: Joi.array().items(Joi.number()).min(1).optional(),
 }).unknown(true);

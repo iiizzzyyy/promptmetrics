@@ -70,6 +70,53 @@ export class LogService {
     };
   }
 
+  async getLogsForPromptVersion(
+    promptName: string,
+    versionTag: string,
+    workspaceId: string = 'default',
+  ): Promise<LogEntry[]> {
+    const db = getDb();
+    const items = (await db
+      .prepare(
+        'SELECT * FROM logs WHERE prompt_name = ? AND version_tag = ? AND workspace_id = ? ORDER BY created_at DESC LIMIT 100',
+      )
+      .all(promptName, versionTag, workspaceId)) as Array<{
+      id: number;
+      prompt_name: string | null;
+      version_tag: string | null;
+      metadata_json: string | null;
+      provider: string | null;
+      model: string | null;
+      tokens_in: number | null;
+      tokens_out: number | null;
+      latency_ms: number | null;
+      cost_usd: number | null;
+      ollama_options: string | null;
+      ollama_keep_alive: string | null;
+      ollama_format: string | null;
+      workspace_id: string;
+      created_at: number;
+    }>;
+
+    return items.map((l) => ({
+      id: l.id,
+      prompt_name: l.prompt_name || '',
+      version_tag: l.version_tag || '',
+      metadata: l.metadata_json ? JSON.parse(l.metadata_json) : {},
+      provider: l.provider,
+      model: l.model,
+      tokens_in: l.tokens_in,
+      tokens_out: l.tokens_out,
+      latency_ms: l.latency_ms,
+      cost_usd: l.cost_usd,
+      ollama_options: l.ollama_options ? JSON.parse(l.ollama_options) : null,
+      ollama_keep_alive: l.ollama_keep_alive,
+      ollama_format: l.ollama_format,
+      workspace_id: l.workspace_id,
+      created_at: l.created_at,
+    }));
+  }
+
   async listLogs(page: number, limit: number, workspaceId: string = 'default'): Promise<PaginatedResponse<LogEntry>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });

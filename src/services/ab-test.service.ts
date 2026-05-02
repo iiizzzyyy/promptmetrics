@@ -1,6 +1,7 @@
 import { AppError } from '@errors/app.error';
 import { getDb } from '@models/promptmetrics-sqlite';
 import { parsePagination, buildPaginatedResponse, PaginatedResponse, parseCountRow } from '@utils/pagination';
+import { LabelService } from './label.service';
 import { ABTestEngine } from './ab-test.engine';
 
 export interface ABTest {
@@ -41,6 +42,8 @@ export interface CreateABTestInput {
 
 export class ABTestService {
   private engine = new ABTestEngine();
+
+  constructor(private labelService = new LabelService()) {}
 
   async createTest(input: CreateABTestInput, workspaceId: string = 'default'): Promise<ABTest> {
     const db = getDb();
@@ -186,6 +189,7 @@ export class ABTestService {
         await db
           .prepare('UPDATE ab_tests SET promoted_version = ?, promoted_at = ? WHERE id = ? AND workspace_id = ?')
           .run(version, now, id, workspaceId);
+        await this.labelService.createLabel(test.prompt_name, { name: 'production', version_tag: version }, workspaceId);
       }
 
       return { winner, version };
