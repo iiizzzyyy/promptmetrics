@@ -88,9 +88,15 @@ export default function CompliancePage() {
         : true
     ) || [];
 
-  const score = data?.items.find(
-    (s: ComplianceScoreItem) => s.id === selectedId
-  );
+  const {
+    data: score,
+    isLoading: scoreLoading,
+    error: scoreError,
+  } = useQuery({
+    queryKey: ["compliance-score", selectedId],
+    queryFn: () => api.getComplianceScore(selectedId!),
+    enabled: selectedId !== null,
+  });
 
   return (
     <DashboardLayout>
@@ -360,6 +366,23 @@ export default function CompliancePage() {
             <DialogHeader>
               <DialogTitle>Compliance Details</DialogTitle>
             </DialogHeader>
+            {scoreLoading && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+                <Skeleton className="h-24 w-full" />
+              </div>
+            )}
+            {scoreError && (
+              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+                Failed to load compliance details:{" "}
+                {scoreError instanceof Error ? scoreError.message : "Unknown error"}
+              </div>
+            )}
             {score && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">

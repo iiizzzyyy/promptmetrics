@@ -1,6 +1,7 @@
 import { AppError } from '@errors/app.error';
 import { getDb } from '@models/promptmetrics-sqlite';
 import { parsePagination, buildPaginatedResponse, PaginatedResponse, parseCountRow } from '@utils/pagination';
+import { safeJsonParse } from '@utils/safe-json';
 
 export interface Evaluation {
   id: number;
@@ -71,7 +72,9 @@ export class EvaluationService {
   ): Promise<PaginatedResponse<Evaluation>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const total = parseCountRow(await db.prepare('SELECT COUNT(*) as c FROM evaluations WHERE workspace_id = ?').get(workspaceId));
+    const total = parseCountRow(
+      await db.prepare('SELECT COUNT(*) as c FROM evaluations WHERE workspace_id = ?').get(workspaceId),
+    );
     const items = (await db
       .prepare('SELECT * FROM evaluations WHERE workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
       .all(workspaceId, limit, offset)) as Array<{
@@ -84,20 +87,28 @@ export class EvaluationService {
       created_at: number;
     }>;
 
-    return buildPaginatedResponse(
-      items.map((e) => ({
+    const warnings: string[] = [];
+    const data = items.map((e) => {
+      const criteria = safeJsonParse(e.criteria_json, undefined);
+      if (e.criteria_json && criteria === undefined) {
+        warnings.push(`Malformed criteria_json in evaluation row ${e.id}`);
+      }
+      return {
         id: e.id,
         name: e.name,
         description: e.description ?? undefined,
         prompt_name: e.prompt_name,
         version_tag: e.version_tag ?? undefined,
-        criteria: e.criteria_json ? JSON.parse(e.criteria_json) : undefined,
+        criteria,
         created_at: e.created_at,
-      })),
-      total,
-      page,
-      limit,
-    );
+      };
+    });
+
+    const response = buildPaginatedResponse(data, total, page, limit);
+    if (warnings.length > 0) {
+      return { ...response, warnings };
+    }
+    return response;
   }
 
   async getEvaluation(id: number, workspaceId: string = 'default'): Promise<Evaluation> {
@@ -120,13 +131,18 @@ export class EvaluationService {
       throw AppError.notFound('Evaluation');
     }
 
+    const criteria = safeJsonParse(evaluation.criteria_json, undefined);
+    if (evaluation.criteria_json && criteria === undefined) {
+      console.warn(`Malformed criteria_json in evaluation id=${evaluation.id}`);
+    }
+
     return {
       id: evaluation.id,
       name: evaluation.name,
       description: evaluation.description ?? undefined,
       prompt_name: evaluation.prompt_name,
       version_tag: evaluation.version_tag ?? undefined,
-      criteria: evaluation.criteria_json ? JSON.parse(evaluation.criteria_json) : undefined,
+      criteria,
       created_at: evaluation.created_at,
     };
   }
@@ -180,9 +196,11 @@ export class EvaluationService {
   ): Promise<PaginatedResponse<EvaluationResult>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const total = parseCountRow(await db
-      .prepare('SELECT COUNT(*) as c FROM evaluation_results WHERE evaluation_id = ? AND workspace_id = ?')
-      .get(evaluationId, workspaceId));
+    const total = parseCountRow(
+      await db
+        .prepare('SELECT COUNT(*) as c FROM evaluation_results WHERE evaluation_id = ? AND workspace_id = ?')
+        .get(evaluationId, workspaceId),
+    );
     const items = (await db
       .prepare(
         'SELECT * FROM evaluation_results WHERE evaluation_id = ? AND workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
@@ -196,18 +214,26 @@ export class EvaluationService {
       created_at: number;
     }>;
 
-    return buildPaginatedResponse(
-      items.map((r) => ({
+    const warnings: string[] = [];
+    const data = items.map((r) => {
+      const metadata = safeJsonParse(r.metadata_json, undefined);
+      if (r.metadata_json && metadata === undefined) {
+        warnings.push(`Malformed metadata_json in result row ${r.id}`);
+      }
+      return {
         id: r.id,
         evaluation_id: r.evaluation_id,
         run_id: r.run_id ?? undefined,
         score: r.score ?? undefined,
-        metadata: r.metadata_json ? JSON.parse(r.metadata_json) : undefined,
+        metadata,
         created_at: r.created_at,
-      })),
-      total,
-      page,
-      limit,
-    );
+      };
+    });
+
+    const response = buildPaginatedResponse(data, total, page, limit);
+    if (warnings.length > 0) {
+      return { ...response, warnings };
+    }
+    return response;
   }
 }

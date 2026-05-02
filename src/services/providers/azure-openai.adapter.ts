@@ -62,20 +62,27 @@ function mapAzureError(err: unknown): ProviderError {
 
 export class AzureOpenAIAdapter implements LLMProviderAdapter {
   readonly provider = 'azure_openai';
-  private client: OpenAI;
+  private client: OpenAI | null = null;
 
   constructor() {
-    const apiKey = process.env.AZURE_OPENAI_API_KEY;
-    const baseURL = process.env.AZURE_OPENAI_BASE_URL;
+    // Lazy validation in chat methods
+  }
 
-    if (!apiKey) {
-      throw new Error('AZURE_OPENAI_API_KEY environment variable is required');
-    }
-    if (!baseURL) {
-      throw new Error('AZURE_OPENAI_BASE_URL environment variable is required');
-    }
+  private getClient(): OpenAI {
+    if (!this.client) {
+      const apiKey = process.env.AZURE_OPENAI_API_KEY;
+      const baseURL = process.env.AZURE_OPENAI_BASE_URL;
 
-    this.client = new OpenAI({ apiKey, baseURL });
+      if (!apiKey) {
+        throw new Error('AZURE_OPENAI_API_KEY environment variable is required');
+      }
+      if (!baseURL) {
+        throw new Error('AZURE_OPENAI_BASE_URL environment variable is required');
+      }
+
+      this.client = new OpenAI({ apiKey, baseURL });
+    }
+    return this.client;
   }
 
   async listModels(): Promise<LLMModel[]> {
@@ -90,7 +97,7 @@ export class AzureOpenAIAdapter implements LLMProviderAdapter {
     const startTime = Date.now();
 
     try {
-      const response = await this.client.chat.completions.create({
+      const response = await this.getClient().chat.completions.create({
         model: request.model,
         messages: request.messages.map((m) => ({
           role: m.role,
@@ -128,7 +135,7 @@ export class AzureOpenAIAdapter implements LLMProviderAdapter {
     const startTime = Date.now();
 
     try {
-      const stream = await this.client.chat.completions.create(
+      const stream = await this.getClient().chat.completions.create(
         {
           model: request.model,
           messages: request.messages.map((m) => ({

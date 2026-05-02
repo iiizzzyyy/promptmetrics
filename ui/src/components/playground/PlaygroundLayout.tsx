@@ -34,6 +34,8 @@ export function PlaygroundLayout() {
     isRunning,
     setIsRunning,
     resetStream,
+    validateBeforeRun,
+    validationError,
   } = usePlaygroundStore();
 
   const [configOpen, setConfigOpen] = React.useState(false);
@@ -41,6 +43,9 @@ export function PlaygroundLayout() {
   const centerPaneSize = Math.max(100 - leftPaneSize - rightPaneSize, 20);
 
   const handleRun = () => {
+    if (!validateBeforeRun()) {
+      return;
+    }
     setIsRunning(true);
     resetStream();
   };
@@ -80,6 +85,11 @@ export function PlaygroundLayout() {
           </Button>
         </div>
       </header>
+      {validationError && (
+        <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20 text-sm text-destructive">
+          {validationError}
+        </div>
+      )}
 
       {/* Resizable Panes */}
       <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">

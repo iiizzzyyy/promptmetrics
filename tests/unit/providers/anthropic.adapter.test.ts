@@ -5,9 +5,13 @@ describe('AnthropicAdapter', () => {
   const originalEnv = process.env.ANTHROPIC_API_KEY;
   const originalBaseUrl = process.env.ANTHROPIC_BASE_URL;
 
-  beforeAll(() => {
+  beforeEach(() => {
     process.env.ANTHROPIC_API_KEY = 'test-key';
     delete process.env.ANTHROPIC_BASE_URL;
+  });
+
+  afterEach(() => {
+    nock.cleanAll();
   });
 
   afterAll(() => {
@@ -18,15 +22,24 @@ describe('AnthropicAdapter', () => {
     nock.cleanAll();
   });
 
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe('constructor', () => {
-    it('throws when ANTHROPIC_API_KEY is missing', () => {
+    it('does not throw when ANTHROPIC_API_KEY is missing (lazy validation)', () => {
       delete process.env.ANTHROPIC_API_KEY;
-      expect(() => new AnthropicAdapter()).toThrow('ANTHROPIC_API_KEY environment variable is required');
-      process.env.ANTHROPIC_API_KEY = 'test-key';
+      expect(() => new AnthropicAdapter()).not.toThrow();
+    });
+
+    it('throws on first API call when ANTHROPIC_API_KEY is missing', async () => {
+      delete process.env.ANTHROPIC_API_KEY;
+      const adapter = new AnthropicAdapter();
+      await expect(
+        adapter.chatCompletion({
+          model: 'claude-3-5-sonnet-20241022',
+          messages: [{ role: 'user', content: 'hi' }],
+        }),
+      ).rejects.toMatchObject({
+        provider: 'anthropic',
+        code: 'unknown',
+      });
     });
   });
 

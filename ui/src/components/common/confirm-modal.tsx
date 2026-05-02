@@ -27,11 +27,11 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
-  const confirmRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (open) {
-      const timer = setTimeout(() => confirmRef.current?.focus(), 0);
+      const timer = setTimeout(() => cancelRef.current?.focus(), 0);
       return () => clearTimeout(timer);
     }
   }, [open]);
@@ -47,17 +47,17 @@ export function ConfirmModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+    <Dialog open={open} onOpenChange={() => {}}>
+      <DialogContent className="max-w-sm" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={handleCancel}>
+          <Button ref={cancelRef} variant="outline" onClick={handleCancel}>
             {cancelLabel}
           </Button>
-          <Button ref={confirmRef} variant={confirmVariant} onClick={handleConfirm}>
+          <Button variant={confirmVariant} onClick={handleConfirm}>
             {confirmLabel}
           </Button>
         </DialogFooter>

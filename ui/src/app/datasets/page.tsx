@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Database, Plus, Search, Trash2 } from "lucide-react";
 import { ConfirmModal } from "@/components/common/confirm-modal";
+import { Toaster, toast } from "sonner";
 
 const LIMIT = 20;
 
@@ -70,6 +71,11 @@ export default function DatasetsPage() {
     mutationFn: (id: number) => api.deleteDataset(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["datasets"] });
+      setSelectedId(null);
+      toast.success("Dataset deleted successfully.");
+    },
+    onError: (err: Error) => {
+      toast.error(`Failed to delete dataset: ${err.message}`);
     },
   });
 
@@ -298,12 +304,13 @@ export default function DatasetsPage() {
           </DialogContent>
         </Dialog>
 
+        <Toaster />
         <ConfirmModal
           open={confirmDeleteId !== null}
           onOpenChange={() => setConfirmDeleteId(null)}
           title="Delete Dataset"
           description="Are you sure you want to delete this dataset? This action cannot be undone."
-          confirmLabel="Delete"
+          confirmLabel={deleteMutation.isPending ? "Deleting..." : "Delete"}
           confirmVariant="destructive"
           onConfirm={() => {
             if (confirmDeleteId !== null) {

@@ -61,14 +61,21 @@ function mapCohereError(err: unknown): ProviderError {
 
 export class CohereAdapter implements LLMProviderAdapter {
   readonly provider = 'cohere';
-  private client: CohereClient;
+  private client: CohereClient | null = null;
 
   constructor() {
-    const apiKey = process.env.COHERE_API_KEY;
-    if (!apiKey) {
-      throw new Error('COHERE_API_KEY environment variable is required');
+    // Lazy validation in chat methods
+  }
+
+  private getClient(): CohereClient {
+    if (!this.client) {
+      const apiKey = process.env.COHERE_API_KEY;
+      if (!apiKey) {
+        throw new Error('COHERE_API_KEY environment variable is required');
+      }
+      this.client = new CohereClient({ token: apiKey });
     }
-    this.client = new CohereClient({ token: apiKey });
+    return this.client;
   }
 
   async listModels(): Promise<LLMModel[]> {
@@ -82,7 +89,7 @@ export class CohereAdapter implements LLMProviderAdapter {
     const startTime = Date.now();
 
     try {
-      const response = await this.client.v2.chat({
+      const response = await this.getClient().v2.chat({
         model: request.model,
         messages: request.messages.map((m) => ({
           role: m.role,
@@ -117,7 +124,7 @@ export class CohereAdapter implements LLMProviderAdapter {
     const startTime = Date.now();
 
     try {
-      const stream = await this.client.v2.chatStream({
+      const stream = await this.getClient().v2.chatStream({
         model: request.model,
         messages: request.messages.map((m) => ({
           role: m.role,

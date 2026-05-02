@@ -51,14 +51,21 @@ function mapOpenAIError(err: unknown): ProviderError {
 
 export class OpenAIAdapter implements LLMProviderAdapter {
   readonly provider = 'openai';
-  private client: OpenAI;
+  private client: OpenAI | null = null;
 
   constructor() {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is required');
+    // Lazy validation in chat methods
+  }
+
+  private getClient(): OpenAI {
+    if (!this.client) {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        throw new Error('OPENAI_API_KEY environment variable is required');
+      }
+      this.client = new OpenAI({ apiKey });
     }
-    this.client = new OpenAI({ apiKey });
+    return this.client;
   }
 
   async listModels(): Promise<LLMModel[]> {
@@ -76,7 +83,7 @@ export class OpenAIAdapter implements LLMProviderAdapter {
     const startTime = Date.now();
 
     try {
-      const response = await this.client.chat.completions.create({
+      const response = await this.getClient().chat.completions.create({
         model: request.model,
         messages: request.messages.map((m) => ({
           role: m.role,
@@ -114,7 +121,7 @@ export class OpenAIAdapter implements LLMProviderAdapter {
     const startTime = Date.now();
 
     try {
-      const stream = await this.client.chat.completions.create(
+      const stream = await this.getClient().chat.completions.create(
         {
           model: request.model,
           messages: request.messages.map((m) => ({

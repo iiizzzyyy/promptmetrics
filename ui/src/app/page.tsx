@@ -13,6 +13,7 @@ import { ScoreTrendChart } from "@/components/charts/ScoreTrendChart";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableHeader,
@@ -28,6 +29,7 @@ import {
   FileText,
   Box,
   RotateCcw,
+  HeartPulse,
 } from "lucide-react";
 
 function formatTimestamp(ts: number): string {
@@ -77,6 +79,15 @@ export default function OverviewPage() {
   } = useQuery({
     queryKey: ["metrics", "evaluations", window],
     queryFn: () => api.getMetricsEvaluations({ window }),
+  });
+
+  const {
+    data: health,
+    isLoading: healthLoading,
+  } = useQuery({
+    queryKey: ["health", "deep"],
+    queryFn: () => api.getDeepHealth(),
+    refetchInterval: 30000,
   });
 
   const anyError =
@@ -138,6 +149,71 @@ export default function OverviewPage() {
             isLoading={activityLoading}
           />
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <HeartPulse className="h-4 w-4" />
+              System Health
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {healthLoading ? (
+              <Skeleton className="h-16 w-full" />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Database</p>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`inline-block h-2.5 w-2.5 rounded-full ${
+                        health?.dbConnected ? "bg-green-500" : "bg-red-500"
+                      }`}
+                    />
+                    <span className="text-sm font-medium">
+                      {health?.dbConnected ? "Connected" : "Disconnected"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      ({health?.dbType})
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Driver</p>
+                  <Badge variant="outline" className="capitalize">
+                    {health?.driverType}
+                  </Badge>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Git Sync</p>
+                  <span className="text-sm text-muted-foreground">
+                    {health?.gitSyncLastRun
+                      ? formatTimestamp(health.gitSyncLastRun)
+                      : "N/A"}
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    Reconciliation
+                  </p>
+                  <Badge
+                    variant="outline"
+                    className={
+                      health?.reconciliationRunning
+                        ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                        : "bg-[#389438]/15 text-[#5cc15c] border-[#389438]/30"
+                    }
+                  >
+                    {health?.reconciliationRunning ? "Running" : "Idle"}
+                  </Badge>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

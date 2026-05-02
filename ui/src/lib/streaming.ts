@@ -23,8 +23,14 @@ export async function* createSSEStream(
       ? (sessionStorage.getItem("pm-workspace") || "default")
       : "default";
 
+  const timeoutSignal = AbortSignal.timeout(60_000);
+  const mergedSignal = options?.signal
+    ? AbortSignal.any([timeoutSignal, options.signal])
+    : timeoutSignal;
+
   const res = await fetch(url, {
     ...options,
+    signal: mergedSignal,
     headers: {
       Accept: "application/x-ndjson",
       ...(apiKey ? { "X-API-Key": apiKey } : {}),

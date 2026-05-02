@@ -50,14 +50,21 @@ function mapAnthropicError(err: unknown): ProviderError {
 
 export class AnthropicAdapter implements LLMProviderAdapter {
   readonly provider = 'anthropic';
-  private client: Anthropic;
+  private client: Anthropic | null = null;
 
   constructor() {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY environment variable is required');
+    // Lazy validation in chat methods
+  }
+
+  private getClient(): Anthropic {
+    if (!this.client) {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) {
+        throw new Error('ANTHROPIC_API_KEY environment variable is required');
+      }
+      this.client = new Anthropic({ apiKey });
     }
-    this.client = new Anthropic({ apiKey });
+    return this.client;
   }
 
   async listModels(): Promise<LLMModel[]> {
@@ -71,7 +78,7 @@ export class AnthropicAdapter implements LLMProviderAdapter {
     const startTime = Date.now();
 
     try {
-      const response = await this.client.messages.create({
+      const response = await this.getClient().messages.create({
         model: request.model,
         max_tokens: request.maxTokens ?? 4096,
         messages: request.messages.map((m) => {
@@ -109,7 +116,7 @@ export class AnthropicAdapter implements LLMProviderAdapter {
     const startTime = Date.now();
 
     try {
-      const stream = await this.client.messages.create(
+      const stream = await this.getClient().messages.create(
         {
           model: request.model,
           max_tokens: request.maxTokens ?? 4096,

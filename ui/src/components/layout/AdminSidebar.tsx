@@ -15,6 +15,7 @@ import {
   FlaskConical,
   Database,
   Lock,
+  ClipboardList,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ export const AdminSidebar = () => {
     { href: "/datasets", icon: Database, label: "Datasets" },
     { href: "/compliance", icon: Lock, label: "Compliance" },
     { href: "/labels", icon: Tags, label: "Labels" },
+    { href: "/audit-logs", icon: ClipboardList, label: "Audit Logs" },
     { href: "/settings", icon: Settings, label: "Settings" },
   ];
 

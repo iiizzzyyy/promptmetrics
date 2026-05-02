@@ -10,6 +10,7 @@ export interface PaginatedResponse<T> {
   page: number;
   limit: number;
   totalPages: number;
+  warnings?: string[];
 }
 
 export function parsePagination(query: { page?: string | number; limit?: string | number }): PaginationParams {
@@ -18,7 +19,12 @@ export function parsePagination(query: { page?: string | number; limit?: string 
   return { page, limit, offset: (page - 1) * limit };
 }
 
-export function buildPaginatedResponse<T>(items: T[], total: number, page: number, limit: number): PaginatedResponse<T> {
+export function buildPaginatedResponse<T>(
+  items: T[],
+  total: number,
+  page: number,
+  limit: number,
+): PaginatedResponse<T> {
   return {
     items,
     total,
