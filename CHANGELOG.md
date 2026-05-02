@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-05-01
+
+### Security
+
+- **fix(proxy):** Add backend-for-frontend (BFF) proxy layer to prevent direct client exposure of internal APIs.
+- **fix(auth):** Enforce granular auth scopes on dashboard API routes.
+
+### Added
+
+- **Audit Logs Page** — New paginated audit log viewer with filtering by action, actor, and date range.
+- **Health Panel** — New dashboard widget showing real-time connectivity status for database, cache, and LLM providers.
+- **GitOps Widget** — New dashboard component displaying prompt repository sync state with last-sync timestamp and manual re-sync trigger.
+
+### Changed
+
+- **Playground Validation** — Tightened input validation in Playground prompt testing with schema-aware error messages.
+- **Provider Initialization** — Moved LLM provider adapter initialization from application startup to first-request lazy loading.
+- **Dataset Deletion UX** — Changed dataset deletion from immediate hard delete to soft delete with confirmation flow and 48-hour grace period.
+
+### Fixed
+
+- **fix(compliance):** Resolve pagination offset miscalculation in compliance scan result lists.
+- **fix(ui):** Resolve Next.js hydration mismatch errors on dashboard data tables.
+- **fix(telemetry):** Survive `JSON.parse` crashes during log ingestion with bounded safe parsing fallback.
+- **fix(metrics):** Correct `error_rate` denominator in time-series aggregation so failures are divided by total requests.
+
 ## [1.1.1] - 2026-05-01
 
 ### Added

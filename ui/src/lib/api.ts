@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+const API_BASE = "/api/proxy";
 
 type PaginatedResponse<T> = {
   items: T[];
@@ -23,15 +23,6 @@ export class ApiError extends Error {
 }
 
 async function fetchJson<T>(path: string, options?: RequestInit): Promise<T> {
-  const apiKey =
-    typeof window !== "undefined"
-      ? (sessionStorage.getItem("pm-api-key") || process.env.NEXT_PUBLIC_DEMO_API_KEY || "")
-      : "";
-  const workspaceId =
-    typeof window !== "undefined"
-      ? (sessionStorage.getItem("pm-workspace") || "default")
-      : "default";
-
   const timeoutSignal =
     typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
       ? AbortSignal.timeout(10000)
@@ -53,8 +44,6 @@ async function fetchJson<T>(path: string, options?: RequestInit): Promise<T> {
     headers: {
       ...(options?.headers || {}),
       "Content-Type": "application/json",
-      ...(apiKey ? { "X-API-Key": apiKey } : {}),
-      ...(workspaceId ? { "X-Workspace-Id": workspaceId } : {}),
     },
   });
 
@@ -266,6 +255,17 @@ export type EvalRunItem = {
   created_at: number;
 };
 
+export type AuditLogEntry = {
+  id: number;
+  action: string;
+  prompt_name?: string | null;
+  version_tag?: string | null;
+  api_key_name: string;
+  ip_address: string;
+  timestamp: number;
+  workspace_id?: string | null;
+};
+
 export type LLMModel = {
   id: string;
   provider: string;
@@ -334,7 +334,15 @@ export type ComplianceScoreItem = {
 export const api = {
   getHealth: () => fetchJson<{ status: string }>("/health"),
   getDeepHealth: () =>
-    fetchJson<{ status: string; checks: unknown }>("/health/deep"),
+    fetchJson<{
+      status: string;
+      checks: Record<string, string>;
+      dbType: "sqlite" | "postgresql";
+      dbConnected: boolean;
+      driverType: string;
+      gitSyncLastRun?: number | null;
+      reconciliationRunning: boolean;
+    }>("/health/deep"),
 
   getPrompts: (params?: { page?: number; limit?: number }) =>
     fetchJson<PaginatedResponse<PromptItem>>(`/v1/prompts${buildQuery(params)}`),
@@ -375,8 +383,8 @@ export const api = {
     }),
   getLabels: (promptName: string, params?: { page?: number; limit?: number }) =>
     fetchJson<PaginatedResponse<LabelItem>>(`/v1/prompts/${encodeURIComponent(promptName)}/labels${buildQuery(params)}`),
-  getAuditLogs: (params?: { page?: number; limit?: number }) =>
-    fetchJson<PaginatedResponse<unknown>>(
+  getAuditLogs: (params?: { page?: number; limit?: number; startDate?: string; endDate?: string }) =>
+    fetchJson<PaginatedResponse<AuditLogEntry>>(
       `/v1/audit-logs${buildQuery(params)}`
     ),
 
@@ -464,4 +472,6 @@ export const api = {
     fetchJson<PaginatedResponse<ComplianceScoreItem>>(
       `/v1/compliance/scores${buildQuery(params)}`
     ),
+  getComplianceScore: (id: number) =>
+    fetchJson<ComplianceScoreItem>(`/v1/compliance/scores/${id}`),
 };

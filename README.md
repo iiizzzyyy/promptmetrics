@@ -21,20 +21,22 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 
 ---
 
-## What's New in v1.1.0
+## What's New in v1.2.0
 
-- **A/B Testing** — Run side-by-side tests against two prompt versions, measure performance, and promote winners.
-- **Datasets & Evaluation Runs** — Create test datasets and execute evaluation suites with built-in budget tracking and cost controls.
-- **Compliance Engine** — Scan prompts for PII (email, SSN, phone, credit card), API keys, URLs, and IP addresses with automated risk scoring.
-- **Playground** — Proxy LLM chat and completion calls through registered providers (OpenAI, Anthropic, Cohere, Ollama, Azure OpenAI).
-- **Observability Dashboard** — Expanded Next.js UI with pages for A/B tests, datasets, compliance, playground, and settings.
-- **Metrics Dashboard** — Time-series metrics, per-prompt usage, evaluation trends, and activity summaries.
+- **Security Hardening** — Dashboard API keys are now handled via a BFF proxy pattern; keys are never stored in browser localStorage.
+- **Scoped Authorization** — All mutation endpoints (POST, PUT, PATCH, DELETE) now enforce `requireScope('write')` for fine-grained access control.
+- **Compliance Detail Views** — Compliance scores support paginated lists and individual detail lookup by ID.
+- **A/B Test Real Scores & Auto-Labeling** — A/B tests now compute evaluation scores from live log data; promoting a winner automatically creates a `production` label on the winning version.
+- **Playground Reliability** — Added input validation, stream timeouts, and lazy provider initialization for safer LLM proxying.
+- **Dataset Deletion Safeguards** — Dataset deletion in the UI now requires a confirmation dialog to prevent accidental data loss.
+- **UI Stability & Accessibility** — Fixed Next.js hydration errors and adopted Radix UI primitives for consistent, accessible components.
+- **New Dashboard Pages** — Added Audit Logs explorer, GitOps Promotion widget, and Health Status panel.
 
 ---
 
 ## Table of Contents
 
-- [What's New in v1.1.0](#whats-new-in-v110)
+- [What's New in v1.2.0](#whats-new-in-v120)
 - [Why PromptMetrics?](#why-promptmetrics)
 - [Features](#features)
 - [Architecture](#architecture)
@@ -80,24 +82,27 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 - **Agent Telemetry** — Built-in traces, spans, and workflow runs without Jaeger, Zipkin, or DataDog.
 - **Evaluations** — Create evaluation suites, record scores, and track prompt quality metrics over time.
 - **Evaluation Runs** — Execute evaluation suites against datasets with built-in budget tracking and cost controls.
-- **Datasets** — Create and manage test datasets for structured evaluation runs.
+- **Datasets** — Create and manage test datasets for structured evaluation runs. Deletion in the UI requires a confirmation dialog to prevent accidental loss.
 - **Budget Service** — Track spend and enforce budget limits during evaluation runs.
-- **A/B Testing** — Run side-by-side tests against two prompt versions, measure performance, and promote winning versions.
-- **Compliance Engine** — Scan prompts for PII (email, SSN, phone, credit card), API keys, URLs, and IP addresses with automated risk scoring.
-- **Playground** — Proxy LLM chat and completion calls through registered providers (OpenAI, Anthropic, Cohere, Ollama, Azure OpenAI) without leaving the dashboard.
+- **A/B Testing** — Run side-by-side tests against two prompt versions, measure performance with real evaluation scores from logs, and promote winning versions with an automatic `production` label.
+- **Compliance Engine** — Scan prompts for PII (email, SSN, phone, credit card), API keys, URLs, and IP addresses with automated risk scoring. Results are paginated and support detail lookup by ID.
+- **Playground** — Proxy LLM chat and completion calls through registered providers (OpenAI, Anthropic, Cohere, Ollama, Azure OpenAI) with input validation, stream timeouts, and lazy provider initialization.
 - **Environment Labels** — Tag prompt versions with labels like `production` or `v2-test` and resolve them at runtime.
-- **API Key Auth** — HMAC-SHA256 hashed keys with scoped permissions (`read`, `write`, `admin`), optional expiration, and master keys that can access any workspace.
+- **API Key Auth** — HMAC-SHA256 hashed keys with scoped permissions (`read`, `write`, `admin`), optional expiration, and master keys that can access any workspace. The dashboard uses a BFF proxy pattern so keys are never stored in browser localStorage.
 - **API Key Management** — Create, list, and revoke keys programmatically via `/v1/api-keys`.
 - **Per-API-Key Rate Limiting** — Sliding window rate limits with Redis or SQLite backends.
 - **Multi-Tenancy** — Workspace isolation via `X-Workspace-Id` header.
 - **OpenTelemetry Export** — Optional OTLP export for operators who already have an observability stack.
-- **Observability Dashboard** — Next.js UI with pages for prompts, logs, traces, runs, labels, evaluations, A/B tests, datasets, compliance, playground, and settings.
+- **Observability Dashboard** — Next.js UI with pages for prompts, logs, traces, runs, labels, evaluations, A/B tests, datasets, compliance, playground, audit logs, GitOps promotion, health status, and settings. Built with Radix UI primitives and free of hydration errors.
 - **Metrics Dashboard** — Time-series metrics, per-prompt usage statistics, evaluation trends, and activity summaries.
 - **Node.js & Python SDKs** — First-class client libraries for programmatic access.
 - **GitHub Webhooks** — Immediate sync on push events via webhook endpoint.
 - **Circuit Breaker** — GitHub API calls wrapped in an Opossum circuit breaker with exponential backoff on 429 responses.
 - **Migration System** — `umzug`-based migration runner with TypeScript migration files in `migrations/` supporting SQLite and PostgreSQL.
 - **Async Audit Log Queue** — `AuditLogService` batches audit entries and flushes to the database asynchronously.
+- **Audit Logs Explorer** — Query and visualize audit logs in the dashboard with filtering and pagination.
+- **GitOps Promotion Widget** — Visual interface for promoting prompt versions through Git-backed environments.
+- **Health Status Panel** — Real-time dashboard panel showing system health and dependency status.
 
 ---
 
@@ -289,7 +294,7 @@ See [docs/configuration.md](docs/configuration.md) for advanced configuration.
 
 Base URL: `http://localhost:3000`
 
-Authentication: All endpoints except `/health` require `X-API-Key` header.
+Authentication: All endpoints except `/health` require `X-API-Key` header. Mutation endpoints (POST, PUT, PATCH, DELETE) additionally require the `write` scope.
 
 Multi-tenancy: Pass `X-Workspace-Id` header to scope all data. API keys are validated against their assigned workspace. Master keys with `workspace_id = '*'` can access any workspace.
 
@@ -338,7 +343,7 @@ Multi-tenancy: Pass `X-Workspace-Id` header to scope all data. API keys are vali
 - `GET /v1/ab-tests` — List A/B tests
 - `GET /v1/ab-tests/:id` — Get an A/B test
 - `POST /v1/ab-tests/:id/run` — Run the test
-- `POST /v1/ab-tests/:id/promote` — Promote the winning variant
+- `POST /v1/ab-tests/:id/promote` — Promote the winning variant and create a `production` label
 - `DELETE /v1/ab-tests/:id` — Delete an A/B test
 
 ### Datasets
@@ -349,8 +354,8 @@ Multi-tenancy: Pass `X-Workspace-Id` header to scope all data. API keys are vali
 
 ### Compliance
 - `POST /v1/compliance/scan` — Scan prompt text for violations
-- `GET /v1/compliance/scores` — List compliance scores
-- `GET /v1/compliance/scores/:id` — Get a compliance score
+- `GET /v1/compliance/scores` — List compliance scores (paginated)
+- `GET /v1/compliance/scores/:id` — Get a compliance score by ID
 
 ### Playground
 - `GET /v1/playground/models` — List available LLM models
@@ -481,6 +486,9 @@ PromptMetrics includes an optional Next.js observability dashboard in the `ui/` 
 - Inspecting agent traces and their span trees
 - Tracking evaluation scores over time
 - Managing A/B tests, datasets, compliance scans, and the LLM playground
+- Exploring audit logs with filtering and pagination
+- Promoting prompt versions via the GitOps promotion widget
+- Checking system health on the real-time status panel
 
 ### Quick Start
 
@@ -501,7 +509,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3001](http://localhost:3001) and paste your API key.
+Open [http://localhost:3001](http://localhost:3001). The dashboard authenticates through a BFF proxy — your API key is never stored in browser localStorage.
 
 See [`ui/README.md`](ui/README.md) for the complete user guide: authentication, page-by-page walkthrough, metrics API reference, workspace switching, and common workflows.
 

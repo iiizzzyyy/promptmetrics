@@ -2,7 +2,7 @@
 import http from 'http';
 import { createApp } from './app';
 import { config } from '@config/index';
-import { initSchema } from '@models/promptmetrics-sqlite';
+import { initSchema, getDb } from '@models/promptmetrics-sqlite';
 import { setupGracefulShutdown } from '@utils/promptmetrics-shutdown';
 import { initOtel, shutdownOtel } from '@services/promptmetrics-otel.service';
 import { auditLogService } from '@services/audit-log.service';
@@ -10,6 +10,55 @@ import { GitSyncJob } from '@jobs/promptmetrics-git-sync.job';
 import { PromptReconciliationJob } from '@jobs/promptmetrics-reconciliation.job';
 import { createDriver } from '@drivers/promptmetrics-driver.factory';
 import { registerBuiltinProviders } from '@services/providers/provider.registry';
+import { PromptDriver } from '@drivers/promptmetrics-driver.interface';
+
+interface HealthState {
+  gitSyncLastRun: number | null;
+  reconciliationRunning: boolean;
+}
+
+const healthState: HealthState = {
+  gitSyncLastRun: null,
+  reconciliationRunning: false,
+};
+
+async function sendDeepHealth(res: http.ServerResponse, driver: PromptDriver): Promise<void> {
+  const checks: Record<string, string> = { sqlite: 'ok' };
+  let dbConnected = false;
+  let dbType: 'sqlite' | 'postgresql' = 'sqlite';
+
+  try {
+    const db = getDb();
+    await db.prepare('SELECT 1').get();
+    dbConnected = true;
+    dbType = process.env.DATABASE_URL ? 'postgresql' : 'sqlite';
+  } catch {
+    checks.sqlite = 'error';
+    dbConnected = false;
+  }
+
+  try {
+    await driver.sync();
+    checks.driver = 'ok';
+  } catch {
+    checks.driver = 'error';
+  }
+
+  const allOk = Object.values(checks).every((v) => v === 'ok');
+
+  const body = {
+    status: allOk ? 'ok' : 'degraded',
+    checks,
+    dbType,
+    dbConnected,
+    driverType: config.driver,
+    gitSyncLastRun: config.driver === 'github' ? healthState.gitSyncLastRun : undefined,
+    reconciliationRunning: healthState.reconciliationRunning,
+  };
+
+  res.writeHead(allOk ? 200 : 503, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(body));
+}
 
 async function main(): Promise<void> {
   console.log('Starting PromptMetrics...');
@@ -23,7 +72,15 @@ async function main(): Promise<void> {
 
   const driver = createDriver();
   const app = createApp(driver);
-  const server = http.createServer(app);
+
+  // Patch GitSyncJob to track last run time
+  const originalRunSync = (GitSyncJob.prototype as any).runSync;
+  if (originalRunSync) {
+    (GitSyncJob.prototype as any).runSync = async function () {
+      healthState.gitSyncLastRun = Date.now();
+      return originalRunSync.call(this);
+    };
+  }
 
   // Start git sync job for github driver (skip polling when webhooks are configured)
   const gitSyncJob = new GitSyncJob(driver, config.githubSyncIntervalMs);
@@ -37,9 +94,30 @@ async function main(): Promise<void> {
   // Start prompt reconciliation job for all valid drivers
   const reconciliationJob = new PromptReconciliationJob(driver);
   if (['filesystem', 'github', 's3'].includes(config.driver)) {
+    const originalRunReconcile = reconciliationJob.runReconcile.bind(reconciliationJob);
+    reconciliationJob.runReconcile = async () => {
+      healthState.reconciliationRunning = true;
+      try {
+        await originalRunReconcile();
+      } finally {
+        healthState.reconciliationRunning = false;
+      }
+    };
     reconciliationJob.start();
     console.log('Prompt reconciliation job started');
   }
+
+  const server = http.createServer((req, res) => {
+    const pathname = req.url ? req.url.split('?')[0] : '';
+    if (pathname === '/health/deep') {
+      sendDeepHealth(res, driver).catch(() => {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'error' }));
+      });
+      return;
+    }
+    app(req, res);
+  });
 
   setupGracefulShutdown({
     server,

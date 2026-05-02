@@ -16,23 +16,28 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    const storedKey = sessionStorage.getItem(API_KEY_STORAGE_KEY);
-    if (storedKey) {
-      setApiKey(storedKey);
-    } else if (process.env.NEXT_PUBLIC_DEMO_API_KEY) {
-      sessionStorage.setItem(API_KEY_STORAGE_KEY, process.env.NEXT_PUBLIC_DEMO_API_KEY);
+    if (process.env.NEXT_PUBLIC_DEMO_API_KEY) {
       setApiKey(process.env.NEXT_PUBLIC_DEMO_API_KEY);
     }
-
-    const storedWorkspace = sessionStorage.getItem(WORKSPACE_STORAGE_KEY);
-    if (storedWorkspace) setWorkspace(storedWorkspace);
   }, []);
 
-  const handleSave = () => {
-    sessionStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
-    sessionStorage.setItem(WORKSPACE_STORAGE_KEY, workspace);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSave = async () => {
+    try {
+      const res = await fetch("/api/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey, workspace }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to save session");
+      }
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      alert("Failed to save API key. Please try again.");
+    }
   };
 
   return (

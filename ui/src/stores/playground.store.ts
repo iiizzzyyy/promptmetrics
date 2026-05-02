@@ -40,6 +40,9 @@ export interface PlaygroundState {
     latencyMs: number;
     costUsd: number;
   } | null;
+
+  // Validation
+  validationError: string | null;
 }
 
 export interface PlaygroundActions {
@@ -61,6 +64,7 @@ export interface PlaygroundActions {
   setStreamError: (error: string | null) => void;
   setRunMetrics: (metrics: PlaygroundState["runMetrics"]) => void;
   resetStream: () => void;
+  validateBeforeRun: () => boolean;
 }
 
 export const usePlaygroundStore = create<PlaygroundState & PlaygroundActions>(
@@ -83,6 +87,7 @@ export const usePlaygroundStore = create<PlaygroundState & PlaygroundActions>(
     streamTokens: [],
     streamError: null,
     runMetrics: null,
+    validationError: null,
 
     // Actions
     setPaneSizes: (left, right) => set({ leftPaneSize: left, rightPaneSize: right }),
@@ -130,6 +135,24 @@ export const usePlaygroundStore = create<PlaygroundState & PlaygroundActions>(
     setRunMetrics: (metrics) => set({ runMetrics: metrics }),
     resetStream: () =>
       set({ streamTokens: [], streamError: null, runMetrics: null }),
+    validateBeforeRun: () => {
+      let error: string | null = null;
+
+      set((state) => {
+        if (!state.selectedModel) {
+          error = "Please select a model before running.";
+        } else if (!state.systemMessage.trim() && !state.userMessage.trim()) {
+          error = "Please provide at least a system message or a user message.";
+        } else if (state.temperature < 0 || state.temperature > 2) {
+          error = "Temperature must be between 0 and 2.";
+        } else if (state.maxTokens < 1) {
+          error = "Max tokens must be at least 1.";
+        }
+        return { validationError: error };
+      });
+
+      return error === null;
+    },
   })
 );
 
