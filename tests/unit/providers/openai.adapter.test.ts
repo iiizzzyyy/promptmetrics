@@ -4,8 +4,12 @@ import { OpenAIAdapter } from '@services/providers/openai.adapter';
 describe('OpenAIAdapter', () => {
   const originalEnv = process.env.OPENAI_API_KEY;
 
-  beforeAll(() => {
+  beforeEach(() => {
     process.env.OPENAI_API_KEY = 'test-key';
+  });
+
+  afterEach(() => {
+    nock.cleanAll();
   });
 
   afterAll(() => {
@@ -13,15 +17,21 @@ describe('OpenAIAdapter', () => {
     nock.cleanAll();
   });
 
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe('constructor', () => {
-    it('throws when OPENAI_API_KEY is missing', () => {
+    it('does not throw when OPENAI_API_KEY is missing (lazy validation)', () => {
       delete process.env.OPENAI_API_KEY;
-      expect(() => new OpenAIAdapter()).toThrow('OPENAI_API_KEY environment variable is required');
-      process.env.OPENAI_API_KEY = 'test-key';
+      expect(() => new OpenAIAdapter()).not.toThrow();
+    });
+
+    it('throws on first API call when OPENAI_API_KEY is missing', async () => {
+      delete process.env.OPENAI_API_KEY;
+      const adapter = new OpenAIAdapter();
+      await expect(
+        adapter.chatCompletion({ model: 'gpt-4o', messages: [{ role: 'user', content: 'hi' }] }),
+      ).rejects.toMatchObject({
+        provider: 'openai',
+        code: 'unknown',
+      });
     });
   });
 

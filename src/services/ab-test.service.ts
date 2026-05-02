@@ -189,7 +189,11 @@ export class ABTestService {
         await db
           .prepare('UPDATE ab_tests SET promoted_version = ?, promoted_at = ? WHERE id = ? AND workspace_id = ?')
           .run(version, now, id, workspaceId);
-        await this.labelService.createLabel(test.prompt_name, { name: 'production', version_tag: version }, workspaceId);
+        await this.labelService.createLabel(
+          test.prompt_name,
+          { name: 'production', version_tag: version },
+          workspaceId,
+        );
       }
 
       return { winner, version };

@@ -56,7 +56,11 @@ export class ABTestController {
       const logsA = await this.logService.getLogsForPromptVersion(test.prompt_name, test.version_a, workspaceId);
       const logsB = await this.logService.getLogsForPromptVersion(test.prompt_name, test.version_b, workspaceId);
 
-      const extractScore = (log: { latency_ms?: number | null; cost_usd?: number | null; metadata?: Record<string, unknown> }): number => {
+      const extractScore = (log: {
+        latency_ms?: number | null;
+        cost_usd?: number | null;
+        metadata?: Record<string, unknown>;
+      }): number => {
         if (metric === 'latency') return log.latency_ms ?? 0;
         if (metric === 'cost') return log.cost_usd ?? 0;
         if (metric === 'win_rate') {

@@ -5,9 +5,13 @@ describe('AzureOpenAIAdapter', () => {
   const originalKey = process.env.AZURE_OPENAI_API_KEY;
   const originalUrl = process.env.AZURE_OPENAI_BASE_URL;
 
-  beforeAll(() => {
+  beforeEach(() => {
     process.env.AZURE_OPENAI_API_KEY = 'test-azure-key';
     process.env.AZURE_OPENAI_BASE_URL = 'https://test.openai.azure.com/openai/deployments/test-deployment';
+  });
+
+  afterEach(() => {
+    nock.cleanAll();
   });
 
   afterAll(() => {
@@ -16,21 +20,23 @@ describe('AzureOpenAIAdapter', () => {
     nock.cleanAll();
   });
 
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe('constructor', () => {
-    it('throws when AZURE_OPENAI_API_KEY is missing', () => {
+    it('does not throw when env vars are missing (lazy validation)', () => {
       delete process.env.AZURE_OPENAI_API_KEY;
-      expect(() => new AzureOpenAIAdapter()).toThrow('AZURE_OPENAI_API_KEY environment variable is required');
-      process.env.AZURE_OPENAI_API_KEY = 'test-azure-key';
+      delete process.env.AZURE_OPENAI_BASE_URL;
+      expect(() => new AzureOpenAIAdapter()).not.toThrow();
     });
 
-    it('throws when AZURE_OPENAI_BASE_URL is missing', () => {
+    it('throws on first API call when env vars are missing', async () => {
+      delete process.env.AZURE_OPENAI_API_KEY;
       delete process.env.AZURE_OPENAI_BASE_URL;
-      expect(() => new AzureOpenAIAdapter()).toThrow('AZURE_OPENAI_BASE_URL environment variable is required');
-      process.env.AZURE_OPENAI_BASE_URL = 'https://test.openai.azure.com/openai/deployments/test-deployment';
+      const adapter = new AzureOpenAIAdapter();
+      await expect(
+        adapter.chatCompletion({ model: 'gpt-4o', messages: [{ role: 'user', content: 'hi' }] }),
+      ).rejects.toMatchObject({
+        provider: 'azure_openai',
+        code: 'unknown',
+      });
     });
   });
 
