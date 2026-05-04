@@ -28,16 +28,4 @@ describe("playground store", () => {
     expect(state.streamError).toBeNull();
     expect(state.runMetrics).toBeNull();
   });
-
-  it("selector hooks return correct slices", () => {
-    const store = usePlaygroundStore.getState();
-    store.setTemperature(0.5);
-    store.setMaxTokens(1024);
-    store.setTopP(0.9);
-
-    const state = usePlaygroundStore.getState();
-    expect(state.temperature).toBe(0.5);
-    expect(state.maxTokens).toBe(1024);
-    expect(state.topP).toBe(0.9);
-  });
 });

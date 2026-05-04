@@ -11,6 +11,7 @@ export interface TimeSeriesPoint {
   p50_latency_ms: number | null;
   p95_latency_ms: number | null;
   error_rate: number;
+  log_error_rate: number;
 }
 
 export interface PromptMetric {
@@ -65,6 +66,37 @@ export class MetricsService {
       return `date(${column}, 'unixepoch')`;
     }
     return `TO_CHAR(TO_TIMESTAMP(${column}), 'YYYY-MM-DD')`;
+  }
+
+  async getLogErrorRate(
+    workspaceId: string = 'default',
+    start: number,
+    end: number,
+  ): Promise<{ date: string; error_rate: number }[]> {
+    const db = getDb();
+    const dialect = db.dialect;
+    const dateBucket = this.getDateBucket('l.created_at', dialect);
+
+    const sql = `
+      SELECT
+        ${dateBucket} AS date,
+        CAST(SUM(CASE WHEN l.status = 'error' THEN 1 ELSE 0 END) AS REAL)
+          / NULLIF(COUNT(*), 0) AS error_rate
+      FROM logs l
+      WHERE l.workspace_id = ? AND l.created_at >= ? AND l.created_at <= ?
+      GROUP BY ${dateBucket}
+      ORDER BY ${dateBucket}
+    `;
+
+    const rows = (await db.prepare(sql).all(workspaceId, start, end)) as Array<{
+      date: unknown;
+      error_rate: number | null;
+    }>;
+
+    return rows.map((r) => ({
+      date: formatDateBucket(r.date),
+      error_rate: r.error_rate ?? 0,
+    }));
   }
 
   async getTimeSeries(workspaceId: string = 'default', start: number, end: number): Promise<TimeSeriesPoint[]> {
@@ -125,6 +157,12 @@ export class MetricsService {
       runMap.set(formatDateBucket(r.date), { total_runs: r.total_runs, failed_runs: r.failed_runs });
     }
 
+    const logErrorRates = await this.getLogErrorRate(workspaceId, start, end);
+    const logErrorMap = new Map<string, number>();
+    for (const e of logErrorRates) {
+      logErrorMap.set(e.date, e.error_rate);
+    }
+
     return logRows.map((l) => {
       const dateStr = formatDateBucket(l.date);
       const runData = runMap.get(dateStr);
@@ -138,6 +176,7 @@ export class MetricsService {
         p50_latency_ms: dialect === 'postgres' ? (l.p50_latency_ms ?? null) : null,
         p95_latency_ms: dialect === 'postgres' ? (l.p95_latency_ms ?? null) : null,
         error_rate: errorRate,
+        log_error_rate: logErrorMap.get(dateStr) ?? 0,
       };
     });
   }

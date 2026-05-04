@@ -144,7 +144,7 @@ export default function TestUIPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Popover</h2>
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-          <PopoverTrigger onClick={() => setPopoverOpen(true)}>
+          <PopoverTrigger asChild>
             <Button variant="outline">Open Popover</Button>
           </PopoverTrigger>
           <PopoverContent>

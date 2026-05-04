@@ -34,11 +34,31 @@ export class ProviderRegistry {
   clearCache(): void {
     this.cache.clear();
   }
+
+  get size(): number {
+    return this.adapters.size;
+  }
+
+  unregister(providerName: string): void {
+    if (process.env.NODE_ENV !== 'test') {
+      throw new Error('unregister() is only allowed in test environment');
+    }
+    this.adapters.delete(providerName);
+    this.cache.delete(providerName);
+  }
+
+  freeze(): void {
+    Object.freeze(this.adapters);
+  }
 }
 
 export const providerRegistry = new ProviderRegistry();
 
 export async function registerBuiltinProviders(): Promise<void> {
+  if (providerRegistry.size > 0) {
+    return;
+  }
+
   const { OpenAIAdapter } = await import('./openai.adapter');
   providerRegistry.register('openai', () => new OpenAIAdapter());
 
@@ -53,4 +73,6 @@ export async function registerBuiltinProviders(): Promise<void> {
 
   const { AzureOpenAIAdapter } = await import('./azure-openai.adapter');
   providerRegistry.register('azure_openai', () => new AzureOpenAIAdapter());
+
+  providerRegistry.freeze();
 }

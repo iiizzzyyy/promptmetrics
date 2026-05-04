@@ -1,7 +1,6 @@
 "use client";
 
 import React, { Suspense, useCallback, useRef } from "react";
-import { usePlaygroundStore } from "@/stores/playground.store";
 import { LazyMonacoEditor } from "@/components/lazy";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { editor } from "monaco-editor";
@@ -94,28 +93,55 @@ function MonacoField({ label, value, onChange, placeholder }: EditorFieldProps) 
   );
 }
 
-export function EditorTab() {
-  const {
-    systemMessage,
-    userMessage,
-    setSystemMessage,
-    setUserMessage,
-  } = usePlaygroundStore();
+interface EditorTabProps {
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+  onMessagesChange: (messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>) => void;
+  messagesError?: string;
+}
+
+export function EditorTab({ messages, onMessagesChange, messagesError }: EditorTabProps) {
+  const systemMessage = messages.find((m) => m.role === 'system')?.content ?? '';
+  const userMessage = messages.find((m) => m.role === 'user')?.content ?? '';
+
+  const handleSystemChange = (value: string) => {
+    const next = [...messages];
+    const idx = next.findIndex((m) => m.role === 'system');
+    if (idx >= 0) {
+      next[idx] = { role: 'system', content: value };
+    } else {
+      next.push({ role: 'system', content: value });
+    }
+    onMessagesChange(next);
+  };
+
+  const handleUserChange = (value: string) => {
+    const next = [...messages];
+    const idx = next.findIndex((m) => m.role === 'user');
+    if (idx >= 0) {
+      next[idx] = { role: 'user', content: value };
+    } else {
+      next.push({ role: 'user', content: value });
+    }
+    onMessagesChange(next);
+  };
 
   return (
     <div className="flex h-full flex-col gap-2">
       <MonacoField
         label="System Message"
         value={systemMessage}
-        onChange={setSystemMessage}
+        onChange={handleSystemChange}
         placeholder="Enter system prompt..."
       />
       <MonacoField
         label="User Message"
         value={userMessage}
-        onChange={setUserMessage}
+        onChange={handleUserChange}
         placeholder="Enter user message..."
       />
+      {messagesError && (
+        <p className="text-sm text-destructive">{messagesError}</p>
+      )}
     </div>
   );
 }

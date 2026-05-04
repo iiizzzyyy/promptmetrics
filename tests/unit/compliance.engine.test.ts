@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { getDb, initSchema, closeDb } from '@models/promptmetrics-sqlite';
+import { initSchema, closeDb } from '@models/promptmetrics-sqlite';
 import { ComplianceEngine, ComplianceRule } from '@services/compliance.engine';
 
 describe('ComplianceEngine', () => {
@@ -222,25 +222,6 @@ describe('ComplianceEngine', () => {
       const result = engine.score('A B C', rules);
       expect(result.score).toBe(25);
       expect(result.riskLevel).toBe('critical');
-    });
-  });
-
-  describe('scanPrompt', () => {
-    it('stores compliance score in the database', async () => {
-      const result = await engine.scanPrompt('prompt-a', 'v1.0', 'SSN: 123-45-6789', 'ws-1');
-      expect(result.score).toBeLessThan(100);
-      expect(result.violations.length).toBeGreaterThan(0);
-
-      const db = getDb();
-      const row = (await db
-        .prepare('SELECT * FROM compliance_scores WHERE prompt_name = ? AND workspace_id = ?')
-        .get('prompt-a', 'ws-1')) as Record<string, unknown>;
-      expect(row).toBeDefined();
-      expect(row.prompt_name).toBe('prompt-a');
-      expect(row.version_tag).toBe('v1.0');
-      expect(row.score).toBe(result.score);
-      const violations = JSON.parse(row.violations_json as string);
-      expect(violations).toEqual(result.violations);
     });
   });
 });

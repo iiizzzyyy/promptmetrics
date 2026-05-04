@@ -30,9 +30,11 @@ describe('Compliance API Integration', () => {
     const db = getDb();
     apiKey = 'pm_testkey_compliance';
     const keyHash = hashApiKey(apiKey);
-    await db.prepare(
-      'INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id',
-    ).run(keyHash, 'test-key-compliance', 'read,write', '*');
+    await db
+      .prepare(
+        'INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id',
+      )
+      .run(keyHash, 'test-key-compliance', 'read,write', '*');
 
     const driver = new FilesystemDriver(testPromptsPath);
     app = createApp(driver);
@@ -93,7 +95,7 @@ describe('Compliance API Integration', () => {
     expect(res.body.violations).toEqual([]);
   });
 
-  it('list scores paginated', async () => {
+  it('list scores paginated with cursor', async () => {
     const db = getDb();
     await db
       .prepare(
@@ -108,15 +110,30 @@ describe('Compliance API Integration', () => {
       )
       .run('paginated-b', 'v1.1', 90, '[]', 'default', Math.floor(Date.now() / 1000) - 1);
 
-    const res = await request(app).get('/v1/compliance/scores?page=1&limit=10').set('X-API-Key', apiKey);
+    const res = await request(app).get('/v1/compliance/scores?limit=10').set('X-API-Key', apiKey);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.items)).toBe(true);
     expect(res.body.items.length).toBeGreaterThanOrEqual(2);
-    expect(res.body.page).toBe(1);
-    expect(res.body.limit).toBe(10);
-    expect(typeof res.body.total).toBe('number');
-    expect(typeof res.body.totalPages).toBe('number');
+    expect(res.body.items.length).toBeLessThanOrEqual(10);
+    expect(res.body.nextCursor === null || typeof res.body.nextCursor === 'string').toBe(true);
     expect(res.body.items[0].prompt_name).toBe('paginated-a');
+  });
+
+  it('list scores returns ≤50 by default', async () => {
+    const db = getDb();
+    for (let i = 0; i < 55; i++) {
+      await db
+        .prepare(
+          `INSERT INTO compliance_scores (prompt_name, version_tag, score, violations_json, workspace_id, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        )
+        .run(`bulk-${i}`, 'v1.0', 80, '[]', 'default', Math.floor(Date.now() / 1000) - i);
+    }
+
+    const res = await request(app).get('/v1/compliance/scores').set('X-API-Key', apiKey);
+    expect(res.status).toBe(200);
+    expect(res.body.items.length).toBeLessThanOrEqual(50);
+    expect(typeof res.body.nextCursor).toBe('string');
   });
 
   it('get score by id', async () => {

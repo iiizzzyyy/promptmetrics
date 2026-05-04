@@ -10,7 +10,7 @@ import { StatusBadge } from "@/components/data-display/StatusBadge";
 import { TimeSeriesChart } from "@/components/charts/TimeSeriesChart";
 import { TokenBarChart } from "@/components/charts/TokenBarChart";
 import { ScoreTrendChart } from "@/components/charts/ScoreTrendChart";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -110,6 +110,9 @@ export default function OverviewPage() {
               <TabsTrigger value="30d">30 days</TabsTrigger>
               <TabsTrigger value="90d">90 days</TabsTrigger>
             </TabsList>
+            <TabsContent value="7d" className="hidden">{null}</TabsContent>
+            <TabsContent value="30d" className="hidden">{null}</TabsContent>
+            <TabsContent value="90d" className="hidden">{null}</TabsContent>
           </Tabs>
         </div>
 

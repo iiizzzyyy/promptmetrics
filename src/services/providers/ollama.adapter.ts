@@ -6,6 +6,15 @@ import {
   type StreamChunk,
   ProviderError,
 } from '@services/llm-provider.adapter';
+import { safeJsonParse } from '@utils/safe-json';
+
+interface OllamaStreamChunk {
+  message?: { content?: string };
+  done?: boolean;
+  done_reason?: string;
+  eval_count?: number;
+  prompt_eval_count?: number;
+}
 
 interface OllamaModelTag {
   name: string;
@@ -108,7 +117,10 @@ export class OllamaAdapter implements LLMProviderAdapter {
     }
   }
 
-  async *streamChatCompletion(request: ChatCompletionRequest, signal?: globalThis.AbortSignal): AsyncGenerator<StreamChunk> {
+  async *streamChatCompletion(
+    request: ChatCompletionRequest,
+    signal?: globalThis.AbortSignal,
+  ): AsyncGenerator<StreamChunk> {
     const startTime = Date.now();
 
     try {
@@ -163,25 +175,16 @@ export class OllamaAdapter implements LLMProviderAdapter {
             const trimmed = line.trim();
             if (!trimmed) continue;
 
-            try {
-              const parsed = JSON.parse(trimmed) as {
-                message?: { content?: string };
-                done?: boolean;
-                done_reason?: string;
-                eval_count?: number;
-                prompt_eval_count?: number;
-              };
+            const parsed = safeJsonParse<OllamaStreamChunk | null>(trimmed, null);
+            if (!parsed) continue;
 
-              if (parsed.message?.content) {
-                tokensOut += 1;
-                yield { type: 'token', content: parsed.message.content };
-              }
+            if (parsed.message?.content) {
+              tokensOut += 1;
+              yield { type: 'token', content: parsed.message.content };
+            }
 
-              if (parsed.done) {
-                finishReason = parsed.done_reason || 'stop';
-              }
-            } catch {
-              // Skip malformed lines
+            if (parsed.done) {
+              finishReason = parsed.done_reason || 'stop';
             }
           }
         }

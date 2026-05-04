@@ -1,3 +1,5 @@
+import { getClientCsrfToken } from "@/lib/csrf";
+
 const API_BASE = "/api/proxy";
 
 type PaginatedResponse<T> = {
@@ -38,10 +40,14 @@ async function fetchJson<T>(path: string, options?: RequestInit): Promise<T> {
     signal = options.signal;
   }
 
+  const csrfToken = getClientCsrfToken();
+  const isMutating = options?.method && options.method !== "GET" && options.method !== "HEAD";
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     signal,
     headers: {
+      ...(isMutating && csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
       ...(options?.headers || {}),
       "Content-Type": "application/json",
     },
@@ -79,6 +85,7 @@ export type TimeSeriesPoint = {
   p50_latency_ms: number | null;
   p95_latency_ms: number | null;
   error_rate: number;
+  log_error_rate: number;
 };
 
 export type TimeSeriesResponse = {
@@ -279,6 +286,7 @@ export type ABTestItem = {
   version_a: string;
   version_b: string;
   dataset_id: number | null;
+  evaluation_id: number | null;
   status: 'running' | 'completed' | 'cancelled';
   metric: string;
   created_at: number;
@@ -292,6 +300,10 @@ export type ABTestResultItem = {
   version_b_score: number | null;
   p_value: number | null;
   winner: string | null;
+  ci_lower: number | null;
+  ci_upper: number | null;
+  stddev_a: number | null;
+  stddev_b: number | null;
   created_at: number;
 };
 
@@ -328,6 +340,9 @@ export type ComplianceScoreItem = {
     category: string;
     matchedText: string;
   }>;
+  provider: string;
+  flagged: boolean;
+  categories: string[];
   created_at: number;
 };
 
@@ -346,6 +361,8 @@ export const api = {
 
   getPrompts: (params?: { page?: number; limit?: number }) =>
     fetchJson<PaginatedResponse<PromptItem>>(`/v1/prompts${buildQuery(params)}`),
+  getPendingPrompts: (params?: { page?: number; limit?: number }) =>
+    fetchJson<PaginatedResponse<PromptVersion>>(`/v1/prompts/pending${buildQuery(params)}`),
   getPrompt: (name: string) =>
     fetchJson<PromptDetail>(`/v1/prompts/${encodeURIComponent(name)}?render=false`),
   getPromptVersions: (name: string, params?: { page?: number; limit?: number }) =>

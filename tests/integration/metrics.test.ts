@@ -35,97 +35,74 @@ describe('Metrics API Integration', () => {
     const db = getDb();
     apiKey = 'pm_testkey_metrics';
     const keyHash = hashApiKey(apiKey);
-    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id').run(
-      keyHash,
-      'test-key-metrics',
-      'read,write',
-      '*',
-    );
+    await db
+      .prepare(
+        'INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id',
+      )
+      .run(keyHash, 'test-key-metrics', 'read,write', '*');
 
     const now = Math.floor(Date.now() / 1000);
     const oneDayAgo = now - 86400;
 
-    await db.prepare('INSERT INTO prompts (name, version_tag, driver, status, workspace_id) VALUES (?, ?, ?, ?, ?)').run(
-      'summarize',
-      'v1.0',
-      'filesystem',
-      'active',
-      'default',
-    );
-    await db.prepare('INSERT INTO prompts (name, version_tag, driver, status, workspace_id) VALUES (?, ?, ?, ?, ?)').run(
-      'summarize',
-      'v1.1',
-      'filesystem',
-      'active',
-      'default',
-    );
-    await db.prepare('INSERT INTO prompts (name, version_tag, driver, status, workspace_id) VALUES (?, ?, ?, ?, ?)').run(
-      'other-prompt',
-      'v1.0',
-      'filesystem',
-      'active',
-      'other-workspace',
-    );
+    await db
+      .prepare('INSERT INTO prompts (name, version_tag, driver, status, workspace_id) VALUES (?, ?, ?, ?, ?)')
+      .run('summarize', 'v1.0', 'filesystem', 'active', 'default');
+    await db
+      .prepare('INSERT INTO prompts (name, version_tag, driver, status, workspace_id) VALUES (?, ?, ?, ?, ?)')
+      .run('summarize', 'v1.1', 'filesystem', 'active', 'default');
+    await db
+      .prepare('INSERT INTO prompts (name, version_tag, driver, status, workspace_id) VALUES (?, ?, ?, ?, ?)')
+      .run('other-prompt', 'v1.0', 'filesystem', 'active', 'other-workspace');
 
-    await db.prepare(
-      `
+    await db
+      .prepare(
+        `
       INSERT INTO logs (prompt_name, version_tag, tokens_in, tokens_out, latency_ms, cost_usd, created_at, workspace_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `,
-    ).run('summarize', 'v1.0', 100, 50, 200, 0.01, oneDayAgo, 'default');
-    await db.prepare(
-      `
+      )
+      .run('summarize', 'v1.0', 100, 50, 200, 0.01, oneDayAgo, 'default');
+    await db
+      .prepare(
+        `
       INSERT INTO logs (prompt_name, version_tag, tokens_in, tokens_out, latency_ms, cost_usd, created_at, workspace_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `,
-    ).run('summarize', 'v1.0', 200, 100, 300, 0.02, oneDayAgo, 'default');
-    await db.prepare(
-      `
+      )
+      .run('summarize', 'v1.0', 200, 100, 300, 0.02, oneDayAgo, 'default');
+    await db
+      .prepare(
+        `
       INSERT INTO logs (prompt_name, version_tag, tokens_in, tokens_out, latency_ms, cost_usd, created_at, workspace_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `,
-    ).run('summarize', 'v1.1', 150, 75, 250, 0.015, oneDayAgo, 'default');
-    await db.prepare(
-      `
+      )
+      .run('summarize', 'v1.1', 150, 75, 250, 0.015, oneDayAgo, 'default');
+    await db
+      .prepare(
+        `
       INSERT INTO logs (prompt_name, version_tag, tokens_in, tokens_out, latency_ms, cost_usd, created_at, workspace_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `,
-    ).run('other-prompt', 'v1.0', 50, 25, 100, 0.005, oneDayAgo, 'other-workspace');
+      )
+      .run('other-prompt', 'v1.0', 50, 25, 100, 0.005, oneDayAgo, 'other-workspace');
 
-    await db.prepare('INSERT INTO runs (run_id, workflow_name, status, created_at, workspace_id) VALUES (?, ?, ?, ?, ?)').run(
-      'run-1',
-      'wf-1',
-      'completed',
-      oneDayAgo,
-      'default',
-    );
-    await db.prepare('INSERT INTO runs (run_id, workflow_name, status, created_at, workspace_id) VALUES (?, ?, ?, ?, ?)').run(
-      'run-2',
-      'wf-1',
-      'failed',
-      oneDayAgo,
-      'default',
-    );
-    await db.prepare('INSERT INTO runs (run_id, workflow_name, status, created_at, workspace_id) VALUES (?, ?, ?, ?, ?)').run(
-      'run-3',
-      'wf-2',
-      'completed',
-      oneDayAgo,
-      'other-workspace',
-    );
+    await db
+      .prepare('INSERT INTO runs (run_id, workflow_name, status, created_at, workspace_id) VALUES (?, ?, ?, ?, ?)')
+      .run('run-1', 'wf-1', 'completed', oneDayAgo, 'default');
+    await db
+      .prepare('INSERT INTO runs (run_id, workflow_name, status, created_at, workspace_id) VALUES (?, ?, ?, ?, ?)')
+      .run('run-2', 'wf-1', 'failed', oneDayAgo, 'default');
+    await db
+      .prepare('INSERT INTO runs (run_id, workflow_name, status, created_at, workspace_id) VALUES (?, ?, ?, ?, ?)')
+      .run('run-3', 'wf-2', 'completed', oneDayAgo, 'other-workspace');
 
-    await db.prepare('INSERT INTO traces (trace_id, prompt_name, created_at, workspace_id) VALUES (?, ?, ?, ?)').run(
-      'trace-1',
-      'summarize',
-      oneDayAgo,
-      'default',
-    );
-    await db.prepare('INSERT INTO traces (trace_id, prompt_name, created_at, workspace_id) VALUES (?, ?, ?, ?)').run(
-      'trace-2',
-      'other-prompt',
-      oneDayAgo,
-      'other-workspace',
-    );
+    await db
+      .prepare('INSERT INTO traces (trace_id, prompt_name, created_at, workspace_id) VALUES (?, ?, ?, ?)')
+      .run('trace-1', 'summarize', oneDayAgo, 'default');
+    await db
+      .prepare('INSERT INTO traces (trace_id, prompt_name, created_at, workspace_id) VALUES (?, ?, ?, ?)')
+      .run('trace-2', 'other-prompt', oneDayAgo, 'other-workspace');
 
     const evalResult1 = await db
       .prepare('INSERT INTO evaluations (name, prompt_name, created_at, workspace_id) VALUES (?, ?, ?, ?)')
@@ -137,15 +114,15 @@ describe('Metrics API Integration', () => {
       .run('Grammar Check', 'summarize', oneDayAgo, 'default');
     evalId2 = evalResult2.lastInsertRowid as number;
 
-    await db.prepare(
-      'INSERT INTO evaluation_results (evaluation_id, score, created_at, workspace_id) VALUES (?, ?, ?, ?)',
-    ).run(evalId1, 4.5, oneDayAgo, 'default');
-    await db.prepare(
-      'INSERT INTO evaluation_results (evaluation_id, score, created_at, workspace_id) VALUES (?, ?, ?, ?)',
-    ).run(evalId1, 3.5, oneDayAgo, 'default');
-    await db.prepare(
-      'INSERT INTO evaluation_results (evaluation_id, score, created_at, workspace_id) VALUES (?, ?, ?, ?)',
-    ).run(evalId2, 5.0, oneDayAgo, 'default');
+    await db
+      .prepare('INSERT INTO evaluation_results (evaluation_id, score, created_at, workspace_id) VALUES (?, ?, ?, ?)')
+      .run(evalId1, 4.5, oneDayAgo, 'default');
+    await db
+      .prepare('INSERT INTO evaluation_results (evaluation_id, score, created_at, workspace_id) VALUES (?, ?, ?, ?)')
+      .run(evalId1, 3.5, oneDayAgo, 'default');
+    await db
+      .prepare('INSERT INTO evaluation_results (evaluation_id, score, created_at, workspace_id) VALUES (?, ?, ?, ?)')
+      .run(evalId2, 5.0, oneDayAgo, 'default');
 
     driver = new FilesystemDriver(testPromptsPath);
     app = createApp(driver);
@@ -329,9 +306,11 @@ describe('Metrics API Integration', () => {
     const threeDaysAgoTs = Math.floor(nowMs / 1000) - 3 * 86400;
     const twoDaysAgoDateStr = new Date(nowMs - 2 * 86400 * 1000).toISOString().split('T')[0];
 
-    await db.prepare(
-      'INSERT INTO logs (prompt_name, version_tag, tokens_in, tokens_out, latency_ms, cost_usd, created_at, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    ).run('gap-prompt', 'v1.0', 10, 10, 100, 0.001, threeDaysAgoTs, 'default');
+    await db
+      .prepare(
+        'INSERT INTO logs (prompt_name, version_tag, tokens_in, tokens_out, latency_ms, cost_usd, created_at, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run('gap-prompt', 'v1.0', 10, 10, 100, 0.001, threeDaysAgoTs, 'default');
 
     const res = await request(app).get('/v1/metrics/time-series?window=7d').set('X-API-Key', apiKey);
     expect(res.status).toBe(200);
@@ -352,5 +331,32 @@ describe('Metrics API Integration', () => {
     expect(summarizeV1.total_cost_usd).toBe(0.03);
     expect(summarizeV11.total_cost_usd).toBe(0.015);
     expect(res.body.prompts.indexOf(summarizeV1)).toBeLessThan(res.body.prompts.indexOf(summarizeV11));
+  });
+
+  it('GET /v1/metrics/time-series computes log_error_rate from logs.status', async () => {
+    const db = getDb();
+    const now = Math.floor(Date.now() / 1000);
+    const oneDayAgo = now - 86400;
+
+    for (let i = 0; i < 93; i++) {
+      await db
+        .prepare(
+          'INSERT INTO logs (prompt_name, version_tag, tokens_in, tokens_out, latency_ms, cost_usd, created_at, workspace_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        )
+        .run('error-test', 'v1.0', 10, 10, 100, 0.001, oneDayAgo, 'default', 'ok');
+    }
+    for (let i = 0; i < 7; i++) {
+      await db
+        .prepare(
+          'INSERT INTO logs (prompt_name, version_tag, tokens_in, tokens_out, latency_ms, cost_usd, created_at, workspace_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        )
+        .run('error-test', 'v1.0', 10, 10, 100, 0.001, oneDayAgo, 'default', 'error');
+    }
+
+    const res = await request(app).get('/v1/metrics/time-series?window=7d').set('X-API-Key', apiKey);
+    expect(res.status).toBe(200);
+    const point = res.body.daily.find((d: any) => d.date === new Date(oneDayAgo * 1000).toISOString().split('T')[0]);
+    expect(point).toBeDefined();
+    expect(point.log_error_rate).toBeCloseTo(0.07, 2);
   });
 });

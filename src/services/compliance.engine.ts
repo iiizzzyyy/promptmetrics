@@ -1,5 +1,3 @@
-import { getDb } from '@models/promptmetrics-sqlite';
-
 export interface ComplianceRule {
   id?: number;
   name: string;
@@ -145,31 +143,6 @@ export class ComplianceEngine {
       score >= 90 ? 'low' : score >= 70 ? 'medium' : score >= 40 ? 'high' : 'critical';
 
     return { score, maxScore: 100, violations, riskLevel };
-  }
-
-  async scanPrompt(
-    promptName: string,
-    versionTag: string,
-    text: string,
-    workspaceId: string,
-  ): Promise<{ score: number; violations: Violation[] }> {
-    const result = this.score(text);
-    const db = getDb();
-    await db
-      .prepare(
-        `INSERT INTO compliance_scores (prompt_name, version_tag, score, violations_json, workspace_id, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        promptName,
-        versionTag,
-        result.score,
-        JSON.stringify(result.violations),
-        workspaceId,
-        Math.floor(Date.now() / 1000),
-      );
-
-    return { score: result.score, violations: result.violations };
   }
 
   static luhnCheck(digits: string): boolean {

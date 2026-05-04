@@ -4,81 +4,85 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-```bash
-# Run dev server (ts-node with path aliases)
-npm run dev
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Run dev server (ts-node with path aliases) |
+| `npm run build` | Build for production (tsc + tsc-alias) |
+| `npm start` | Start production server |
+| `npm test` | Run all tests with coverage |
+| `npx jest tests/unit` | Unit tests only |
+| `npx jest tests/integration` | Integration tests only |
+| `npx jest tests/e2e` | E2E tests only |
+| `npm run lint` | Lint check |
+| `npm run lint:fix` | Auto-fix lint issues |
+| `npm run format` | Run prettier |
+| `npm run db:init` | Initialize SQLite schema |
+| `npm run api-key:generate` | Generate an API key |
 
-# Build for production (tsc + tsc-alias)
-npm run build
-
-# Start production server
-npm start
-
-# Run all tests with coverage
-npm test
-
-# Run specific test suites
-npx jest tests/unit
-npx jest tests/integration
-npx jest tests/e2e
-
-# Run a single test file
-npx jest tests/integration/prompts.test.ts
-
-# Lint and format
-npm run lint
-npm run lint:fix
-npm run format
-
-# Database and key management
-npm run db:init                # Initialize SQLite schema
-npm run api-key:generate       # Generate an API key
-```
-
-**Required for tests:** Set `API_KEY_SALT` in `.env` or the test setup will use a hardcoded `test-salt-for-ci`. Tests create isolated SQLite DBs in `./data/` and clean them up in `afterAll`.
+**Required for tests:** Set `API_KEY_SALT` in `.env` or tests use a hardcoded `test-salt-for-ci`. Tests create isolated SQLite DBs in `./data/` and clean up in `afterAll`.
 
 **Path aliases** are defined in `tsconfig.json` and mirrored in `jest.config.js` (`@config/*`, `@controllers/*`, `@drivers/*`, etc.). Always use them for imports.
 
 ---
 
-## High-Level Architecture
+## Environment Variables
 
-### Hybrid Storage Model
+| Variable | Required | Description |
+|---|---|---|
+| `API_KEY_SALT` | Yes | HMAC salt for API key hashing |
+| `DRIVER` | No | `filesystem` (default), `github`, or `s3` |
+| `GITHUB_REPO` | If `DRIVER=github` | `owner/repo` format |
+| `GITHUB_TOKEN` | If `DRIVER=github` | GitHub personal access token |
+| `DATABASE_URL` | No | Postgres connection string; omit for SQLite |
+| `REDIS_URL` | No | Redis connection string for shared caching |
+| `API_KEY_LAST_USED_DEBOUNCE_MS` | No | Default `60000` |
+| `RATE_LIMIT_WINDOW_MS` / `RATE_LIMIT_MAX_REQUESTS` | No | Default `60000` / `100` |
 
-PromptMetrics uses a two-tier storage architecture that spans multiple files:
+---
 
-1. **Prompt content** lives in Git (GitHub, local filesystem, or S3). The `PromptDriver` interface (`src/drivers/promptmetrics-driver.interface.ts`) abstracts this. There are three implementations:
-   - `FilesystemDriver` — stores JSON files at `./prompts/{name}/{version}.json`
-   - `GithubDriver` — uses GitHub Contents API + a local bare clone at `./data/github-clone` (synced via background `GitSyncJob`)
-   - `S3Driver` — stores prompt JSON as objects in S3 with keys like `prompts/{name}/{version}.json`
+## Architecture Rules
 
-2. **Metadata** lives in SQLite (`better-sqlite3` with WAL mode) or PostgreSQL. The `getDb()` singleton (`src/models/promptmetrics-sqlite.ts`) provides the connection. Schema is managed via `umzug` migration runner (`src/migrations/migrator.ts`) with numbered TypeScript migration files in `migrations/` that use dialect-conditional DDL for SQLite and PostgreSQL.
+### 1. Driver Pattern for Prompt Storage
+All prompt read/write operations go through the `PromptDriver` interface. Adding a new storage backend means:
+1. Implement `PromptDriver` in `src/drivers/promptmetrics-<name>-driver.ts`
+2. Add a case in `src/drivers/promptmetrics-driver.factory.ts`
+3. Export the class from the factory
 
-**Key implication:** The `prompts` table in SQLite is an *index* — it stores `name`, `version_tag`, `commit_sha`, `driver`, and `status`, but the actual prompt JSON content is read from Git/filesystem by the driver. When creating a prompt, `PromptService` inserts a row with `status = 'pending'`, calls the driver to write content to the storage backend, then updates the row to `status = 'active'`. If the driver write fails, the row remains `pending` and is not returned by read operations. A background `PromptReconciliationJob` heals stuck pending prompts automatically.
+**Current implementations:** `FilesystemDriver`, `GithubDriver`, `S3Driver`.
 
-### Application Bootstrap Flow
+### 2. Async DatabaseAdapter
+The `DatabaseAdapter` interface is uniformly async across SQLite and PostgreSQL. All query methods (`exec`, `all`, `get`, `run`, `transaction`) return `Promise`s. Controllers `await` every DB call. The SQLite adapter wraps `better-sqlite3` to satisfy this contract.
 
-1. `src/server.ts` loads config (which reads `.env`), initializes SQLite schema, sets up OpenTelemetry, creates the driver, and starts the Express app.
-2. `src/app.ts` mounts global middleware (helmet, CORS, rate limit, JSON parser) and routes.
-3. Routes are mounted at `/` but endpoints are versioned under `/v1/`. Each route file (`src/routes/*.route.ts`) receives the driver instance and wires its controller.
-4. `GitSyncJob` starts only if `DRIVER=github`.
-5. `PromptReconciliationJob` starts on every boot to heal prompts stuck in `pending` state.
+**Key implication:** Never use synchronous SQLite APIs directly in services or controllers. Always go through `getDb()`.
 
-**Important:** There is a known bug where the driver is instantiated twice — once in `server.ts` (for `GitSyncJob`) and once inside `createApp()`. When modifying this area, prefer passing the driver instance from `server.ts` into `createApp(driver)` rather than creating a second instance.
+### 3. Service Layer
+Controllers are thin. All business logic lives in services:
+- `PromptService`, `LogService`, `TraceService`, `RunService`, `LabelService`, `EvaluationService`
 
-### Authentication & Authorization
+### 4. No ORM
+All SQL is hand-written in services and drivers. There are no models or repositories beyond the `getDb()` connection manager. Do not introduce an ORM or query builder.
 
-- `authenticateApiKey` middleware (`src/middlewares/promptmetrics-auth.middleware.ts`) reads `X-API-Key` header, HMAC-SHA256 hashes it with `API_KEY_SALT`, and looks up the hash in SQLite. Valid keys have `name`, `scopes`, and `workspace_id` attached to `req.apiKey`.
+### 5. Schema Migrations
+Migrations are numbered TypeScript files in `migrations/`. They use dialect-aware helpers (`idColumn`, `nowFn`, `timestampColumn`) from `migrations/dialect-helpers.ts` to support both SQLite and PostgreSQL in a single file. Applied by `umzug` on startup.
+
+---
+
+## Authentication & Authorization
+
+- `authenticateApiKey` middleware reads `X-API-Key`, HMAC-SHA256 hashes it with `API_KEY_SALT`, and looks up the hash in SQLite.
+- Valid keys have `name`, `scopes`, and `workspace_id` attached to `req.apiKey`.
 - `requireScope(scope)` returns middleware that checks `req.apiKey.scopes` and returns 403 if missing.
 - `auditLog(action)` uses `res.on('finish')` to enqueue audit entries to an async batch writer (`AuditLogService`).
-- `tenantMiddleware` reads `X-Workspace-Id` header and attaches it to `req.workspaceId`. All services scope queries by `workspace_id`.
+- `tenantMiddleware` reads `X-Workspace-Id` and attaches it to `req.workspaceId`. All services scope queries by `workspace_id`.
 
-### Request Flow (Prompts)
+---
+
+## Request Flow (Prompts)
 
 1. Route (`src/routes/promptmetrics-prompt.route.ts`) receives the driver.
-2. `PromptController` methods handle HTTP concerns (pagination params, query parsing) then delegate to the driver.
-3. `getPrompt` performs Mustache variable substitution on `system` and `user` role messages via the `mustache` library. The result is cached in an LRU cache (or Redis when `REDIS_URL` is set).
-4. Read operations (`listPrompts`, `listVersions`, `getPrompt`) filter on `status = 'active'`, so incomplete writes are invisible to clients.
+2. `PromptController` handles HTTP concerns (pagination, query parsing) then delegates to `PromptService`.
+3. `getPrompt` performs Mustache variable substitution on `system` and `user` role messages. Cached in LRU (or Redis when `REDIS_URL` is set).
+4. Read operations filter on `status = 'active'`, so incomplete writes are invisible.
 5. Validation is done via Joi schemas in `src/validation-schemas/` and returns 422 with a `details` array.
 
 ---
@@ -95,16 +99,31 @@ PromptMetrics uses a two-tier storage architecture that spans multiple files:
 
 ## CLI & SDK
 
-- **CLI** (`src/cli/promptmetrics-cli.ts`) is a standalone `commander` program that makes raw HTTP calls. It reads server URL and API key from `promptmetrics.yaml` in the CWD, or from `--server`/`--api-key` flags.
+- **CLI** (`src/cli/promptmetrics-cli.ts`) is a standalone `commander` program that makes raw HTTP calls. Reads server URL and API key from `promptmetrics.yaml` in CWD, or from `--server`/`--api-key` flags.
 - **Node SDK** (`clients/node/src/index.ts`) is a typed wrapper around `axios` that auto-injects the `X-API-Key` header. It is NOT auto-generated from OpenAPI — it is hand-written.
 - Both CLI and SDK are published as part of the same npm package (`promptmetrics`).
 
 ---
 
-## Critical Patterns to Know
+## Common Pitfalls
 
-1. **Driver pattern for storage:** All prompt read/write operations go through the `PromptDriver` interface. When adding a new storage backend, implement this interface and add a case in `promptmetrics-driver.factory.ts`.
-2. **Async DatabaseAdapter:** The `DatabaseAdapter` interface is uniformly async across SQLite and PostgreSQL backends. All query methods (`exec`, `all`, `get`, `run`, `transaction`) return `Promise`s. Controllers `await` every DB call. The SQLite adapter wraps `better-sqlite3` to satisfy this contract.
-3. **Service layer exists:** `PromptService`, `LogService`, `TraceService`, `RunService`, `LabelService`, and `EvaluationService` encapsulate business logic. Controllers are thin and delegate to services.
-4. **No ORM:** All SQL is hand-written in services and drivers. There are no models or repositories beyond the `getDb()` connection manager.
-5. **Schema migrations via umzug:** Numbered TypeScript migration files in `migrations/` are applied by `umzug` on startup.
+1. **Driver double-instantiation bug** — `server.ts` already creates the driver. Pass it into `createApp(driver)`; do not instantiate a second one inside `createApp()`.
+2. **Postgres placeholder rewriting** — The Postgres adapter rewrites `?` to `$1, $2, ...` at runtime. Never write `$N` placeholders directly; always use `?` so SQL works for both dialects.
+3. **Postgres `RETURNING id` retry** — The adapter auto-appends `RETURNING id` to INSERTs. If a table lacks an `id` column (e.g., `config`, `rate_limits`, `migrations`), the adapter catches `42703` and retries without it. Add new no-id tables to `TABLES_WITHOUT_ID` in `postgres.adapter.ts`.
+4. **Prompt 3-phase write** — `PromptService.createPrompt` inserts `pending`, calls the driver, then updates to `active`. Read operations filter on `status = 'active'`. The `PromptReconciliationJob` heals stuck prompts automatically.
+5. **Debounced `last_used_at`** — `authenticateApiKey` only updates `last_used_at` if it hasn't been updated in the last 60 seconds (configurable via `API_KEY_LAST_USED_DEBOUNCE_MS`). Don't expect sub-second precision.
+6. **Raw body parser for webhooks** — `/webhooks` uses Express's `raw()` parser to preserve the exact body bytes for signature verification. Do not add `express.json()` middleware before this route.
+7. **Health endpoint bypasses Express** — `/health/deep` is handled directly by the raw `http.Server` in `server.ts`, not by Express. Changes to Express middleware won't affect it.
+8. **Mustache skips `assistant` roles** — When rendering prompt variables, `assistant` role messages are skipped. They are example outputs, not templates.
+9. **Cache invalidation is explicit** — `CacheService.invalidatePrompt` must be called after prompt creation/update. The cache does not auto-invalidate.
+10. **Dialect-aware date bucketing** — `MetricsService.getDateBucket` uses `date(column, 'unixepoch')` for SQLite and `TO_CHAR(TO_TIMESTAMP(column), 'YYYY-MM-DD')` for Postgres. Always use this helper; don't inline date formatting.
+
+---
+
+## Before Committing
+
+1. Run `npm run lint` — fix any issues.
+2. Run `npm test` — all suites must pass.
+3. If you modified migrations, verify they work for both SQLite and PostgreSQL.
+4. If you modified the driver interface, update all three implementations.
+5. If you added a new table without an `id` column, add it to `TABLES_WITHOUT_ID`.

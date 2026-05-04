@@ -1,5 +1,6 @@
 import { LRUCache } from 'lru-cache';
 import { PromptFile, PromptVersion } from '@drivers/promptmetrics-driver.interface';
+import { safeJsonParse } from '@utils/safe-json';
 import { getRedisClient, isRedisEnabled } from './redis.service';
 
 export interface CachedPrompt {
@@ -23,15 +24,12 @@ export async function getCachedPrompt(key: string): Promise<CachedPrompt | undef
     if (redis) {
       const raw = await redis.get(key);
       if (raw) {
-        try {
-          return JSON.parse(raw) as CachedPrompt;
-        } catch (err) {
-          if (err instanceof SyntaxError) {
-            await redis.del(key);
-            return undefined;
-          }
-          throw err;
+        const parsed = safeJsonParse<CachedPrompt | undefined>(raw, undefined);
+        if (parsed === undefined) {
+          await redis.del(key);
+          return undefined;
         }
+        return parsed;
       }
     }
   }

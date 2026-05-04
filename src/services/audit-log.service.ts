@@ -4,6 +4,7 @@ export interface AuditLogEntry {
   action: string;
   prompt_name?: string;
   version_tag?: string;
+  target_id?: string;
   api_key_name: string;
   ip_address: string;
   workspace_id?: string;
@@ -59,7 +60,7 @@ class AuditLogService {
     const batch = this.buffer.splice(0, this.buffer.length);
     const db = getDb();
     const stmt = db.prepare(
-      'INSERT INTO audit_logs (action, prompt_name, version_tag, api_key_name, ip_address, workspace_id) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO audit_logs (action, prompt_name, version_tag, target_id, api_key_name, ip_address, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
     );
 
     for (const entry of batch) {
@@ -68,6 +69,7 @@ class AuditLogService {
           entry.action,
           entry.prompt_name || null,
           entry.version_tag || null,
+          entry.target_id || null,
           entry.api_key_name,
           entry.ip_address,
           entry.workspace_id || 'default',

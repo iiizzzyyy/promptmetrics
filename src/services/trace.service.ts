@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { AppError } from '@errors/app.error';
 import { getDb } from '@models/promptmetrics-sqlite';
 import { parsePagination, buildPaginatedResponse, PaginatedResponse, parseCountRow } from '@utils/pagination';
+import { safeJsonParse } from '@utils/safe-json';
 
 export interface Trace {
   trace_id: string;
@@ -88,7 +89,7 @@ export class TraceService {
       trace_id: row.trace_id,
       prompt_name: row.prompt_name,
       version_tag: row.version_tag,
-      metadata: row.metadata_json ? JSON.parse(row.metadata_json) : {},
+      metadata: safeJsonParse<Record<string, unknown>>(row.metadata_json, {}),
       created_at: row.created_at,
     };
 
@@ -112,7 +113,7 @@ export class TraceService {
       status: s.status,
       start_time: s.start_time,
       end_time: s.end_time,
-      metadata: s.metadata_json ? JSON.parse(s.metadata_json) : {},
+      metadata: safeJsonParse<Record<string, unknown>>(s.metadata_json, {}),
       created_at: s.created_at,
     }));
 
@@ -188,7 +189,7 @@ export class TraceService {
       status: row.status,
       start_time: row.start_time,
       end_time: row.end_time,
-      metadata: row.metadata_json ? JSON.parse(row.metadata_json) : {},
+      metadata: safeJsonParse<Record<string, unknown>>(row.metadata_json, {}),
       created_at: row.created_at,
     };
   }
@@ -196,7 +197,9 @@ export class TraceService {
   async listTraces(page: number, limit: number, workspaceId: string = 'default'): Promise<PaginatedResponse<Trace>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const total = parseCountRow(await db.prepare('SELECT COUNT(*) as c FROM traces WHERE workspace_id = ?').get(workspaceId));
+    const total = parseCountRow(
+      await db.prepare('SELECT COUNT(*) as c FROM traces WHERE workspace_id = ?').get(workspaceId),
+    );
     const items = (await db
       .prepare('SELECT * FROM traces WHERE workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
       .all(workspaceId, limit, offset)) as Array<{
@@ -213,7 +216,7 @@ export class TraceService {
         trace_id: t.trace_id,
         prompt_name: t.prompt_name,
         version_tag: t.version_tag,
-        metadata: t.metadata_json ? JSON.parse(t.metadata_json) : {},
+        metadata: safeJsonParse<Record<string, unknown>>(t.metadata_json, {}),
         created_at: t.created_at,
       })),
       total,

@@ -147,6 +147,28 @@ export class EvaluationService {
     };
   }
 
+  async getResultsForVersion(
+    evalId: number,
+    promptName: string,
+    _versionTag: string,
+    workspaceId: string = 'default',
+  ): Promise<number[]> {
+    const db = getDb();
+    const rows = (await db
+      .prepare(
+        `SELECT er.score
+         FROM evaluation_results er
+         INNER JOIN evaluations e ON er.evaluation_id = e.id
+         WHERE er.evaluation_id = ?
+           AND e.prompt_name = ?
+           AND er.workspace_id = ?
+           AND er.score IS NOT NULL`,
+      )
+      .all(evalId, promptName, workspaceId)) as Array<{ score: number }>;
+
+    return rows.map((r) => r.score);
+  }
+
   async deleteEvaluation(id: number, workspaceId: string = 'default'): Promise<void> {
     const db = getDb();
     await db

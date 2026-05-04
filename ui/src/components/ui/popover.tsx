@@ -19,12 +19,10 @@ export const Popover = ({ open, onOpenChange, children }: PopoverProps) => {
 };
 
 export const PopoverTrigger = React.forwardRef<
-  HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ children, ...props }, ref) => (
-  <PopoverPrimitive.Trigger ref={ref} asChild>
-    <button type="button" {...props}>{children}</button>
-  </PopoverPrimitive.Trigger>
+  React.ElementRef<typeof PopoverPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Trigger>
+>((props, ref) => (
+  <PopoverPrimitive.Trigger ref={ref} {...props} />
 ));
 PopoverTrigger.displayName = "PopoverTrigger";
 

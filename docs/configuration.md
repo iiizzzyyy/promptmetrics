@@ -24,6 +24,11 @@ All configuration is done via environment variables. There is no config file.
 | `DATABASE_URL` | No | — | PostgreSQL connection URL (falls back to SQLite) |
 | `OTEL_ENABLED` | No | `false` | Enable OpenTelemetry tracing and metrics |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | If `OTEL_ENABLED=true` | — | OTLP collector URL (e.g., `http://localhost:4318/v1/traces`) |
+| `COMPLIANCE_PROVIDER` | No | `stub` | Compliance scanner backend: `stub`, `llm-guard`, or `lakera` |
+| `COMPLIANCE_SCANNER_URL` | If `COMPLIANCE_PROVIDER=llm-guard` | — | URL of the LLM Guard scanner instance |
+| `COMPLIANCE_SCANNER_TIMEOUT_MS` | No | `5000` | HTTP timeout for compliance scanner requests |
+| `LAKERA_API_KEY` | If `COMPLIANCE_PROVIDER=lakera` | — | API key for Lakera Guard |
+| `COMPLIANCE_FALLBACK_TO_STUB` | No | `false` | When `true`, fall back to the stub scanner if the configured provider is unreachable |
 
 ## Driver Selection Guide
 

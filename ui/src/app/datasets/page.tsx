@@ -23,7 +23,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Database, Plus, Search, Trash2 } from "lucide-react";
-import { ConfirmModal } from "@/components/common/confirm-modal";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { Toaster, toast } from "sonner";
 
 const LIMIT = 20;
@@ -86,7 +95,7 @@ export default function DatasetsPage() {
           <h1 className="pm-h3">Datasets</h1>
           <Link
             href="/datasets/new"
-            className={buttonVariants({ size: "sm" }) + " w-full sm:w-auto"}
+            className={buttonVariants({ variant: "outline", size: "sm" }) + " w-full sm:w-auto"}
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             Create Dataset
@@ -305,20 +314,35 @@ export default function DatasetsPage() {
         </Dialog>
 
         <Toaster />
-        <ConfirmModal
+        <AlertDialog
           open={confirmDeleteId !== null}
           onOpenChange={() => setConfirmDeleteId(null)}
-          title="Delete Dataset"
-          description="Are you sure you want to delete this dataset? This action cannot be undone."
-          confirmLabel={deleteMutation.isPending ? "Deleting..." : "Delete"}
-          confirmVariant="destructive"
-          onConfirm={() => {
-            if (confirmDeleteId !== null) {
-              deleteMutation.mutate(confirmDeleteId);
-              setConfirmDeleteId(null);
-            }
-          }}
-        />
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Dataset</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this dataset? This action cannot
+                be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setConfirmDeleteId(null)}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (confirmDeleteId !== null) {
+                    deleteMutation.mutate(confirmDeleteId);
+                  }
+                }}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );

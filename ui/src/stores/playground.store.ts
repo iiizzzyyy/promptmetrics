@@ -25,11 +25,6 @@ export interface PlaygroundState {
   activeVariableSetId: string | null;
   currentVariables: Record<string, string>;
 
-  // Model parameters
-  temperature: number;
-  maxTokens: number;
-  topP: number;
-
   // Execution
   isRunning: boolean;
   streamTokens: string[];
@@ -43,6 +38,11 @@ export interface PlaygroundState {
 
   // Validation
   validationError: string | null;
+
+  // Model config
+  temperature: number;
+  maxTokens: number;
+  topP: number;
 }
 
 export interface PlaygroundActions {
@@ -56,15 +56,15 @@ export interface PlaygroundActions {
   deleteVariableSet: (id: string) => void;
   setActiveVariableSet: (id: string | null) => void;
   setCurrentVariable: (key: string, value: string) => void;
-  setTemperature: (value: number) => void;
-  setMaxTokens: (value: number) => void;
-  setTopP: (value: number) => void;
   setIsRunning: (running: boolean) => void;
   appendStreamToken: (token: string) => void;
   setStreamError: (error: string | null) => void;
   setRunMetrics: (metrics: PlaygroundState["runMetrics"]) => void;
   resetStream: () => void;
   validateBeforeRun: () => boolean;
+  setTemperature: (val: number) => void;
+  setMaxTokens: (val: number) => void;
+  setTopP: (val: number) => void;
 }
 
 export const usePlaygroundStore = create<PlaygroundState & PlaygroundActions>(
@@ -80,14 +80,14 @@ export const usePlaygroundStore = create<PlaygroundState & PlaygroundActions>(
     variableSets: [],
     activeVariableSetId: null,
     currentVariables: {},
-    temperature: 0.7,
-    maxTokens: 2048,
-    topP: 1.0,
     isRunning: false,
     streamTokens: [],
     streamError: null,
     runMetrics: null,
     validationError: null,
+    temperature: 0.7,
+    maxTokens: 2048,
+    topP: 1.0,
 
     // Actions
     setPaneSizes: (left, right) => set({ leftPaneSize: left, rightPaneSize: right }),
@@ -125,9 +125,6 @@ export const usePlaygroundStore = create<PlaygroundState & PlaygroundActions>(
       set((state) => ({
         currentVariables: { ...state.currentVariables, [key]: value },
       })),
-    setTemperature: (value) => set({ temperature: value }),
-    setMaxTokens: (value) => set({ maxTokens: value }),
-    setTopP: (value) => set({ topP: value }),
     setIsRunning: (running) => set({ isRunning: running }),
     appendStreamToken: (token) =>
       set((state) => ({ streamTokens: [...state.streamTokens, token] })),
@@ -143,16 +140,15 @@ export const usePlaygroundStore = create<PlaygroundState & PlaygroundActions>(
           error = "Please select a model before running.";
         } else if (!state.systemMessage.trim() && !state.userMessage.trim()) {
           error = "Please provide at least a system message or a user message.";
-        } else if (state.temperature < 0 || state.temperature > 2) {
-          error = "Temperature must be between 0 and 2.";
-        } else if (state.maxTokens < 1) {
-          error = "Max tokens must be at least 1.";
         }
         return { validationError: error };
       });
 
       return error === null;
     },
+    setTemperature: (val) => set({ temperature: val }),
+    setMaxTokens: (val) => set({ maxTokens: val }),
+    setTopP: (val) => set({ topP: val }),
   })
 );
 
@@ -191,16 +187,6 @@ export const usePlaygroundVariables = () =>
     deleteVariableSet: state.deleteVariableSet,
     setActiveVariableSet: state.setActiveVariableSet,
     setCurrentVariable: state.setCurrentVariable,
-  }));
-
-export const usePlaygroundParams = () =>
-  usePlaygroundStore((state) => ({
-    temperature: state.temperature,
-    maxTokens: state.maxTokens,
-    topP: state.topP,
-    setTemperature: state.setTemperature,
-    setMaxTokens: state.setMaxTokens,
-    setTopP: state.setTopP,
   }));
 
 export const usePlaygroundExecution = () =>

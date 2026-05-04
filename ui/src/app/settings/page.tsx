@@ -1,42 +1,52 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-
-const API_KEY_STORAGE_KEY = "pm-api-key";
-const WORKSPACE_STORAGE_KEY = "pm-workspace";
+import { setClientCsrfToken, clearCsrfToken } from "@/lib/csrf";
 
 export default function SettingsPage() {
-  const [apiKey, setApiKey] = useState("");
-  const [workspace, setWorkspace] = useState("default");
+  const [apiKey, setApiKey] = useState(() => process.env.NEXT_PUBLIC_DEMO_API_KEY || "");
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    if (process.env.NEXT_PUBLIC_DEMO_API_KEY) {
-      setApiKey(process.env.NEXT_PUBLIC_DEMO_API_KEY);
-    }
-  }, []);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
+    setError(null);
     try {
-      const res = await fetch("/api/session", {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey, workspace }),
+        body: JSON.stringify({ apiKey }),
       });
 
       if (!res.ok) {
-        throw new Error("Failed to save session");
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to save session");
+      }
+
+      const data = await res.json();
+      if (data.csrfToken) {
+        setClientCsrfToken(data.csrfToken);
       }
 
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "DELETE" });
+      clearCsrfToken();
+      setApiKey("");
+      setSaved(false);
     } catch {
-      alert("Failed to save API key. Please try again.");
+      // ignore
     }
   };
 
@@ -60,30 +70,20 @@ export default function SettingsPage() {
                 placeholder="Enter your API key"
               />
               <p className="text-xs text-muted-foreground">
-                The API key is used to authenticate requests to the PromptMetrics backend.
-              </p>
-              <p className="text-xs text-amber-600">
-                Warning: The API key is stored only for this browser session and will be cleared when you close the tab.
+                The API key is stored server-side; only an opaque session cookie is kept in the browser.
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="workspace">Workspace</Label>
-              <Input
-                id="workspace"
-                value={workspace}
-                onChange={(e) => setWorkspace(e.target.value)}
-                placeholder="default"
-                disabled
-              />
-              <p className="text-xs text-muted-foreground">
-                Workspace switching will be available in a future release.
-              </p>
-            </div>
+            {error && (
+              <p className="text-sm text-red-500">{error}</p>
+            )}
 
             <div className="flex items-center gap-3">
               <Button onClick={handleSave} size="sm">
                 Save
+              </Button>
+              <Button onClick={handleLogout} size="sm" variant="outline">
+                Logout
               </Button>
               {saved && (
                 <span className="text-sm text-green-500">Saved!</span>

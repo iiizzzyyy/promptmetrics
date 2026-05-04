@@ -8,6 +8,7 @@ import { config } from '@config/index';
 import { getDb, withTransaction } from '@models/promptmetrics-sqlite';
 import { createCircuitBreaker } from '@services/circuit-breaker.service';
 import { parseCountRow } from '@utils/pagination';
+import { safeJsonParse } from '@utils/safe-json';
 
 export class GithubDriver implements PromptDriver {
   private readonly clonePath: string;
@@ -127,7 +128,11 @@ export class GithubDriver implements PromptDriver {
 
     try {
       const output = fs.readFileSync(filePath, 'utf-8');
-      const content = JSON.parse(output) as PromptFile;
+      const content = safeJsonParse<PromptFile | null>(output, null);
+      if (!content) {
+        console.error(`GithubDriver.getPrompt: invalid JSON in ${filePath}`);
+        return undefined;
+      }
 
       const git = simpleGit(this.clonePath);
       const sha = version

@@ -21,7 +21,7 @@ export function createPlaygroundRoutes(): Router {
     '/v1/playground/chat',
     validateBody(playgroundChatSchema),
     requireScope('write'),
-    auditLog('playground_chat'),
+    auditLog('playground_chat', (req) => ({ target_id: req.body?.prompt_name })),
     (req, res) => controller.chatCompletion(req, res),
   );
 
@@ -29,7 +29,7 @@ export function createPlaygroundRoutes(): Router {
     '/v1/playground/chat/stream',
     validateBody(playgroundChatSchema),
     requireScope('write'),
-    auditLog('playground_chat_stream'),
+    auditLog('playground_chat_stream', (req) => ({ target_id: req.body?.prompt_name })),
     (req, res) => controller.streamChatCompletion(req, res),
   );
 
@@ -37,7 +37,7 @@ export function createPlaygroundRoutes(): Router {
     '/v1/playground/completions',
     validateBody(playgroundCompletionSchema),
     requireScope('write'),
-    auditLog('playground_completion'),
+    auditLog('playground_completion', (req) => ({ target_id: req.body?.prompt_name })),
     (req, res) => controller.textCompletion(req, res),
   );
 

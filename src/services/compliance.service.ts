@@ -1,8 +1,8 @@
 import { AppError } from '@errors/app.error';
-import { ComplianceEngine, Violation } from '@services/compliance.engine';
+import { ComplianceDriver, ComplianceScanResponse } from '@drivers/compliance/compliance-driver.interface';
+import { Violation } from '@services/compliance.engine';
 import { getDb } from '@models/promptmetrics-sqlite';
 import { safeJsonParse } from '@utils/safe-json';
-import { parsePagination, buildPaginatedResponse, PaginatedResponse, parseCountRow } from '@utils/pagination';
 
 export interface ComplianceScore {
   id: number;
@@ -11,49 +11,77 @@ export interface ComplianceScore {
   score: number;
   risk_level: 'low' | 'medium' | 'high' | 'critical';
   violations: Violation[];
+  provider: string;
+  flagged: boolean;
+  categories: string[];
   created_at: number;
 }
 
+export interface CursorPaginatedComplianceResponse {
+  items: ComplianceScore[];
+  nextCursor: string | null;
+}
+
 export class ComplianceService {
-  private engine = new ComplianceEngine();
+  private driver: ComplianceDriver;
+
+  constructor(driver: ComplianceDriver) {
+    this.driver = driver;
+  }
 
   async listScores(
-    page: number,
     limit: number,
+    cursor?: string,
     workspaceId: string = 'default',
-  ): Promise<PaginatedResponse<ComplianceScore>> {
+  ): Promise<CursorPaginatedComplianceResponse> {
     const db = getDb();
-    const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const total = parseCountRow(
-      await db.prepare('SELECT COUNT(*) as c FROM compliance_scores WHERE workspace_id = ?').get(workspaceId),
-    );
+    const effectiveLimit = Math.min(200, Math.max(1, limit || 50));
+    const cursorTimestamp = cursor ? parseInt(Buffer.from(cursor, 'base64').toString('utf8'), 10) : undefined;
 
-    const items = (await db
-      .prepare('SELECT * FROM compliance_scores WHERE workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
-      .all(workspaceId, limit, offset)) as Array<{
+    const sql = cursorTimestamp
+      ? 'SELECT * FROM compliance_scores WHERE workspace_id = ? AND created_at < ? ORDER BY created_at DESC LIMIT ?'
+      : 'SELECT * FROM compliance_scores WHERE workspace_id = ? ORDER BY created_at DESC LIMIT ?';
+
+    const params = cursorTimestamp
+      ? [workspaceId, cursorTimestamp, effectiveLimit + 1]
+      : [workspaceId, effectiveLimit + 1];
+
+    const items = (await db.prepare(sql).all(...params)) as Array<{
       id: number;
       prompt_name: string;
       version_tag: string;
       score: number;
       violations_json: string;
+      provider: string;
       workspace_id: string;
       created_at: number;
     }>;
 
-    return buildPaginatedResponse(
-      items.map((item) => ({
-        id: item.id,
-        prompt_name: item.prompt_name,
-        version_tag: item.version_tag,
-        score: item.score,
-        risk_level: this.computeRiskLevel(item.score),
-        violations: safeJsonParse(item.violations_json, []),
-        created_at: item.created_at,
-      })),
-      total,
-      page,
-      limit,
-    );
+    const hasMore = items.length > effectiveLimit;
+    const trimmed = hasMore ? items.slice(0, effectiveLimit) : items;
+    const nextCursor =
+      hasMore && trimmed.length > 0
+        ? Buffer.from(String(trimmed[trimmed.length - 1].created_at), 'utf8').toString('base64')
+        : null;
+
+    return {
+      items: trimmed.map((item) => {
+        const violations = safeJsonParse<Violation[]>(item.violations_json, []);
+        return {
+          id: item.id,
+          prompt_name: item.prompt_name,
+          version_tag: item.version_tag,
+          score: item.score,
+          risk_level: this.computeRiskLevel(item.score),
+          violations,
+          provider: item.provider ?? 'stub',
+          flagged: item.score < 90,
+          categories: [...new Set(violations.map((v) => v.category))],
+          created_at: item.created_at,
+        };
+      }),
+      nextCursor,
+    };
   }
 
   async getScore(id: number, workspaceId: string = 'default'): Promise<ComplianceScore> {
@@ -67,6 +95,7 @@ export class ComplianceService {
           version_tag: string;
           score: number;
           violations_json: string;
+          provider: string;
           workspace_id: string;
           created_at: number;
         }
@@ -76,13 +105,18 @@ export class ComplianceService {
       throw AppError.notFound('Compliance score');
     }
 
+    const violations = safeJsonParse<Violation[]>(item.violations_json, []);
+
     return {
       id: item.id,
       prompt_name: item.prompt_name,
       version_tag: item.version_tag,
       score: item.score,
       risk_level: this.computeRiskLevel(item.score),
-      violations: safeJsonParse(item.violations_json, []),
+      violations,
+      provider: item.provider ?? 'stub',
+      flagged: item.score < 90,
+      categories: [...new Set(violations.map((v) => v.category))],
       created_at: item.created_at,
     };
   }
@@ -92,24 +126,26 @@ export class ComplianceService {
     versionTag: string,
     text: string,
     workspaceId: string = 'default',
-  ): Promise<{ score: number; riskLevel: string; violations: Violation[] }> {
-    const result = this.engine.score(text);
+  ): Promise<ComplianceScanResponse> {
+    const result = await this.driver.scan({ text, workspaceId });
     const db = getDb();
     await db
       .prepare(
-        `INSERT INTO compliance_scores (prompt_name, version_tag, score, violations_json, workspace_id, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO compliance_scores (prompt_name, version_tag, score, violations_json, provider, workspace_id, created_at, raw_response_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         promptName,
         versionTag,
         result.score,
-        JSON.stringify(result.violations),
+        JSON.stringify(result.findings),
+        result.provider,
         workspaceId,
         Math.floor(Date.now() / 1000),
+        result.rawResponse ? JSON.stringify(result.rawResponse) : null,
       );
 
-    return { score: result.score, riskLevel: result.riskLevel, violations: result.violations };
+    return result;
   }
 
   private computeRiskLevel(score: number): 'low' | 'medium' | 'high' | 'critical' {

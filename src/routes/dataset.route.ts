@@ -13,13 +13,21 @@ export function createDatasetRoutes(): Router {
   router.use(authenticateApiKey);
   router.use(rateLimitPerKey());
 
-  router.post('/v1/datasets', requireScope('write'), auditLog('create_dataset'), (req, res) =>
-    controller.createDataset(req, res),
+  router.post(
+    '/v1/datasets',
+    requireScope('write'),
+    auditLog('create_dataset', (req) => ({ target_id: req.body?.id })),
+    (req, res) => controller.createDataset(req, res),
   );
   router.get('/v1/datasets', validateQuery(paginationQuerySchema), (req, res) => controller.listDatasets(req, res));
   router.get('/v1/datasets/:id', (req, res) => controller.getDataset(req, res));
-  router.delete('/v1/datasets/:id', requireScope('write'), auditLog('delete_dataset'), (req, res) =>
-    controller.deleteDataset(req, res),
+  router.delete(
+    '/v1/datasets/:id',
+    requireScope('write'),
+    auditLog('delete_dataset', (req) => ({
+      target_id: Array.isArray(req.params.id) ? req.params.id[0] : req.params.id,
+    })),
+    (req, res) => controller.deleteDataset(req, res),
   );
 
   return router;

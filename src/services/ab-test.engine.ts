@@ -109,7 +109,7 @@ function mean(arr: number[]): number {
   return arr.reduce((sum, v) => sum + v, 0) / arr.length;
 }
 
-function sampleVariance(arr: number[]): number {
+export function sampleVariance(arr: number[]): number {
   const n = arr.length;
   if (n < 2) return 0;
   const m = mean(arr);

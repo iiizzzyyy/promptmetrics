@@ -59,15 +59,28 @@ function groupByProvider(models: LLMModel[]) {
   }));
 }
 
-export function ModelSelector() {
+interface ModelSelectorProps {
+  provider?: string;
+  model?: string;
+  onSelect?: (provider: string, model: string) => void;
+}
+
+export function ModelSelector({
+  provider: propProvider,
+  model: propModel,
+  onSelect: propOnSelect,
+}: ModelSelectorProps = {}) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const [highlightedId, setHighlightedId] = React.useState<string | null>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
 
-  const selectedProvider = usePlaygroundStore((s) => s.selectedProvider);
-  const selectedModel = usePlaygroundStore((s) => s.selectedModel);
-  const setSelectedModel = usePlaygroundStore((s) => s.setSelectedModel);
+  const storeProvider = usePlaygroundStore((s) => s.selectedProvider);
+  const storeModel = usePlaygroundStore((s) => s.selectedModel);
+  const storeSetSelectedModel = usePlaygroundStore((s) => s.setSelectedModel);
+
+  const selectedProvider = propProvider ?? storeProvider;
+  const selectedModel = propModel ?? storeModel;
 
   const { data, isLoading } = useQuery({
     queryKey: ["playground-models"],
@@ -102,33 +115,42 @@ export function ModelSelector() {
     return items;
   }, [grouped]);
 
-  // When the list changes or popover opens, highlight the selected model if visible,
-  // otherwise the first item.
-  React.useEffect(() => {
-    if (!open) {
-      setHighlightedId(null);
-      return;
-    }
-    const selectedItem = flatItems.find(
-      (item) =>
-        item.provider === selectedProvider && item.model.slug === selectedModel
-    );
-    setHighlightedId(selectedItem?.model.id ?? flatItems[0]?.model.id ?? null);
-  }, [open, flatItems, selectedProvider, selectedModel]);
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        setHighlightedId(null);
+      } else {
+        const selectedItem = flatItems.find(
+          (item) =>
+            item.provider === selectedProvider &&
+            item.model.slug === selectedModel
+        );
+        setHighlightedId(
+          selectedItem?.model.id ?? flatItems[0]?.model.id ?? null
+        );
+      }
+      setOpen(nextOpen);
+    },
+    [flatItems, selectedProvider, selectedModel]
+  );
 
   const handleClose = React.useCallback(() => {
-    setOpen(false);
+    handleOpenChange(false);
     setSearch("");
     // Return focus to trigger after close
     setTimeout(() => triggerRef.current?.focus(), 0);
-  }, []);
+  }, [handleOpenChange]);
 
   const handleSelect = React.useCallback(
     (provider: string, modelSlug: string) => {
-      setSelectedModel(provider, modelSlug);
+      if (propOnSelect) {
+        propOnSelect(provider, modelSlug);
+      } else {
+        storeSetSelectedModel(provider, modelSlug);
+      }
       handleClose();
     },
-    [setSelectedModel, handleClose]
+    [propOnSelect, storeSetSelectedModel, handleClose]
   );
 
   const handleKeyDown = React.useCallback(
@@ -186,10 +208,9 @@ export function ModelSelector() {
     : "Select model...";
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         ref={triggerRef}
-        onClick={() => setOpen((o) => !o)}
         onKeyDown={handleKeyDown}
         className={cn(
           "flex h-11 items-center justify-between rounded-[10px] border border-white/10 bg-[#111] px-3 py-2 text-sm min-h-[44px]",

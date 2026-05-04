@@ -5,6 +5,7 @@ export const createABTestSchema = Joi.object({
   version_a: Joi.string().max(255).required(),
   version_b: Joi.string().max(255).required(),
   dataset_id: Joi.number().integer().optional(),
+  evaluation_id: Joi.number().integer().optional(),
   metric: Joi.string().valid('latency', 'cost', 'win_rate').optional(),
 }).unknown(true);
 

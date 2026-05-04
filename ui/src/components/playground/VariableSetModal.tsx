@@ -126,75 +126,21 @@ export function VariableSetModal({
     }
   };
 
-  // Focus trap
-  const containerRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    if (!open) return;
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    const focusableSelector = [
-      'input:not([disabled])',
-      'button:not([disabled])',
-      'textarea:not([disabled])',
-      'select:not([disabled])',
-      '[tabindex]:not([tabindex="-1"])',
-    ].join(", ");
-
-    const getFocusable = () =>
-      Array.from(container.querySelectorAll<HTMLElement>(focusableSelector));
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Tab") return;
-
-      const focusable = getFocusable();
-      if (focusable.length === 0) return;
-
-      const firstElement = focusable[0];
-      const lastElement = focusable[focusable.length - 1];
-
-      if (e.shiftKey) {
-        if (document.activeElement === firstElement) {
-          lastElement.focus();
-          e.preventDefault();
-        }
-      } else {
-        if (document.activeElement === lastElement) {
-          firstElement.focus();
-          e.preventDefault();
-        }
-      }
-    };
-
-    container.addEventListener("keydown", handleKeyDown);
-
-    // Focus first input on open
-    const firstInput = container.querySelector<HTMLElement>("input");
-    firstInput?.focus();
-
-    return () => {
-      container.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
-
   const title = mode === "create" ? "Create Variable Set" : "Edit Variable Set";
   const submitLabel = mode === "create" ? "Create" : "Save";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <div ref={containerRef}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-          </DialogHeader>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
 
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            className="space-y-4"
-            noValidate
-          >
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-4"
+          noValidate
+        >
             <div>
               <Label htmlFor="variable-set-name">Name</Label>
               <Input
@@ -288,8 +234,7 @@ export function VariableSetModal({
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </div>
+      </DialogContent>
     </Dialog>
   );
 }

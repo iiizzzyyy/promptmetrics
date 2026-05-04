@@ -13,24 +13,42 @@ export function createEvaluationRoutes(): Router {
   router.use(authenticateApiKey);
   router.use(rateLimitPerKey());
 
-  router.post('/v1/evaluations', requireScope('write'), auditLog('evaluation:create'), (req, res) =>
-    controller.createEvaluation(req, res),
+  router.post(
+    '/v1/evaluations',
+    requireScope('write'),
+    auditLog('evaluation:create', (req) => ({ target_id: req.body?.name })),
+    (req, res) => controller.createEvaluation(req, res),
   );
   router.get('/v1/evaluations', validateQuery(paginationQuerySchema), (req, res) =>
     controller.listEvaluations(req, res),
   );
   router.get('/v1/evaluations/:id', (req, res) => controller.getEvaluation(req, res));
-  router.delete('/v1/evaluations/:id', requireScope('write'), auditLog('evaluation:delete'), (req, res) =>
-    controller.deleteEvaluation(req, res),
+  router.delete(
+    '/v1/evaluations/:id',
+    requireScope('write'),
+    auditLog('evaluation:delete', (req) => ({
+      target_id: Array.isArray(req.params.id) ? req.params.id[0] : req.params.id,
+    })),
+    (req, res) => controller.deleteEvaluation(req, res),
   );
-  router.post('/v1/evaluations/:id/results', requireScope('write'), auditLog('evaluation:result'), (req, res) =>
-    controller.createResult(req, res),
+  router.post(
+    '/v1/evaluations/:id/results',
+    requireScope('write'),
+    auditLog('evaluation:result', (req) => ({
+      target_id: Array.isArray(req.params.id) ? req.params.id[0] : req.params.id,
+    })),
+    (req, res) => controller.createResult(req, res),
   );
   router.get('/v1/evaluations/:id/results', validateQuery(paginationQuerySchema), (req, res) =>
     controller.listResults(req, res),
   );
-  router.post('/v1/evaluations/:id/run', requireScope('write'), auditLog('evaluation:run'), (req, res) =>
-    controller.runEvaluation(req, res),
+  router.post(
+    '/v1/evaluations/:id/run',
+    requireScope('write'),
+    auditLog('evaluation:run', (req) => ({
+      target_id: Array.isArray(req.params.id) ? req.params.id[0] : req.params.id,
+    })),
+    (req, res) => controller.runEvaluation(req, res),
   );
   router.get('/v1/evaluations/:id/run', validateQuery(paginationQuerySchema), (req, res) =>
     controller.listRuns(req, res),
