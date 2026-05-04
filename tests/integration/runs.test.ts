@@ -28,11 +28,17 @@ describe('Run API Integration', () => {
     const db = getDb();
     apiKey = 'pm_testrun789';
     const keyHash = hashApiKey(apiKey);
-    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
-      keyHash,
-      'test-run-key',
-      'read,write',
-    );
+    await db
+      .prepare(
+        'INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes',
+      )
+      .run(keyHash, 'test-run-key', 'read,write');
+
+    await db
+      .prepare(
+        'INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes',
+      )
+      .run(hashApiKey('pm_testrun_readonly'), 'test-run-readonly', 'read');
 
     const driver = new FilesystemDriver(testPromptsPath);
     app = createApp(driver);
@@ -82,9 +88,9 @@ describe('Run API Integration', () => {
   it('GET /v1/runs/:run_id returns a run', async () => {
     const runId = '550e8400-e29b-41d4-a716-446655440001';
     const db = getDb();
-    await db.prepare(
-      'INSERT INTO runs (run_id, workflow_name, status, input_json, metadata_json) VALUES (?, ?, ?, ?, ?)',
-    ).run(runId, 'wf-1', 'running', JSON.stringify({ user: 'Alice' }), JSON.stringify({ agent: 'test' }));
+    await db
+      .prepare('INSERT INTO runs (run_id, workflow_name, status, input_json, metadata_json) VALUES (?, ?, ?, ?, ?)')
+      .run(runId, 'wf-1', 'running', JSON.stringify({ user: 'Alice' }), JSON.stringify({ agent: 'test' }));
 
     const res = await request(app).get(`/v1/runs/${runId}`).set('X-API-Key', apiKey);
 
@@ -130,11 +136,9 @@ describe('Run API Integration', () => {
   it('GET /v1/runs lists runs with pagination', async () => {
     const db = getDb();
     for (let i = 0; i < 5; i++) {
-      await db.prepare('INSERT INTO runs (run_id, workflow_name, status) VALUES (?, ?, ?)').run(
-        `run-${i}`,
-        `wf-${i}`,
-        'running',
-      );
+      await db
+        .prepare('INSERT INTO runs (run_id, workflow_name, status) VALUES (?, ?, ?)')
+        .run(`run-${i}`, `wf-${i}`, 'running');
     }
 
     const res = await request(app).get('/v1/runs?page=1&limit=3').set('X-API-Key', apiKey);
@@ -158,5 +162,29 @@ describe('Run API Integration', () => {
   it('POST /v1/runs rejects missing workflow_name', async () => {
     const res = await request(app).post('/v1/runs').set('X-API-Key', apiKey).send({ input: {} });
     expect(res.status).toBe(422);
+  });
+
+  it('POST /v1/runs returns 403 with read-only scope', async () => {
+    const res = await request(app)
+      .post('/v1/runs')
+      .set('X-API-Key', 'pm_testrun_readonly')
+      .send({ workflow_name: 'wf-1' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('FORBIDDEN');
+  });
+
+  it('PATCH /v1/runs/:run_id returns 403 with read-only scope', async () => {
+    const runId = '550e8400-e29b-41d4-a716-446655440099';
+    const db = getDb();
+    await db.prepare('INSERT INTO runs (run_id, workflow_name, status) VALUES (?, ?, ?)').run(runId, 'wf-1', 'running');
+
+    const res = await request(app)
+      .patch(`/v1/runs/${runId}`)
+      .set('X-API-Key', 'pm_testrun_readonly')
+      .send({ status: 'completed' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('FORBIDDEN');
   });
 });

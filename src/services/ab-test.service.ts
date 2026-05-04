@@ -1,8 +1,10 @@
 import { AppError } from '@errors/app.error';
 import { getDb } from '@models/promptmetrics-sqlite';
 import { parsePagination, buildPaginatedResponse, PaginatedResponse, parseCountRow } from '@utils/pagination';
+import { auditLogService } from './audit-log.service';
 import { LabelService } from './label.service';
-import { ABTestEngine } from './ab-test.engine';
+import { ABTestEngine, sampleVariance } from './ab-test.engine';
+import { EvaluationService } from './evaluation.service';
 
 export interface ABTest {
   id: number;
@@ -10,6 +12,7 @@ export interface ABTest {
   version_a: string;
   version_b: string;
   dataset_id: number | null;
+  evaluation_id: number | null;
   status: 'running' | 'completed' | 'cancelled';
   metric: string;
   created_at: number;
@@ -24,6 +27,10 @@ export interface ABTestResult {
   version_b_score: number | null;
   p_value: number | null;
   winner: string | null;
+  ci_lower: number | null;
+  ci_upper: number | null;
+  stddev_a: number | null;
+  stddev_b: number | null;
   created_at: number;
   workspace_id: string;
 }
@@ -37,26 +44,31 @@ export interface CreateABTestInput {
   version_a: string;
   version_b: string;
   dataset_id?: number;
+  evaluation_id?: number;
   metric?: string;
 }
 
 export class ABTestService {
   private engine = new ABTestEngine();
 
-  constructor(private labelService = new LabelService()) {}
+  constructor(
+    private labelService = new LabelService(),
+    private evaluationService = new EvaluationService(),
+  ) {}
 
   async createTest(input: CreateABTestInput, workspaceId: string = 'default'): Promise<ABTest> {
     const db = getDb();
     const insertResult = await db
       .prepare(
-        `INSERT INTO ab_tests (prompt_name, version_a, version_b, dataset_id, metric, workspace_id)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO ab_tests (prompt_name, version_a, version_b, dataset_id, evaluation_id, metric, workspace_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         input.prompt_name,
         input.version_a,
         input.version_b,
         input.dataset_id ?? null,
+        input.evaluation_id ?? null,
         input.metric ?? 'latency',
         workspaceId,
       );
@@ -111,8 +123,8 @@ export class ABTestService {
   async runTest(
     id: number,
     workspaceId: string = 'default',
-    scoresA: number[],
-    scoresB: number[],
+    scoresA?: number[],
+    scoresB?: number[],
   ): Promise<ABTestResult> {
     const db = getDb();
     const test = (await db.prepare('SELECT * FROM ab_tests WHERE id = ? AND workspace_id = ?').get(id, workspaceId)) as
@@ -123,18 +135,55 @@ export class ABTestService {
       throw AppError.notFound('A/B test');
     }
 
-    const metric = test.metric as 'latency' | 'cost' | 'win_rate';
-    const analysis = this.engine.analyzeABTest(scoresA, scoresB, metric);
+    let finalScoresA = scoresA;
+    let finalScoresB = scoresB;
 
-    const meanA = scoresA.reduce((s, v) => s + v, 0) / scoresA.length;
-    const meanB = scoresB.reduce((s, v) => s + v, 0) / scoresB.length;
+    if (!finalScoresA || !finalScoresB) {
+      if (test.evaluation_id) {
+        finalScoresA = await this.evaluationService.getResultsForVersion(
+          test.evaluation_id,
+          test.prompt_name,
+          test.version_a,
+          workspaceId,
+        );
+        finalScoresB = await this.evaluationService.getResultsForVersion(
+          test.evaluation_id,
+          test.prompt_name,
+          test.version_b,
+          workspaceId,
+        );
+      }
+
+      if (!finalScoresA || !finalScoresB || finalScoresA.length === 0 || finalScoresB.length === 0) {
+        throw AppError.badRequest('Insufficient scores to run this A/B test');
+      }
+    }
+
+    const metric = test.metric as 'latency' | 'cost' | 'win_rate';
+    const analysis = this.engine.analyzeABTest(finalScoresA, finalScoresB, metric);
+
+    const meanA = finalScoresA.reduce((s, v) => s + v, 0) / finalScoresA.length;
+    const meanB = finalScoresB.reduce((s, v) => s + v, 0) / finalScoresB.length;
+    const stddevA = Math.sqrt(sampleVariance(finalScoresA));
+    const stddevB = Math.sqrt(sampleVariance(finalScoresB));
 
     const insertResult = await db
       .prepare(
-        `INSERT INTO ab_test_results (ab_test_id, version_a_score, version_b_score, p_value, winner, workspace_id)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO ab_test_results (ab_test_id, version_a_score, version_b_score, p_value, winner, ci_lower, ci_upper, stddev_a, stddev_b, workspace_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(id, meanA, meanB, analysis.pValue, analysis.winner, workspaceId);
+      .run(
+        id,
+        meanA,
+        meanB,
+        analysis.pValue,
+        analysis.winner,
+        analysis.ciLower,
+        analysis.ciUpper,
+        stddevA,
+        stddevB,
+        workspaceId,
+      );
 
     const now = Math.floor(Date.now() / 1000);
     await db
@@ -155,6 +204,8 @@ export class ABTestService {
   async promoteWinner(
     id: number,
     workspaceId: string = 'default',
+    apiKeyName: string = 'unknown',
+    ipAddress: string = 'unknown',
   ): Promise<{ winner: 'A' | 'B' | 'tie'; version: string | null }> {
     const db = getDb();
 
@@ -186,14 +237,37 @@ export class ABTestService {
       const now = Math.floor(Date.now() / 1000);
 
       if (version) {
+        const promptRow = (await db
+          .prepare(
+            "SELECT id FROM prompts WHERE name = ? AND version_tag = ? AND workspace_id = ? AND status = 'active'",
+          )
+          .get(test.prompt_name, version, workspaceId)) as { id: number } | undefined;
+
+        if (promptRow) {
+          await db
+            .prepare('UPDATE prompts SET active_version_id = ? WHERE name = ? AND workspace_id = ?')
+            .run(promptRow.id, test.prompt_name, workspaceId);
+        }
+
         await db
           .prepare('UPDATE ab_tests SET promoted_version = ?, promoted_at = ? WHERE id = ? AND workspace_id = ?')
           .run(version, now, id, workspaceId);
+
         await this.labelService.createLabel(
           test.prompt_name,
           { name: 'production', version_tag: version },
           workspaceId,
         );
+
+        auditLogService.enqueue({
+          action: 'promote_ab_test',
+          prompt_name: test.prompt_name,
+          version_tag: version,
+          target_id: String(id),
+          api_key_name: apiKeyName,
+          ip_address: ipAddress,
+          workspace_id: workspaceId,
+        });
       }
 
       return { winner, version };

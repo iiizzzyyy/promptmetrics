@@ -1,3 +1,5 @@
+import { getClientCsrfToken } from "@/lib/csrf";
+
 export type StreamChunk =
   | { type: "token"; content: string }
   | { type: "tool_call"; name: string; arguments: string }
@@ -5,36 +7,41 @@ export type StreamChunk =
   | { type: "done"; finishReason: string }
   | { type: "error"; message: string; code?: string };
 
+export interface StreamOptions extends RequestInit {
+  abortController?: AbortController;
+  timeoutMs?: number;
+}
+
 /**
  * Creates an async generator that yields NDJSON chunks from a fetch response.
  * Uses ReadableStream + TextDecoder for real-time token streaming.
- * Supports AbortController for cancellation.
+ * Supports AbortController for cancellation and configurable timeout (default 30s).
  */
 export async function* createSSEStream(
   url: string,
-  options?: RequestInit
+  options?: StreamOptions
 ): AsyncGenerator<StreamChunk> {
-  const apiKey =
-    typeof window !== "undefined"
-      ? (sessionStorage.getItem("pm-api-key") || "")
-      : "";
-  const workspaceId =
-    typeof window !== "undefined"
-      ? (sessionStorage.getItem("pm-workspace") || "default")
-      : "default";
+  const csrfToken = getClientCsrfToken();
+  const isMutating = options?.method && options.method !== "GET" && options.method !== "HEAD";
 
-  const timeoutSignal = AbortSignal.timeout(60_000);
-  const mergedSignal = options?.signal
-    ? AbortSignal.any([timeoutSignal, options.signal])
-    : timeoutSignal;
+  const timeoutMs = options?.timeoutMs ?? 30_000;
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+
+  const signals: AbortSignal[] = [timeoutSignal];
+  if (options?.abortController?.signal) {
+    signals.push(options.abortController.signal);
+  }
+  if (options?.signal) {
+    signals.push(options.signal);
+  }
+  const mergedSignal = signals.length > 1 ? AbortSignal.any(signals) : signals[0];
 
   const res = await fetch(url, {
     ...options,
     signal: mergedSignal,
     headers: {
       Accept: "application/x-ndjson",
-      ...(apiKey ? { "X-API-Key": apiKey } : {}),
-      ...(workspaceId ? { "X-Workspace-Id": workspaceId } : {}),
+      ...(isMutating && csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
       ...(options?.headers || {}),
     },
   });
@@ -94,7 +101,7 @@ export async function* createSSEStream(
  */
 export async function runPlaygroundStream(
   url: string,
-  options?: RequestInit
+  options?: StreamOptions
 ): Promise<{
   output: string;
   metrics: StreamChunk & { type: "metrics" } | null;

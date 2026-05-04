@@ -38,6 +38,19 @@ module.exports = [
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.object.name='JSON'][callee.property.name='parse']",
+          message: 'Use safeJsonParse from @utils/safe-json instead of raw JSON.parse',
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/utils/safe-json.ts', 'tests/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
   {

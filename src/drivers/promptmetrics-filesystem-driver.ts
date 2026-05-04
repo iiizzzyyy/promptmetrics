@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { PromptDriver, PromptFile, PromptVersion } from './promptmetrics-driver.interface';
 import { getDb } from '@models/promptmetrics-sqlite';
+import { safeJsonParse } from '@utils/safe-json';
 
 export class FilesystemDriver implements PromptDriver {
   private readonly basePath: string;
@@ -63,7 +64,8 @@ export class FilesystemDriver implements PromptDriver {
 
     if (!fs.existsSync(filePath)) return undefined;
 
-    const content = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as PromptFile;
+    const content = safeJsonParse<PromptFile | null>(fs.readFileSync(filePath, 'utf-8'), null);
+    if (!content) return undefined;
     const stats = fs.statSync(filePath);
 
     const promptVersion: PromptVersion = {

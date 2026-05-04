@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { TraceController } from '@controllers/promptmetrics-trace.controller';
 import { TraceService } from '@services/trace.service';
-import { authenticateApiKey } from '@middlewares/promptmetrics-auth.middleware';
+import { authenticateApiKey, requireScope } from '@middlewares/promptmetrics-auth.middleware';
+import { auditLog } from '@middlewares/promptmetrics-audit.middleware';
 import { rateLimitPerKey } from '@middlewares/rate-limit-per-key.middleware';
 import { validateQuery } from '@middlewares/promptmetrics-query-validation.middleware';
 import { paginationQuerySchema } from '@validation-schemas/promptmetrics-pagination.schema';
@@ -12,10 +13,22 @@ export function createTraceRoutes(): Router {
 
   router.use(authenticateApiKey);
   router.use(rateLimitPerKey());
-  router.post('/v1/traces', (req, res) => controller.createTrace(req, res));
+  router.post(
+    '/v1/traces',
+    requireScope('write'),
+    auditLog('trace:create', (req) => ({ target_id: req.body?.trace_id })),
+    (req, res) => controller.createTrace(req, res),
+  );
   router.get('/v1/traces', validateQuery(paginationQuerySchema), (req, res) => controller.listTraces(req, res));
   router.get('/v1/traces/:trace_id', (req, res) => controller.getTrace(req, res));
-  router.post('/v1/traces/:trace_id/spans', (req, res) => controller.createSpan(req, res));
+  router.post(
+    '/v1/traces/:trace_id/spans',
+    requireScope('write'),
+    auditLog('trace:span:create', (req) => ({
+      target_id: Array.isArray(req.params.trace_id) ? req.params.trace_id[0] : req.params.trace_id,
+    })),
+    (req, res) => controller.createSpan(req, res),
+  );
   router.get('/v1/traces/:trace_id/spans/:span_id', (req, res) => controller.getSpan(req, res));
 
   return router;

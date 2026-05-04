@@ -1,4 +1,7 @@
 import Ajv from 'ajv';
+import { safeJsonParse } from '@utils/safe-json';
+
+const JSON_PARSE_FAILED: unique symbol = Symbol('json-parse-failed');
 
 export type RuleType = 'regex' | 'keyword' | 'json_schema' | 'length';
 
@@ -142,10 +145,8 @@ export class RuleBasedEvalEngine {
         }
         case 'json_schema': {
           const config = rule.config as { schema: Record<string, unknown> };
-          let parsed: unknown;
-          try {
-            parsed = JSON.parse(text);
-          } catch {
+          const parsed = safeJsonParse<unknown>(text, JSON_PARSE_FAILED);
+          if (parsed === JSON_PARSE_FAILED) {
             result = { passed: false, score: 0, reason: 'Text is not valid JSON' };
             break;
           }

@@ -11,11 +11,11 @@
   --color-accent: #171717;
   --color-accent-foreground: #ededed;
 
-  --color-primary: #389438;
+  --color-primary: #2d882d;
   --color-primarygradient: linear-gradient(
     135deg,
-    rgba(56, 148, 56, 1) 0%,
-    rgba(56, 148, 56, 0.6) 100%
+    rgba(45, 136, 45, 1) 0%,
+    rgba(45, 136, 45, 0.6) 100%
   );
   --color-primary-foreground: #ffffff;
 
@@ -58,7 +58,7 @@
   --color-accent: #f3f6f3;
   --color-accent-foreground: #262626;
 
-  --color-primary: #389438;
+  --color-primary: #327a32;
   --color-primary-foreground: #ffffff;
 
   --color-secondary: #c2c2c2;
@@ -251,6 +251,14 @@
   }
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

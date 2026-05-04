@@ -21,22 +21,31 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 
 ---
 
-## What's New in v1.2.0
+## What's New in v1.3.0
 
-- **Security Hardening** — Dashboard API keys are now handled via a BFF proxy pattern; keys are never stored in browser localStorage.
-- **Scoped Authorization** — All mutation endpoints (POST, PUT, PATCH, DELETE) now enforce `requireScope('write')` for fine-grained access control.
-- **Compliance Detail Views** — Compliance scores support paginated lists and individual detail lookup by ID.
-- **A/B Test Real Scores & Auto-Labeling** — A/B tests now compute evaluation scores from live log data; promoting a winner automatically creates a `production` label on the winning version.
-- **Playground Reliability** — Added input validation, stream timeouts, and lazy provider initialization for safer LLM proxying.
-- **Dataset Deletion Safeguards** — Dataset deletion in the UI now requires a confirmation dialog to prevent accidental data loss.
-- **UI Stability & Accessibility** — Fixed Next.js hydration errors and adopted Radix UI primitives for consistent, accessible components.
-- **New Dashboard Pages** — Added Audit Logs explorer, GitOps Promotion widget, and Health Status panel.
+- **BFF Session Cookie Auth** — Dashboard uses HTTP-only, SameSite=strict session cookies. API keys are no longer exposed to the browser.
+- **CSRF Protection** — All state-changing BFF endpoints require a double-submit CSRF token.
+- **Scoped Authorization on All Mutations** — Previously unprotected routes (`/v1/logs`, `/v1/runs`, `/v1/traces`, `/v1/prompts/:name/labels`) now enforce `requireScope('write')`.
+- **Real Error Rate Metrics** — Time-series metrics compute `error_rate` as actual failures divided by total requests, not a placeholder.
+- **Audit Logging on All Mutations** — Every state-changing API call is recorded with actor, action, timestamp, and optional target ID.
+- **Compliance Scanning Engine** — New pluggable engine (`stub`, `llm-guard`, `lakera`) scans prompts for PII, secrets, and policy violations with automated risk scoring.
+- **Compliance Provider Info** — Scan results now include provider name, flagged status, and violation categories.
+- **A/B Test Real Scores** — Variant metrics aggregate actual evaluation scores with confidence intervals and standard deviation.
+- **Promote Winner Transaction** — Winner promotion runs inside a DB transaction to prevent partial state; updates `active_version_id` atomically.
+- **Radix UI Migration** — Dialog, Popover, and AlertDialog rebuilt on Radix primitives with focus trapping, Escape-to-close, and return-focus.
+- **Playground Validation** — Zod + React Hook Form validation on all playground inputs with detailed error messages.
+- **Resizable Panels** — Drag-to-resize layout panels in playground and trace views.
+- **Error Boundary** — Top-level React error boundary catches render crashes and shows a recoverable fallback UI.
+- **Settings Sheet** — Slide-out settings panel with workspace and preference management.
+- **AlertDialog Confirmations** — Destructive actions (delete, promote) require explicit confirmation.
+- **E2E Console Hygiene** — Playwright tests assert zero console errors and zero hydration warnings across all dashboard pages.
+- **Accessibility Audit** — axe-core scans assert zero critical/serious violations on key pages.
 
 ---
 
 ## Table of Contents
 
-- [What's New in v1.2.0](#whats-new-in-v120)
+- [What's New in v1.3.0](#whats-new-in-v130)
 - [Why PromptMetrics?](#why-promptmetrics)
 - [Features](#features)
 - [Architecture](#architecture)

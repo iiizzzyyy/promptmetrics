@@ -3,6 +3,7 @@ import { AppError } from '@errors/app.error';
 import { getDb } from '@models/promptmetrics-sqlite';
 import { buildPartialUpdate } from '@utils/sql-builder';
 import { parsePagination, buildPaginatedResponse, PaginatedResponse, parseCountRow } from '@utils/pagination';
+import { safeJsonParse } from '@utils/safe-json';
 
 export interface Run {
   run_id: string;
@@ -101,10 +102,10 @@ export class RunService {
       run_id: run.run_id,
       workflow_name: run.workflow_name,
       status: run.status,
-      input: run.input_json ? JSON.parse(run.input_json) : null,
-      output: run.output_json ? JSON.parse(run.output_json) : null,
+      input: safeJsonParse<unknown>(run.input_json, null),
+      output: safeJsonParse<unknown>(run.output_json, null),
       trace_id: run.trace_id,
-      metadata: run.metadata_json ? JSON.parse(run.metadata_json) : {},
+      metadata: safeJsonParse<Record<string, unknown>>(run.metadata_json, {}),
       created_at: run.created_at,
       updated_at: run.updated_at,
     };
@@ -155,7 +156,9 @@ export class RunService {
   async listRuns(page: number, limit: number, workspaceId: string = 'default'): Promise<PaginatedResponse<Run>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const total = parseCountRow(await db.prepare('SELECT COUNT(*) as c FROM runs WHERE workspace_id = ?').get(workspaceId));
+    const total = parseCountRow(
+      await db.prepare('SELECT COUNT(*) as c FROM runs WHERE workspace_id = ?').get(workspaceId),
+    );
     const items = (await db
       .prepare('SELECT * FROM runs WHERE workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
       .all(workspaceId, limit, offset)) as Array<{
@@ -175,10 +178,10 @@ export class RunService {
         run_id: r.run_id,
         workflow_name: r.workflow_name,
         status: r.status,
-        input: r.input_json ? JSON.parse(r.input_json) : null,
-        output: r.output_json ? JSON.parse(r.output_json) : null,
+        input: safeJsonParse<unknown>(r.input_json, null),
+        output: safeJsonParse<unknown>(r.output_json, null),
         trace_id: r.trace_id,
-        metadata: r.metadata_json ? JSON.parse(r.metadata_json) : {},
+        metadata: safeJsonParse<Record<string, unknown>>(r.metadata_json, {}),
         created_at: r.created_at,
         updated_at: r.updated_at,
       })),

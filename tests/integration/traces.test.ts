@@ -29,8 +29,16 @@ describe('Trace API Integration', () => {
     apiKey = 'pm_testtrace789';
     const keyHash = hashApiKey(apiKey);
     await db
-      .prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes')
+      .prepare(
+        'INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes',
+      )
       .run(keyHash, 'test-trace-key', 'read,write');
+
+    await db
+      .prepare(
+        'INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes',
+      )
+      .run(hashApiKey('pm_testtrace_readonly'), 'test-trace-readonly', 'read');
 
     const driver = new FilesystemDriver(testPromptsPath);
     app = createApp(driver);
@@ -70,14 +78,12 @@ describe('Trace API Integration', () => {
   it('GET /v1/traces/:trace_id returns trace with spans', async () => {
     const traceId = '550e8400-e29b-41d4-a716-446655440001';
     const db = getDb();
-    await db.prepare('INSERT INTO traces (trace_id, prompt_name, metadata_json) VALUES (?, ?, ?)').run(
-      traceId,
-      'test-prompt',
-      JSON.stringify({ agent: 'test' }),
-    );
-    await db.prepare(
-      'INSERT INTO spans (trace_id, span_id, name, status, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)',
-    ).run(traceId, 'span-1', 'step-1', 'ok', 1000, 2000);
+    await db
+      .prepare('INSERT INTO traces (trace_id, prompt_name, metadata_json) VALUES (?, ?, ?)')
+      .run(traceId, 'test-prompt', JSON.stringify({ agent: 'test' }));
+    await db
+      .prepare('INSERT INTO spans (trace_id, span_id, name, status, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(traceId, 'span-1', 'step-1', 'ok', 1000, 2000);
 
     const res = await request(app).get(`/v1/traces/${traceId}`).set('X-API-Key', apiKey);
 
@@ -123,9 +129,11 @@ describe('Trace API Integration', () => {
     const spanId = '550e8400-e29b-41d4-a716-446655440004';
     const db = getDb();
     await db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
-    await db.prepare(
-      'INSERT INTO spans (trace_id, span_id, parent_id, name, status, start_time, end_time, metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    ).run(traceId, spanId, 'parent-1', 'nested-step', 'error', 3000, 4000, JSON.stringify({ retry: 2 }));
+    await db
+      .prepare(
+        'INSERT INTO spans (trace_id, span_id, parent_id, name, status, start_time, end_time, metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(traceId, spanId, 'parent-1', 'nested-step', 'error', 3000, 4000, JSON.stringify({ retry: 2 }));
 
     const res = await request(app).get(`/v1/traces/${traceId}/spans/${spanId}`).set('X-API-Key', apiKey);
 
@@ -187,12 +195,9 @@ describe('Trace API Integration', () => {
   it('GET /v1/traces lists traces with pagination', async () => {
     const db = getDb();
     for (let i = 0; i < 5; i++) {
-      await db.prepare('INSERT INTO traces (trace_id, prompt_name, version_tag, workspace_id) VALUES (?, ?, ?, ?)').run(
-        `trace-${i}`,
-        `prompt-${i}`,
-        `v${i}`,
-        'default',
-      );
+      await db
+        .prepare('INSERT INTO traces (trace_id, prompt_name, version_tag, workspace_id) VALUES (?, ?, ?, ?)')
+        .run(`trace-${i}`, `prompt-${i}`, `v${i}`, 'default');
     }
 
     const res = await request(app).get('/v1/traces?page=1&limit=3').set('X-API-Key', apiKey);
@@ -217,14 +222,40 @@ describe('Trace API Integration', () => {
 
   it('GET /v1/traces parses metadata_json in response', async () => {
     const db = getDb();
-    await db.prepare(
-      'INSERT INTO traces (trace_id, prompt_name, version_tag, metadata_json, workspace_id) VALUES (?, ?, ?, ?, ?)',
-    ).run('trace-meta', 'test-prompt', '1.0.0', JSON.stringify({ agent: 'test' }), 'default');
+    await db
+      .prepare(
+        'INSERT INTO traces (trace_id, prompt_name, version_tag, metadata_json, workspace_id) VALUES (?, ?, ?, ?, ?)',
+      )
+      .run('trace-meta', 'test-prompt', '1.0.0', JSON.stringify({ agent: 'test' }), 'default');
 
     const res = await request(app).get('/v1/traces').set('X-API-Key', apiKey);
 
     expect(res.status).toBe(200);
     expect(res.body.items.length).toBe(1);
     expect(res.body.items[0].metadata).toEqual({ agent: 'test' });
+  });
+
+  it('POST /v1/traces returns 403 with read-only scope', async () => {
+    const res = await request(app)
+      .post('/v1/traces')
+      .set('X-API-Key', 'pm_testtrace_readonly')
+      .send({ prompt_name: 'agent-loop', version_tag: '1.0.0' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('FORBIDDEN');
+  });
+
+  it('POST /v1/traces/:trace_id/spans returns 403 with read-only scope', async () => {
+    const traceId = '550e8400-e29b-41d4-a716-446655440099';
+    const db = getDb();
+    await db.prepare('INSERT INTO traces (trace_id, prompt_name) VALUES (?, ?)').run(traceId, 'test');
+
+    const res = await request(app)
+      .post(`/v1/traces/${traceId}/spans`)
+      .set('X-API-Key', 'pm_testtrace_readonly')
+      .send({ name: 'agent-step', status: 'ok', start_time: 1000, end_time: 2000 });
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('FORBIDDEN');
   });
 });

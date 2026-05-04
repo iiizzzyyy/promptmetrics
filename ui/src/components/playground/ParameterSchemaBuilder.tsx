@@ -280,7 +280,7 @@ export function ParameterSchemaBuilder({ value, onChange }: ParameterSchemaBuild
       </Button>
       {fields.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          No fields defined. Click "Add Field" to start building the schema.
+          No fields defined. Click &quot;Add Field&quot; to start building the schema.
         </p>
       )}
     </div>

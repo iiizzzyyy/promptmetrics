@@ -85,3 +85,30 @@ jobs:
         env:
           API_KEY_SALT: test-salt-for-ci
           DATABASE_URL: postgres://promptmetrics:promptmetrics@localhost:5432/promptmetrics
+
+  playwright-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install UI dependencies
+        run: cd ui && npm ci
+
+      - name: Build UI
+        run: cd ui && npm run build
+
+      - name: Install Playwright browsers
+        run: cd ui && npx playwright install --with-deps chromium
+
+      - name: Console hygiene gate
+        run: cd ui && npx playwright test e2e/console-hygiene.spec.ts
+
+      - name: axe-core accessibility gate
+        run: cd ui && npx playwright test e2e/accessibility.spec.ts

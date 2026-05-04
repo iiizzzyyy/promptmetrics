@@ -49,6 +49,7 @@ function fillDateGaps(data: TimeSeriesPoint[]): TimeSeriesPoint[] {
         p50_latency_ms: null,
         p95_latency_ms: null,
         error_rate: 0,
+        log_error_rate: 0,
       });
     }
     cursor.setDate(cursor.getDate() + 1);

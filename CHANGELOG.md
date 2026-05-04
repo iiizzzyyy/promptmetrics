@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-05-04
+
+### Security
+
+- **BFF session cookie** — Dashboard authentication now uses an HTTP-only, SameSite=strict session cookie instead of exposing API keys to the browser.
+- **API key removed from localStorage** — Client-side storage of API keys eliminated; keys are held only in the secure BFF session.
+- **CSRF tokens** — State-changing BFF endpoints require a double-submit CSRF token.
+- **requireScope on all mutations** — All write routes (POST/PUT/PATCH/DELETE) now enforce granular API key scopes consistently.
+
+### Observability
+
+- **Real error_rate computation** — Time-series metrics now compute `error_rate` as `failures / total` instead of a placeholder.
+- **Audit logging on all mutations** — Every state-changing API call is recorded in the audit log with actor, action, and timestamp.
+- **Compliance scanning engine** — New engine scans prompts for PII, secrets, and policy violations with pluggable providers.
+
+### UI/UX
+
+- **Radix Dialog + Popover rewrite** — Modal and popover components rebuilt on Radix primitives for accessibility and keyboard control.
+- **AlertDialog confirmations** — Destructive actions (delete, promote, reset) now require explicit confirmation.
+- **Settings Sheet** — Slide-out settings panel with workspace and preference management.
+- **ErrorBoundary** — Top-level React error boundary catches render crashes and shows a recoverable fallback UI.
+- **Resizable panels** — Drag-to-resize layout panels in playground and trace views.
+- **Zod validation** — Runtime schema validation on all dashboard forms with detailed error messages.
+
+### Backend
+
+- **Compliance cursor pagination** — Compliance scan result lists use cursor-based pagination for reliable large-set navigation.
+- **A/B test real scores** — Variant metrics now aggregate actual evaluation scores instead of dummy values.
+- **promoteWinner transaction** — Winner promotion runs inside a database transaction to prevent partial state.
+- **ProviderRegistry safety** — Lazy-loaded adapters include graceful fallback when a provider package is missing.
+
+### Breaking Changes
+
+- None. All changes are additive; existing API clients continue to work unchanged.
+
+### Migration Notes
+
+- Run `npm run db:init` to apply migrations `018` through `022`.
+
 ## [1.2.1] - 2026-05-02
 
 ### Fixed

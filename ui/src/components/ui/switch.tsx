@@ -1,23 +1,26 @@
-type SwitchProps = {
-  id?: string;
-  checked?: boolean;
-  disabled?: boolean;
+import * as React from "react";
+
+export type SwitchProps = React.InputHTMLAttributes<HTMLInputElement> & {
   onCheckedChange?: (checked: boolean) => void;
-  className?: string;
 };
 
-export const Switch = ({ id, checked, disabled, onCheckedChange, className = "" }: SwitchProps) => {
-  return (
-    <input
-      id={id}
-      type="checkbox"
-      role="switch"
-      className={["h-4 w-8 cursor-pointer", className].join(" ")}
-      checked={!!checked}
-      disabled={disabled}
-      onChange={(e) => onCheckedChange?.(e.currentTarget.checked)}
-    />
-  );
-};
+export const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
+  ({ className = "", onCheckedChange, onChange, ...props }, ref) => {
+    return (
+      <input
+        ref={ref}
+        type="checkbox"
+        role="switch"
+        className={["h-4 w-8 cursor-pointer", className].join(" ")}
+        onChange={(e) => {
+          onChange?.(e);
+          onCheckedChange?.(e.currentTarget.checked);
+        }}
+        {...props}
+      />
+    );
+  }
+);
+Switch.displayName = "Switch";
 
 export default Switch;

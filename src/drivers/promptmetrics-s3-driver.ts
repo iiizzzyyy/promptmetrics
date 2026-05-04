@@ -7,6 +7,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { PromptDriver, PromptFile, PromptVersion } from './promptmetrics-driver.interface';
 import { withTransaction } from '@models/promptmetrics-sqlite';
+import { safeJsonParse } from '@utils/safe-json';
 
 export interface S3DriverConfig {
   bucket: string;
@@ -86,7 +87,8 @@ export class S3Driver implements PromptDriver {
       const response = await this.client.send(command);
       const body = await response.Body?.transformToString();
       if (!body) return undefined;
-      const content = JSON.parse(body) as PromptFile;
+      const content = safeJsonParse<PromptFile | null>(body, null);
+      if (!content) return undefined;
 
       const head = await this.client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
       const promptVersion: PromptVersion = {

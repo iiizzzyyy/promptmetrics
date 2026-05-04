@@ -8,12 +8,22 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Copy, Trash2, Square, AlertCircle, Check } from "lucide-react";
 
+interface PlaygroundSettings {
+  temperature: number;
+  maxTokens: number;
+  topP: number;
+  jsonMode: boolean;
+  timeoutMs: number;
+}
+
 interface StreamingOutputPanelProps {
   url?: string;
+  settings: PlaygroundSettings;
 }
 
 export function StreamingOutputPanel({
-  url = "/v1/playground/chat/stream",
+  url = "/api/proxy/v1/playground/chat/stream",
+  settings,
 }: StreamingOutputPanelProps) {
   const {
     isRunning,
@@ -32,8 +42,14 @@ export function StreamingOutputPanel({
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  const settingsRef = useRef(settings);
   const [cursorVisible, setCursorVisible] = useState(true);
   const [copied, setCopied] = useState(false);
+
+  // Keep settings ref in sync without re-triggering the stream effect
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   // Blinking cursor animation while streaming
   useEffect(() => {
@@ -66,6 +82,7 @@ export function StreamingOutputPanel({
 
     async function runStream() {
       const state = usePlaygroundStore.getState();
+      const currentSettings = settingsRef.current;
 
       try {
         const stream = createSSEStream(url, {
@@ -76,14 +93,18 @@ export function StreamingOutputPanel({
           body: JSON.stringify({
             provider: state.selectedProvider,
             model: state.selectedModel,
-            system: state.systemMessage,
-            user: state.userMessage,
+            messages: [
+              ...(state.systemMessage.trim() ? [{ role: 'system', content: state.systemMessage }] : []),
+              ...(state.userMessage.trim() ? [{ role: 'user', content: state.userMessage }] : []),
+            ],
             variables: state.currentVariables,
-            temperature: state.temperature,
-            max_tokens: state.maxTokens,
-            top_p: state.topP,
+            temperature: currentSettings.temperature,
+            maxTokens: currentSettings.maxTokens,
+            topP: currentSettings.topP,
+            jsonMode: currentSettings.jsonMode,
           }),
-          signal: controller.signal,
+          abortController: controller,
+          timeoutMs: currentSettings.timeoutMs,
         });
 
         for await (const chunk of stream) {
@@ -112,7 +133,11 @@ export function StreamingOutputPanel({
           }
         }
       } catch (err) {
-        if ((err as Error).name !== "AbortError" && mountedRef.current) {
+        if (err instanceof DOMException && err.name === "TimeoutError") {
+          if (mountedRef.current) {
+            setStreamError("Timed out");
+          }
+        } else if ((err as Error).name !== "AbortError" && mountedRef.current) {
           setStreamError((err as Error).message);
         }
       } finally {
@@ -132,6 +157,7 @@ export function StreamingOutputPanel({
 
   const handleCancel = () => {
     abortControllerRef.current?.abort();
+    setStreamError("Generation stopped");
     setIsRunning(false);
   };
 
@@ -152,6 +178,9 @@ export function StreamingOutputPanel({
 
   return (
     <div className="flex h-full flex-col">
+      <div aria-live="polite" className="sr-only" role="status">
+        {isRunning ? "Generating output..." : streamError || "Ready"}
+      </div>
       {/* Header */}
       <div className="border-b px-4 py-2 flex items-center justify-between shrink-0">
         <span className="text-sm font-medium text-foreground">Output</span>

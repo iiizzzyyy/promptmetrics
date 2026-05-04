@@ -28,11 +28,17 @@ describe('Label API Integration', () => {
     const db = getDb();
     apiKey = 'pm_testlabel789';
     const keyHash = hashApiKey(apiKey);
-    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes').run(
-      keyHash,
-      'test-label-key',
-      'read,write',
-    );
+    await db
+      .prepare(
+        'INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes',
+      )
+      .run(keyHash, 'test-label-key', 'read,write');
+
+    await db
+      .prepare(
+        'INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes',
+      )
+      .run(hashApiKey('pm_testlabel_readonly'), 'test-label-readonly', 'read');
 
     const driver = new FilesystemDriver(testPromptsPath);
     app = createApp(driver);
@@ -60,11 +66,9 @@ describe('Label API Integration', () => {
 
   it('POST /v1/prompts/:name/labels updates existing label (upsert)', async () => {
     const db = getDb();
-    await db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
-      'welcome',
-      'production',
-      '1.0.0',
-    );
+    await db
+      .prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)')
+      .run('welcome', 'production', '1.0.0');
 
     const res = await request(app)
       .post('/v1/prompts/welcome/labels')
@@ -77,16 +81,12 @@ describe('Label API Integration', () => {
 
   it('GET /v1/prompts/:name/labels lists labels', async () => {
     const db = getDb();
-    await db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
-      'welcome',
-      'production',
-      '1.0.0',
-    );
-    await db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
-      'welcome',
-      'staging',
-      '1.1.0',
-    );
+    await db
+      .prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)')
+      .run('welcome', 'production', '1.0.0');
+    await db
+      .prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)')
+      .run('welcome', 'staging', '1.1.0');
 
     const res = await request(app).get('/v1/prompts/welcome/labels').set('X-API-Key', apiKey);
 
@@ -97,11 +97,9 @@ describe('Label API Integration', () => {
 
   it('GET /v1/prompts/:name/labels/:label_name returns a label', async () => {
     const db = getDb();
-    await db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
-      'welcome',
-      'production',
-      '1.0.0',
-    );
+    await db
+      .prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)')
+      .run('welcome', 'production', '1.0.0');
 
     const res = await request(app).get('/v1/prompts/welcome/labels/production').set('X-API-Key', apiKey);
 
@@ -118,11 +116,9 @@ describe('Label API Integration', () => {
 
   it('DELETE /v1/prompts/:name/labels/:label_name deletes a label', async () => {
     const db = getDb();
-    await db.prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)').run(
-      'welcome',
-      'production',
-      '1.0.0',
-    );
+    await db
+      .prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)')
+      .run('welcome', 'production', '1.0.0');
 
     const res = await request(app).delete('/v1/prompts/welcome/labels/production').set('X-API-Key', apiKey);
 
@@ -138,5 +134,29 @@ describe('Label API Integration', () => {
     const res = await request(app).delete('/v1/prompts/welcome/labels/missing').set('X-API-Key', apiKey);
 
     expect(res.status).toBe(404);
+  });
+
+  it('POST /v1/prompts/:name/labels returns 403 with read-only scope', async () => {
+    const res = await request(app)
+      .post('/v1/prompts/welcome/labels')
+      .set('X-API-Key', 'pm_testlabel_readonly')
+      .send({ name: 'production', version_tag: '1.0.0' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('FORBIDDEN');
+  });
+
+  it('DELETE /v1/prompts/:name/labels/:label_name returns 403 with read-only scope', async () => {
+    const db = getDb();
+    await db
+      .prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)')
+      .run('welcome', 'production', '1.0.0');
+
+    const res = await request(app)
+      .delete('/v1/prompts/welcome/labels/production')
+      .set('X-API-Key', 'pm_testlabel_readonly');
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('FORBIDDEN');
   });
 });

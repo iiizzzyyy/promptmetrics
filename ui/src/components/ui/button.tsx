@@ -39,7 +39,7 @@ export const buttonVariants = (props?: {
       ? "px-5 py-3 text-base"
       : "px-4 py-2";
 
-  return `inline-flex items-center justify-center gap-2 rounded-[10px] font-medium transition-colors min-h-[44px] ${variantClass} ${sizeClass}`;
+  return `inline-flex items-center justify-center gap-2 rounded-[10px] font-bold transition-colors min-h-[44px] ${variantClass} ${sizeClass}`;
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -76,7 +76,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         className={[
-          "inline-flex items-center justify-center gap-2 rounded-[10px] font-medium transition-colors cursor-pointer min-h-[44px]",
+          "inline-flex items-center justify-center gap-2 rounded-[10px] font-bold transition-colors cursor-pointer min-h-[44px]",
           !className.includes("bg-") ? variantClass : "",
           sizeClass,
           className,

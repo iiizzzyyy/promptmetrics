@@ -503,7 +503,7 @@ npm start  # serves on port 3000
 
 ### Overview Page
 
-![Overview](docs/screenshots/overview.png)
+![Overview](docs/screenshots/dashboard-overview.png)
 
 ### Logs Page
 
@@ -511,11 +511,11 @@ npm start  # serves on port 3000
 
 ### Trace Detail
 
-![Trace Detail](docs/screenshots/trace-detail.png)
+![Trace Detail](docs/screenshots/trace-tree-viewer.png)
 
 ### Evaluations Page
 
-![Evaluations](docs/screenshots/evaluations.png)
+![Evaluations](docs/screenshots/eval-chart.png)
 
 ---
 

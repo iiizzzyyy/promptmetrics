@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { api, ApiError } from "./api";
+import { setClientCsrfToken, clearCsrfToken } from "./csrf";
 
 describe("api client", () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
@@ -12,30 +13,28 @@ describe("api client", () => {
       json: async () => ({ items: [], total: 0, page: 1, limit: 20, totalPages: 1 }),
     } as Response);
 
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("pm-api-key", "test-key");
-      sessionStorage.setItem("pm-workspace", "test-workspace");
-    }
+    clearCsrfToken();
   });
 
   afterEach(() => {
     fetchSpy.mockRestore();
-    sessionStorage.clear();
+    clearCsrfToken();
   });
 
-  it("merges custom headers without overwriting auth headers", async () => {
+  it("does not send X-API-Key or X-Workspace-Id from client", async () => {
     await api.getPrompts({ page: 1, limit: 20 });
 
     const call = fetchSpy.mock.calls[0];
     const init = call[1] as RequestInit;
     const headers = init.headers as Record<string, string>;
 
-    expect(headers["X-API-Key"]).toBe("test-key");
-    expect(headers["X-Workspace-Id"]).toBe("test-workspace");
+    expect(headers["X-API-Key"]).toBeUndefined();
+    expect(headers["X-Workspace-Id"]).toBeUndefined();
     expect(headers["Content-Type"]).toBe("application/json");
   });
 
-  it("preserves auth headers when custom headers are passed", async () => {
+  it("includes X-CSRF-Token on mutating requests when token is set", async () => {
+    setClientCsrfToken("test-csrf");
     await api.createEvaluation({
       name: "test",
       prompt_name: "test-prompt",
@@ -45,8 +44,32 @@ describe("api client", () => {
     const init = call[1] as RequestInit;
     const headers = init.headers as Record<string, string>;
 
-    expect(headers["X-API-Key"]).toBe("test-key");
+    expect(headers["X-CSRF-Token"]).toBe("test-csrf");
     expect(headers["Content-Type"]).toBe("application/json");
+  });
+
+  it("does not include X-CSRF-Token on GET requests", async () => {
+    setClientCsrfToken("test-csrf");
+    await api.getPrompts();
+
+    const call = fetchSpy.mock.calls[0];
+    const init = call[1] as RequestInit;
+    const headers = init.headers as Record<string, string>;
+
+    expect(headers["X-CSRF-Token"]).toBeUndefined();
+  });
+
+  it("does not include X-CSRF-Token when not set", async () => {
+    await api.createEvaluation({
+      name: "test",
+      prompt_name: "test-prompt",
+    });
+
+    const call = fetchSpy.mock.calls[0];
+    const init = call[1] as RequestInit;
+    const headers = init.headers as Record<string, string>;
+
+    expect(headers["X-CSRF-Token"]).toBeUndefined();
   });
 
   it("throws ApiError with status, statusText, and parsed body on failure", async () => {

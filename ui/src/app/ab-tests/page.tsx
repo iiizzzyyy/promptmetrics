@@ -24,7 +24,17 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { FlaskConical, Plus, Search, Trash2, Play, Trophy } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import { FlaskConical, Plus, Search, Trash2, Play, Trophy, CheckCircle2 } from "lucide-react";
 
 const LIMIT = 20;
 
@@ -47,6 +57,8 @@ export default function ABTestsPage() {
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmPromote, setConfirmPromote] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["ab-tests", page],
@@ -197,7 +209,7 @@ export default function ABTestsPage() {
                   filteredItems.map((item: ABTestItem) => (
                     <TableRow
                       key={item.id}
-                      className="cursor-pointer"
+                      className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       onClick={() => setSelectedId(item.id)}
                       tabIndex={0}
                       role="button"
@@ -266,7 +278,7 @@ export default function ABTestsPage() {
           <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <FlaskConical className="h-5 w-5 text-primary" />
+                <FlaskConical className="h-5 w-5 text-primary" aria-hidden="true" />
                 A/B Test Details
               </DialogTitle>
               {detail && (
@@ -305,6 +317,19 @@ export default function ABTestsPage() {
                   </div>
                 </div>
 
+                {detail.evaluation_id && (
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" aria-hidden="true" />
+                    <Badge variant="default" className="text-xs">Deterministic</Badge>
+                    <Link
+                      href={`/evaluations/${detail.evaluation_id}`}
+                      className="text-sm text-primary hover:underline ml-2"
+                    >
+                      View Evaluation
+                    </Link>
+                  </div>
+                )}
+
                 {runMutation.isPending && (
                   <div className="rounded-lg border bg-card/50 p-4 space-y-3">
                     <div className="flex items-center gap-2">
@@ -323,7 +348,7 @@ export default function ABTestsPage() {
                 {detail.latest_result ? (
                   <div className="rounded-lg border bg-card/50 p-4 space-y-3">
                     <div className="flex items-center gap-2">
-                      <Trophy className="h-4 w-4 text-primary" />
+                      <Trophy className="h-4 w-4 text-primary" aria-hidden="true" />
                       <p className="text-sm font-medium">Latest Result</p>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -332,12 +357,22 @@ export default function ABTestsPage() {
                         <p className="text-sm font-medium">
                           {detail.latest_result.version_a_score?.toFixed(4) ?? "—"}
                         </p>
+                        {detail.latest_result.stddev_a != null && (
+                          <p className="text-xs text-muted-foreground">
+                            σ = {detail.latest_result.stddev_a.toFixed(4)}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-1">
                         <p className="pm-mono-label">Version B Score</p>
                         <p className="text-sm font-medium">
                           {detail.latest_result.version_b_score?.toFixed(4) ?? "—"}
                         </p>
+                        {detail.latest_result.stddev_b != null && (
+                          <p className="text-xs text-muted-foreground">
+                            σ = {detail.latest_result.stddev_b.toFixed(4)}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-1">
                         <p className="pm-mono-label">P-Value</p>
@@ -352,6 +387,14 @@ export default function ABTestsPage() {
                         </p>
                       </div>
                     </div>
+                    {detail.latest_result.ci_lower != null && detail.latest_result.ci_upper != null && (
+                      <div className="space-y-1">
+                        <p className="pm-mono-label">95% Confidence Interval (difference)</p>
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="font-medium">[{detail.latest_result.ci_lower.toFixed(4)}, {detail.latest_result.ci_upper.toFixed(4)}]</span>
+                        </div>
+                      </div>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       Result created at {formatDate(detail.latest_result.created_at)}
                     </p>
@@ -391,22 +434,18 @@ export default function ABTestsPage() {
                   </Button>
                   <Button
                     variant="destructive"
-                    onClick={() => {
-                      if (confirm("Are you sure you want to delete this A/B test?")) {
-                        deleteMutation.mutate(detail.id);
-                      }
-                    }}
+                    onClick={() => setConfirmDelete(true)}
                     disabled={deleteMutation.isPending}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
                     {deleteMutation.isPending ? "Deleting..." : "Delete"}
                   </Button>
                   <Button
                     variant="default"
-                    onClick={() => promoteMutation.mutate(detail.id)}
+                    onClick={() => setConfirmPromote(true)}
                     disabled={promoteMutation.isPending}
                   >
-                    <Trophy className="h-4 w-4" />
+                    <Trophy className="h-4 w-4" aria-hidden="true" />
                     {promoteMutation.isPending ? "Promoting..." : "Promote"}
                   </Button>
                   <Button
@@ -414,7 +453,7 @@ export default function ABTestsPage() {
                     onClick={() => runMutation.mutate(detail.id)}
                     disabled={runMutation.isPending}
                   >
-                    <Play className="h-4 w-4" />
+                    <Play className="h-4 w-4" aria-hidden="true" />
                     {runMutation.isPending ? "Running..." : "Run Test"}
                   </Button>
                 </DialogFooter>
@@ -422,6 +461,56 @@ export default function ABTestsPage() {
             ) : null}
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete A/B Test</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this A/B test? This action cannot
+                be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setConfirmDelete(false)}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (detail) deleteMutation.mutate(detail.id);
+                }}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={confirmPromote} onOpenChange={setConfirmPromote}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Promote A/B Test Winner</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will promote the winning version to production. This action
+                cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setConfirmPromote(false)}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (detail) promoteMutation.mutate(detail.id);
+                }}
+                disabled={promoteMutation.isPending}
+              >
+                {promoteMutation.isPending ? "Promoting..." : "Promote"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );

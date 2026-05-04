@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import yaml from 'js-yaml';
+import { safeJsonParse } from '@utils/safe-json';
 
 const program = new Command();
 
@@ -141,8 +142,17 @@ program
   .action(async (options) => {
     try {
       const raw = fs.readFileSync(options.file, 'utf-8');
-      const content =
-        options.file.endsWith('.yaml') || options.file.endsWith('.yml') ? (yaml.load(raw) as object) : JSON.parse(raw);
+      let content: object;
+      if (options.file.endsWith('.yaml') || options.file.endsWith('.yml')) {
+        content = yaml.load(raw) as object;
+      } else {
+        const parsed = safeJsonParse<object | null>(raw, null);
+        if (!parsed) {
+          console.error(`Error: ${options.file} is not valid JSON`);
+          process.exit(1);
+        }
+        content = parsed;
+      }
       const res = await axios.post(`${getServer()}/v1/prompts`, content, {
         headers: getHeaders(),
       });
@@ -213,8 +223,12 @@ program
     const files = collectJsonFiles(options.dir);
     const results = [];
     for (const filePath of files) {
-      const content = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
       const relativeFile = path.relative(options.dir, filePath);
+      const content = safeJsonParse<object | null>(fs.readFileSync(filePath, 'utf-8'), null);
+      if (!content) {
+        results.push({ file: relativeFile, status: 'error', message: 'Invalid JSON' });
+        continue;
+      }
       try {
         const res = await axios.post(`${getServer()}/v1/prompts`, content, {
           headers: getHeaders(),

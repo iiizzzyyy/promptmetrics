@@ -5,6 +5,7 @@ import { createApp } from '@app';
 import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
 import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
+import { auditLogService } from '@services/audit-log.service';
 
 const testDbPath = require('path').resolve(__dirname, '../../data/test-ab-tests.db');
 
@@ -20,12 +21,9 @@ describe('A/B Test API', () => {
     await initSchema();
     const db = getDb();
     apiKey = 'pm_test_ab_test_key';
-    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)').run(
-      hashApiKey(apiKey),
-      'ab-test-test',
-      'read,write',
-      'default',
-    );
+    await db
+      .prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?)')
+      .run(hashApiKey(apiKey), 'ab-test-test', 'read,write', 'default');
     const driver = new FilesystemDriver(require('path').resolve(__dirname, '../../data/test-ab-tests-prompts'));
     app = createApp(driver);
   });
@@ -192,6 +190,99 @@ describe('A/B Test API', () => {
     expect(getRes.body.promoted_at).toBeGreaterThan(0);
   });
 
+  it('should update active_version_id and create audit log on promote', async () => {
+    const db = getDb();
+    const promptName = 'active-version-promote-prompt';
+    const now = Math.floor(Date.now() / 1000);
+
+    await db
+      .prepare(
+        "INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, 'active', 'filesystem', ?)",
+      )
+      .run(promptName, 'v1', 'default', now);
+    const v1Row = (await db
+      .prepare('SELECT id FROM prompts WHERE name = ? AND version_tag = ? AND workspace_id = ?')
+      .get(promptName, 'v1', 'default')) as { id: number };
+
+    await db
+      .prepare(
+        "INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, 'active', 'filesystem', ?)",
+      )
+      .run(promptName, 'v2', 'default', now);
+    const v2Row = (await db
+      .prepare('SELECT id FROM prompts WHERE name = ? AND version_tag = ? AND workspace_id = ?')
+      .get(promptName, 'v2', 'default')) as { id: number };
+
+    const createRes = await request(app).post('/v1/ab-tests').set('X-API-Key', apiKey).send({
+      prompt_name: promptName,
+      version_a: 'v1',
+      version_b: 'v2',
+      metric: 'latency',
+    });
+    const id = createRes.body.id;
+
+    const scoresA = [100, 110, 105, 108, 112];
+    const scoresB = [90, 92, 88, 95, 91];
+
+    await request(app).post(`/v1/ab-tests/${id}/run`).set('X-API-Key', apiKey).send({ scoresA, scoresB });
+
+    const promoteRes = await request(app).post(`/v1/ab-tests/${id}/promote`).set('X-API-Key', apiKey).send();
+    expect(promoteRes.status).toBe(200);
+
+    const winnerVersion = promoteRes.body.version as string;
+    const winnerId = winnerVersion === 'v1' ? v1Row.id : v2Row.id;
+
+    const promptRow = (await db
+      .prepare('SELECT active_version_id FROM prompts WHERE name = ? AND version_tag = ? AND workspace_id = ?')
+      .get(promptName, winnerVersion, 'default')) as { active_version_id: number | null } | undefined;
+
+    expect(promptRow).toBeDefined();
+    expect(promptRow!.active_version_id).toBe(winnerId);
+
+    await auditLogService.flush();
+
+    const auditRow = (await db
+      .prepare('SELECT * FROM audit_logs WHERE action = ? AND prompt_name = ? ORDER BY timestamp DESC LIMIT 1')
+      .get('promote_ab_test', promptName)) as { action: string; version_tag: string; target_id: string } | undefined;
+
+    expect(auditRow).toBeDefined();
+    expect(auditRow!.action).toBe('promote_ab_test');
+    expect(auditRow!.version_tag).toBe(winnerVersion);
+    expect(auditRow!.target_id).toBe(String(id));
+  });
+
+  it('should run an A/B test with evaluation_id and return deterministic scores from EvaluationService', async () => {
+    const evalRes = await request(app).post('/v1/evaluations').set('X-API-Key', apiKey).send({
+      name: 'ab-eval',
+      prompt_name: 'eval-prompt',
+      version_tag: 'v1',
+    });
+    expect(evalRes.status).toBe(201);
+    const evalId = evalRes.body.id;
+
+    await request(app).post(`/v1/evaluations/${evalId}/results`).set('X-API-Key', apiKey).send({ score: 0.85 });
+    await request(app).post(`/v1/evaluations/${evalId}/results`).set('X-API-Key', apiKey).send({ score: 0.9 });
+    await request(app).post(`/v1/evaluations/${evalId}/results`).set('X-API-Key', apiKey).send({ score: 0.8 });
+
+    const createRes = await request(app).post('/v1/ab-tests').set('X-API-Key', apiKey).send({
+      prompt_name: 'eval-prompt',
+      version_a: 'v1',
+      version_b: 'v2',
+      evaluation_id: evalId,
+      metric: 'latency',
+    });
+    expect(createRes.status).toBe(201);
+    const id = createRes.body.id;
+
+    const runRes = await request(app).post(`/v1/ab-tests/${id}/run`).set('X-API-Key', apiKey).send({});
+
+    expect(runRes.status).toBe(200);
+    expect(runRes.body.version_a_score).toBeCloseTo(0.85, 1);
+    expect(runRes.body.version_b_score).toBeCloseTo(0.85, 1);
+    expect(typeof runRes.body.p_value).toBe('number');
+    expect(runRes.body.winner).toBeDefined();
+  });
+
   it('should delete an A/B test', async () => {
     const createRes = await request(app).post('/v1/ab-tests').set('X-API-Key', apiKey).send({
       prompt_name: 'delete-test-prompt',
@@ -216,12 +307,11 @@ describe('A/B Test API', () => {
   it('should isolate A/B tests per workspace', async () => {
     const db = getDb();
     const workspaceKey = 'pm_workspace_ab_test_key';
-    await db.prepare('INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id').run(
-      hashApiKey(workspaceKey),
-      'workspace-ab-test-key',
-      'read,write',
-      'workspace-ab',
-    );
+    await db
+      .prepare(
+        'INSERT INTO api_keys (key_hash, name, scopes, workspace_id) VALUES (?, ?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes, workspace_id = excluded.workspace_id',
+      )
+      .run(hashApiKey(workspaceKey), 'workspace-ab-test-key', 'read,write', 'workspace-ab');
 
     const createRes = await request(app)
       .post('/v1/ab-tests')
