@@ -40,7 +40,7 @@ function getEnvBool(key: string, defaultValue: boolean = false): boolean {
 
 export const config = {
   port: getEnvInt('PORT', 3000),
-  nodeEnv: getEnv('NODE_ENV', false, 'development') as string,
+  nodeEnv: getEnv('NODE_ENV', false, 'production') as string,
   apiKeySalt: getEnvWithMinLength('API_KEY_SALT', 16, true) as string,
   driver: getEnv('DRIVER', false, 'filesystem') as 'filesystem' | 'github' | 's3',
   sqlitePath: getEnv('SQLITE_PATH', false, './data/promptmetrics.db') as string,
