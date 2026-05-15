@@ -16,9 +16,9 @@ export function getDb(): DatabaseAdapter {
     // Dynamic require so pg is only loaded when DATABASE_URL is set,
     // avoiding crashes in pure-SQLite deployments where pg native
     // bindings may not be installed.
-    const { PostgresAdapter } = require('./postgres.adapter');
+    const { PostgresAdapter } = require('./postgres.adapter') as typeof import('./postgres.adapter');
     dbInstance = new PostgresAdapter(databaseUrl);
-    return dbInstance;
+    return dbInstance!;
   }
 
   const dbPath = path.resolve(process.env.SQLITE_PATH || config.sqlitePath);
