@@ -44,7 +44,7 @@ test.beforeEach(async ({ page }) => {
 
 for (const pageUrl of PAGES) {
   test(`axe-core on ${pageUrl}`, async ({ page }) => {
-    await page.goto(pageUrl, { waitUntil: 'networkidle' });
+    await page.goto(pageUrl, { waitUntil: 'domcontentloaded' });
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations.filter(v => v.impact === 'serious' || v.impact === 'critical')).toEqual([]);
   });

@@ -36,8 +36,6 @@ class AuditLogService {
     if (this.buffer.length >= this.maxBufferSize) {
       this.flushWithRetry().catch((err) => {
         console.error('Audit log flush failed after retries:', err);
-        this.droppedCount += this.buffer.length;
-        this.buffer = [];
       });
     }
   }
@@ -59,13 +57,13 @@ class AuditLogService {
 
     const batch = this.buffer.splice(0, this.buffer.length);
     const db = getDb();
-    const stmt = db.prepare(
-      'INSERT INTO audit_logs (action, prompt_name, version_tag, target_id, api_key_name, ip_address, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    );
+    let failedCount = 0;
 
     for (const entry of batch) {
       try {
-        await stmt.run(
+        await db.prepare(
+          'INSERT INTO audit_logs (action, prompt_name, version_tag, target_id, api_key_name, ip_address, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        ).run(
           entry.action,
           entry.prompt_name || null,
           entry.version_tag || null,
@@ -76,12 +74,17 @@ class AuditLogService {
         );
       } catch (err) {
         console.error('Failed to write audit log entry:', err);
+        failedCount++;
       }
+    }
+
+    if (failedCount > 0) {
+      this.droppedCount += failedCount;
     }
   }
 
-  getMetrics(): { droppedCount: number } {
-    return { droppedCount: this.droppedCount };
+  getMetrics(): { droppedCount: number; pendingCount: number } {
+    return { droppedCount: this.droppedCount, pendingCount: this.buffer.length };
   }
 }
 

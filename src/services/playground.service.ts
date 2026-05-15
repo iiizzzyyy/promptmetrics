@@ -202,6 +202,10 @@ export class PlaygroundProxyService {
     );
   }
 
+  clearModelsCache(): void {
+    this.modelsCache = null;
+  }
+
   async listModels(_workspaceId: string, page: number, limit: number): Promise<PaginatedResponse<LLMModel>> {
     const now = Date.now();
 
@@ -210,15 +214,21 @@ export class PlaygroundProxyService {
       allModels = this.modelsCache.data;
     } else {
       const slugs = providerRegistry.listProviders();
-      allModels = [];
+      const results = await Promise.allSettled(
+        slugs.map((slug) => {
+          try {
+            const provider = providerRegistry.getProvider(slug);
+            return provider.listModels();
+          } catch {
+            return Promise.resolve([]);
+          }
+        }),
+      );
 
-      for (const slug of slugs) {
-        try {
-          const provider = providerRegistry.getProvider(slug);
-          const models = await provider.listModels();
-          allModels.push(...models);
-        } catch {
-          // Skip providers that fail to list models
+      allModels = [];
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          allModels.push(...result.value);
         }
       }
 

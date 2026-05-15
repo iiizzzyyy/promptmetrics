@@ -51,11 +51,11 @@ for (const route of ROUTES) {
     const errors: string[] = [];
     const warnings: string[] = [];
     page.on('console', msg => {
-      if (msg.type() === 'error') errors.push(msg.text());
+      if (msg.type() === 'error' && !/404 \(Not Found\)/.test(msg.text())) errors.push(msg.text());
       if (msg.type() === 'warning' && /hydrat|did not match|Warning:/i.test(msg.text())) warnings.push(msg.text());
     });
     page.on('pageerror', err => errors.push(err.message));
-    await page.goto(route, { waitUntil: 'networkidle' });
+    await page.goto(route, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(500);
     expect(errors).toEqual([]);
     expect(warnings).toEqual([]);

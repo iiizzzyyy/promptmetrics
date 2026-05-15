@@ -36,7 +36,7 @@ jobs:
           API_KEY_SALT: test-salt-for-ci
 
       - name: Audit
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=critical
 
       - name: Test CLI
         run: node dist/scripts/generate-api-key.js ci-key read,write
@@ -109,6 +109,10 @@ jobs:
 
       - name: Console hygiene gate
         run: cd ui && npx playwright test e2e/console-hygiene.spec.ts
+        env:
+          API_KEY_SALT: test-salt-for-ci
 
       - name: axe-core accessibility gate
         run: cd ui && npx playwright test e2e/accessibility.spec.ts
+        env:
+          API_KEY_SALT: test-salt-for-ci

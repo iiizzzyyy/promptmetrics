@@ -94,6 +94,9 @@ export class PromptService {
       }
 
       if (variables && Object.keys(variables).length > 0) {
+        // Disable Mustache's HTML escaping — prompt content is sent to LLMs,
+        // not rendered in HTML. The UI layer must apply its own escaping when
+        // displaying prompt content.
         const renderedMessages = content.messages.map((msg) => {
           if (msg.role === 'assistant') return msg;
           const rendered = mustache.render(msg.content, variables, undefined, { escape: (text) => text });
@@ -128,26 +131,32 @@ export class PromptService {
     const db = getDb();
     const now = Math.floor(Date.now() / 1000);
 
-    // Step 1: insert pending row (or reset existing to pending)
-    await db
-      .prepare(
-        `INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(name, version_tag) DO UPDATE SET
-           workspace_id = excluded.workspace_id,
-           status = 'pending',
-           driver = excluded.driver,
-           created_at = excluded.created_at`,
-      )
-      .run(prompt.name, prompt.version, workspaceId, 'pending', config.driver, now);
+    // Wrap the three-step write in a transaction so that if the driver
+    // write fails, the pending row is rolled back instead of orphaned.
+    const result = await db.transaction(async () => {
+      // Step 1: insert pending row (or reset existing to pending)
+      await db
+        .prepare(
+          `INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(name, version_tag) DO UPDATE SET
+             workspace_id = excluded.workspace_id,
+             status = 'pending',
+             driver = excluded.driver,
+             created_at = excluded.created_at`,
+        )
+        .run(prompt.name, prompt.version, workspaceId, 'pending', config.driver, now);
 
-    // Step 2: driver writes content and updates its own fields via ON CONFLICT
-    const result = await this.driver.createPrompt(prompt);
+      // Step 2: driver writes content and updates its own fields via ON CONFLICT
+      const driverResult = await this.driver.createPrompt(prompt);
 
-    // Step 3: activate
-    await db
-      .prepare("UPDATE prompts SET status = 'active' WHERE name = ? AND version_tag = ?")
-      .run(prompt.name, prompt.version);
+      // Step 3: activate
+      await db
+        .prepare("UPDATE prompts SET status = 'active' WHERE name = ? AND version_tag = ?")
+        .run(prompt.name, prompt.version);
+
+      return driverResult;
+    });
 
     await invalidatePrompt(workspaceId, prompt.name);
     return result;

@@ -179,9 +179,10 @@ export class ABTestEngine {
     return { zStatistic, pValue, significant };
   }
 
-  bootstrapCI(a: number[], b: number[], options?: { confidence?: number; resamples?: number }): BootstrapCIResult {
+  bootstrapCI(a: number[], b: number[], options?: { confidence?: number; resamples?: number; rng?: () => number }): BootstrapCIResult {
     const confidence = options?.confidence ?? 0.95;
     const resamples = options?.resamples ?? 10000;
+    const rng = options?.rng ?? Math.random;
 
     if (a.length === 0 || b.length === 0) {
       return { lower: 0, upper: 0, delta: 0 };
@@ -195,10 +196,10 @@ export class ABTestEngine {
       let sumB = 0;
 
       for (let j = 0; j < a.length; j++) {
-        sumA += a[Math.floor(Math.random() * a.length)];
+        sumA += a[Math.floor(rng() * a.length)];
       }
       for (let j = 0; j < b.length; j++) {
-        sumB += b[Math.floor(Math.random() * b.length)];
+        sumB += b[Math.floor(rng() * b.length)];
       }
 
       deltas[i] = sumB / b.length - sumA / a.length;

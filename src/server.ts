@@ -22,7 +22,11 @@ const healthState: HealthState = {
   reconciliationRunning: false,
 };
 
-async function sendDeepHealth(res: http.ServerResponse, driver: PromptDriver): Promise<void> {
+// Cache deep health results for 30 seconds to prevent abuse.
+let deepHealthCache: { timestamp: number; body: string; statusCode: number } | null = null;
+const DEEP_HEALTH_CACHE_TTL_MS = 30_000;
+
+async function computeDeepHealth(driver: PromptDriver): Promise<{ body: string; statusCode: number }> {
   const checks: Record<string, string> = { sqlite: 'ok' };
   let dbConnected = false;
   let dbType: 'sqlite' | 'postgresql' = 'sqlite';
@@ -46,7 +50,7 @@ async function sendDeepHealth(res: http.ServerResponse, driver: PromptDriver): P
 
   const allOk = Object.values(checks).every((v) => v === 'ok');
 
-  const body = {
+  const body = JSON.stringify({
     status: allOk ? 'ok' : 'degraded',
     checks,
     dbType,
@@ -54,10 +58,23 @@ async function sendDeepHealth(res: http.ServerResponse, driver: PromptDriver): P
     driverType: config.driver,
     gitSyncLastRun: config.driver === 'github' ? healthState.gitSyncLastRun : undefined,
     reconciliationRunning: healthState.reconciliationRunning,
-  };
+  });
 
-  res.writeHead(allOk ? 200 : 503, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(body));
+  return { body, statusCode: allOk ? 200 : 503 };
+}
+
+async function sendDeepHealth(res: http.ServerResponse, driver: PromptDriver): Promise<void> {
+  const now = Date.now();
+  if (deepHealthCache && now - deepHealthCache.timestamp < DEEP_HEALTH_CACHE_TTL_MS) {
+    res.writeHead(deepHealthCache.statusCode, { 'Content-Type': 'application/json' });
+    res.end(deepHealthCache.body);
+    return;
+  }
+
+  const result = await computeDeepHealth(driver);
+  deepHealthCache = { timestamp: now, ...result };
+  res.writeHead(result.statusCode, { 'Content-Type': 'application/json' });
+  res.end(result.body);
 }
 
 async function main(): Promise<void> {
