@@ -73,56 +73,63 @@ async function checkSqliteRateLimit(
   const db = getDbOrNull();
   if (!db) return false;
 
-  const now = Date.now();
-  const windowStart = Math.floor(now / windowMs) * windowMs;
+  try {
+    const now = Date.now();
+    const windowStart = Math.floor(now / windowMs) * windowMs;
 
-  const updateResult = await db
-    .prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ? AND window_start = ? AND count < ?')
-    .run(rateLimitKey, windowStart, maxRequests);
+    const updateResult = await db
+      .prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ? AND window_start = ? AND count < ?')
+      .run(rateLimitKey, windowStart, maxRequests);
 
-  let incremented = updateResult.changes > 0;
-
-  if (!incremented) {
-    const insertResult = await db
-      .prepare(
-        `INSERT INTO rate_limits (key, window_start, count)
-       VALUES (?, ?, 1)
-       ON CONFLICT(key) DO UPDATE SET
-         window_start = excluded.window_start,
-         count = excluded.count
-       WHERE rate_limits.window_start < excluded.window_start`,
-      )
-      .run(rateLimitKey, windowStart);
-    incremented = insertResult.changes > 0;
+    let incremented = updateResult.changes > 0;
 
     if (!incremented) {
-      // Another request may have initialized the row; retry the atomic update once.
-      const retryResult = await db
-        .prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ? AND window_start = ? AND count < ?')
-        .run(rateLimitKey, windowStart, maxRequests);
-      incremented = retryResult.changes > 0;
+      const insertResult = await db
+        .prepare(
+          `INSERT INTO rate_limits (key, window_start, count)
+         VALUES (?, ?, 1)
+         ON CONFLICT(key) DO UPDATE SET
+           window_start = excluded.window_start,
+           count = excluded.count
+         WHERE rate_limits.window_start < excluded.window_start`,
+        )
+        .run(rateLimitKey, windowStart);
+      incremented = insertResult.changes > 0;
+
+      if (!incremented) {
+        // Another request may have initialized the row; retry the atomic update once.
+        const retryResult = await db
+          .prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ? AND window_start = ? AND count < ?')
+          .run(rateLimitKey, windowStart, maxRequests);
+        incremented = retryResult.changes > 0;
+      }
     }
+
+    if (!incremented) {
+      const retryAfter = Math.ceil((windowStart + windowMs - now) / 1000);
+      res.setHeader('Retry-After', String(retryAfter));
+      res.status(429).json({
+        error: 'Rate limit exceeded',
+        code: 'RATE_LIMIT_EXCEEDED',
+      });
+      return true;
+    }
+
+    const row = (await db.prepare('SELECT count FROM rate_limits WHERE key = ?').get(rateLimitKey)) as
+      | { count: number }
+      | undefined;
+
+    const count = row?.count ?? 1;
+    res.setHeader('RateLimit-Limit', String(maxRequests));
+    res.setHeader('RateLimit-Remaining', String(Math.max(0, maxRequests - count)));
+    res.setHeader('RateLimit-Reset', String(Math.ceil((windowStart + windowMs) / 1000)));
+    return false;
+  } catch (err) {
+    // Graceful degradation: if the DB query fails, log the error and
+    // allow the request through rather than returning a 500.
+    console.error('Rate limit DB query failed, allowing request:', err);
+    return false;
   }
-
-  if (!incremented) {
-    const retryAfter = Math.ceil((windowStart + windowMs - now) / 1000);
-    res.setHeader('Retry-After', String(retryAfter));
-    res.status(429).json({
-      error: 'Rate limit exceeded',
-      code: 'RATE_LIMIT_EXCEEDED',
-    });
-    return true;
-  }
-
-  const row = (await db.prepare('SELECT count FROM rate_limits WHERE key = ?').get(rateLimitKey)) as
-    | { count: number }
-    | undefined;
-
-  const count = row?.count ?? 1;
-  res.setHeader('RateLimit-Limit', String(maxRequests));
-  res.setHeader('RateLimit-Remaining', String(Math.max(0, maxRequests - count)));
-  res.setHeader('RateLimit-Reset', String(Math.ceil((windowStart + windowMs) / 1000)));
-  return false;
 }
 
 export function rateLimitPerKey(windowMs = WINDOW_MS, maxRequests = DEFAULT_MAX) {
