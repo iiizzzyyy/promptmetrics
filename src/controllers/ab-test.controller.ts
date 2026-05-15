@@ -23,8 +23,8 @@ export class ABTestController {
   }
 
   async listTests(req: Request, res: Response): Promise<void> {
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 50;
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
     const workspaceId = req.workspaceId || 'default';
     const result = await this.service.listTests(page, limit, workspaceId);
     res.status(200).json(result);
@@ -45,40 +45,47 @@ export class ABTestController {
 
     const id = parseIdParam(req.params.id);
     const workspaceId = req.workspaceId || 'default';
+    const test = await this.service.getTest(id, workspaceId);
 
     let scoresA: number[] | undefined = value.scoresA;
     let scoresB: number[] | undefined = value.scoresB;
 
-    if (!scoresA || !scoresB) {
-      const test = await this.service.getTest(id, workspaceId);
+    // Bug #7: When evaluation_id is set, always use evaluation-based scoring.
+    // Reject manual scores to prevent a client from overriding results.
+    if (test.evaluation_id) {
+      if (scoresA || scoresB) {
+        throw AppError.badRequest(
+          'This A/B test uses evaluation-based scoring. Remove scoresA/scoresB from the request body; scores are computed from the linked evaluation.',
+        );
+      }
+      scoresA = await this.service.getEvaluationScores(test.evaluation_id, test.prompt_name, test.version_a, workspaceId);
+      scoresB = await this.service.getEvaluationScores(test.evaluation_id, test.prompt_name, test.version_b, workspaceId);
+    } else if (!scoresA || !scoresB) {
+      const metric = test.metric || 'latency';
 
-      if (!test.evaluation_id) {
-        const metric = test.metric || 'latency';
+      const logsA = await this.logService.getLogsForPromptVersion(test.prompt_name, test.version_a, workspaceId);
+      const logsB = await this.logService.getLogsForPromptVersion(test.prompt_name, test.version_b, workspaceId);
 
-        const logsA = await this.logService.getLogsForPromptVersion(test.prompt_name, test.version_a, workspaceId);
-        const logsB = await this.logService.getLogsForPromptVersion(test.prompt_name, test.version_b, workspaceId);
-
-        const extractScore = (log: {
-          latency_ms?: number | null;
-          cost_usd?: number | null;
-          metadata?: Record<string, unknown>;
-        }): number => {
-          if (metric === 'latency') return log.latency_ms ?? 0;
-          if (metric === 'cost') return log.cost_usd ?? 0;
-          if (metric === 'win_rate') {
-            const meta = log.metadata ?? {};
-            const rating = meta.rating ?? meta.score ?? meta.win;
-            return typeof rating === 'number' ? rating : 0;
-          }
-          return log.latency_ms ?? 0;
-        };
-
-        scoresA = logsA.map(extractScore).filter((s) => s > 0);
-        scoresB = logsB.map(extractScore).filter((s) => s > 0);
-
-        if (scoresA.length === 0 || scoresB.length === 0) {
-          throw AppError.badRequest('Insufficient logs to auto-compute scores for this A/B test');
+      const extractScore = (log: {
+        latency_ms?: number | null;
+        cost_usd?: number | null;
+        metadata?: Record<string, unknown>;
+      }): number => {
+        if (metric === 'latency') return log.latency_ms ?? 0;
+        if (metric === 'cost') return log.cost_usd ?? 0;
+        if (metric === 'win_rate') {
+          const meta = log.metadata ?? {};
+          const rating = meta.rating ?? meta.score ?? meta.win;
+          return typeof rating === 'number' ? rating : 0;
         }
+        return log.latency_ms ?? 0;
+      };
+
+      scoresA = logsA.map(extractScore).filter((s) => s > 0);
+      scoresB = logsB.map(extractScore).filter((s) => s > 0);
+
+      if (scoresA.length === 0 || scoresB.length === 0) {
+        throw AppError.badRequest('Insufficient logs to auto-compute scores for this A/B test');
       }
     }
 
