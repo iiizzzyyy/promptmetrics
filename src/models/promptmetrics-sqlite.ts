@@ -5,7 +5,6 @@ import { config } from '@config/index';
 import { createMigrator } from '@migrations/migrator';
 import { DatabaseAdapter } from './database.interface';
 import { SqliteAdapter } from './sqlite.adapter';
-import { PostgresAdapter } from './postgres.adapter';
 
 let dbInstance: DatabaseAdapter | null = null;
 
@@ -14,6 +13,10 @@ export function getDb(): DatabaseAdapter {
 
   const databaseUrl = process.env.DATABASE_URL;
   if (databaseUrl) {
+    // Dynamic require so pg is only loaded when DATABASE_URL is set,
+    // avoiding crashes in pure-SQLite deployments where pg native
+    // bindings may not be installed.
+    const { PostgresAdapter } = require('./postgres.adapter');
     dbInstance = new PostgresAdapter(databaseUrl);
     return dbInstance;
   }
