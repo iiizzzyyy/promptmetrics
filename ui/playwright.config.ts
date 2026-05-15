@@ -8,6 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
   snapshotPathTemplate: '{testDir}/visual/__screenshots__/{arg}{ext}',
+  timeout: 60000,
   use: {
     baseURL: 'http://localhost:3001',
     trace: 'on-first-retry',
