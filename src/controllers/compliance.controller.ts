@@ -20,8 +20,7 @@ export class ComplianceController {
     // If text is not provided, fetch prompt content from storage
     if (!text && promptName) {
       const result = await this.promptService.getPrompt(workspaceId, promptName, versionTag, undefined, false);
-      text = result.content.messages.map((m) => m.content).join('
-');
+      text = result.content.messages.map((m) => m.content).join('\n');
     }
 
     if (!text) {
