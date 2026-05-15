@@ -13,22 +13,6 @@ export function createPromptRoutes(driver: PromptDriver): Router {
   const service = new PromptService(driver);
   const controller = new PromptController(service);
 
-  router.get('/health', (req, res) => {
-    res.json({ status: 'ok' });
-  });
-
-  router.get('/health/deep', async (req, res) => {
-    const checks: Record<string, string> = { sqlite: 'ok' };
-    try {
-      await driver.sync();
-      checks.driver = 'ok';
-    } catch {
-      checks.driver = 'error';
-    }
-    const allOk = Object.values(checks).every((v) => v === 'ok');
-    res.status(allOk ? 200 : 503).json({ status: allOk ? 'ok' : 'degraded', checks });
-  });
-
   router.use(authenticateApiKey);
   router.use(rateLimitPerKey());
 

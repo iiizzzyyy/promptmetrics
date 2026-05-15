@@ -51,8 +51,6 @@ for (const route of ROUTES) {
     const errors: string[] = [];
     const warnings: string[] = [];
     page.on('console', msg => {
-      // 404s from unmocked API routes surface as console errors in Chromium;
-      // these are expected when running against a stubbed dev server.
       if (msg.type() === 'error' && !/404 \(Not Found\)/.test(msg.text())) errors.push(msg.text());
       if (msg.type() === 'warning' && /hydrat|did not match|Warning:/i.test(msg.text())) warnings.push(msg.text());
     });
