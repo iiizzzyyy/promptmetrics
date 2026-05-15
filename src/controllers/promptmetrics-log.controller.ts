@@ -1,11 +1,14 @@
 import { Request, Response } from 'express';
 import { AppError } from '@errors/app.error';
 import { LogService } from '@services/log.service';
+import { BudgetService } from '@services/budget.service';
 import { parsePagination } from '@utils/pagination';
 import { logMetadataSchema } from '@validation-schemas/promptmetrics-log.schema';
 import { logMetadata } from '@services/promptmetrics-logger.service';
 
 export class LogController {
+  private budgetService = new BudgetService();
+
   constructor(private service: LogService) {}
 
   async createLog(req: Request, res: Response): Promise<void> {
@@ -15,6 +18,10 @@ export class LogController {
     }
 
     const workspaceId = req.workspaceId || 'default';
+
+    // Enforce budget before accepting the log entry
+    await this.budgetService.checkBudget(workspaceId);
+
     const logEntry = await this.service.createLog(value, workspaceId);
 
     if (value.metadata) {
