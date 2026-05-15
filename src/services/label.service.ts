@@ -24,11 +24,19 @@ export class LabelService {
       )
       .run(promptName, input.name, input.version_tag, workspaceId);
 
+    // Fetch the row back to get the correct created_at from the DB,
+    // rather than using Date.now() which would reset on upsert.
+    const row = (await db
+      .prepare('SELECT * FROM prompt_labels WHERE prompt_name = ? AND name = ? AND workspace_id = ?')
+      .get(promptName, input.name, workspaceId)) as
+      | { prompt_name: string; name: string; version_tag: string; created_at: number }
+      | undefined;
+
     return {
-      prompt_name: promptName,
-      name: input.name,
-      version_tag: input.version_tag,
-      created_at: Math.floor(Date.now() / 1000),
+      prompt_name: row?.prompt_name ?? promptName,
+      name: row?.name ?? input.name,
+      version_tag: row?.version_tag ?? input.version_tag,
+      created_at: row?.created_at ?? Math.floor(Date.now() / 1000),
     };
   }
 
