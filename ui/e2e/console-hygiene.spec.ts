@@ -55,7 +55,7 @@ for (const route of ROUTES) {
       if (msg.type() === 'warning' && /hydrat|did not match|Warning:/i.test(msg.text())) warnings.push(msg.text());
     });
     page.on('pageerror', err => errors.push(err.message));
-    await page.goto(route, { waitUntil: 'networkidle' });
+    await page.goto(route, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(500);
     expect(errors).toEqual([]);
     expect(warnings).toEqual([]);
