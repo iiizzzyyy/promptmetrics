@@ -56,6 +56,15 @@ export class ABTestService {
     private evaluationService = new EvaluationService(),
   ) {}
 
+  async getEvaluationScores(
+    evaluationId: number,
+    promptName: string,
+    versionTag: string,
+    workspaceId: string,
+  ): Promise<number[]> {
+    return this.evaluationService.getResultsForVersion(evaluationId, promptName, versionTag, workspaceId);
+  }
+
   async createTest(input: CreateABTestInput, workspaceId: string = 'default'): Promise<ABTest> {
     const db = getDb();
     const insertResult = await db
@@ -245,8 +254,8 @@ export class ABTestService {
 
         if (promptRow) {
           await db
-            .prepare('UPDATE prompts SET active_version_id = ? WHERE name = ? AND workspace_id = ?')
-            .run(promptRow.id, test.prompt_name, workspaceId);
+            .prepare('UPDATE prompts SET active_version_id = ? WHERE id = ? AND workspace_id = ?')
+            .run(promptRow.id, promptRow.id, workspaceId);
         }
 
         await db

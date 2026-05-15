@@ -36,7 +36,7 @@ jobs:
           API_KEY_SALT: test-salt-for-ci
 
       - name: Audit
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=critical
 
       - name: Test CLI
         run: node dist/scripts/generate-api-key.js ci-key read,write

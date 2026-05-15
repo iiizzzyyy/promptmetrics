@@ -102,6 +102,11 @@ export class MetricsService {
   async getTimeSeries(workspaceId: string = 'default', start: number, end: number): Promise<TimeSeriesPoint[]> {
     const db = getDb();
     const dialect = db.dialect;
+    // IMPORTANT: dialect must only come from db.dialect (set internally based on
+    // DATABASE_URL). Never pass user input as dialect to getDateBucket.
+    if (dialect !== 'sqlite' && dialect !== 'postgres') {
+      throw new Error('Unsupported database dialect: ' + dialect);
+    }
     const dateBucket = this.getDateBucket('l.created_at', dialect);
 
     const logSql = `
