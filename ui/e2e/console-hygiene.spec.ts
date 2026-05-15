@@ -55,6 +55,14 @@ for (const route of ROUTES) {
       if (msg.type() === 'warning' && /hydrat|did not match|Warning:/i.test(msg.text())) warnings.push(msg.text());
     });
     page.on('pageerror', err => errors.push(err.message));
+    page.on('requestfailed', request => {
+      // 404s from API routes that aren't explicitly mocked are expected
+      // when the test runs against a stubbed dev server — filter them out.
+      const status = request.response()?.status();
+      if (status !== 404) {
+        errors.push(`Request failed: ${request.url()} [${status}]`);
+      }
+    });
     await page.goto(route, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(500);
     expect(errors).toEqual([]);
