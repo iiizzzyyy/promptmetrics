@@ -22,7 +22,7 @@ describe('Config', () => {
       jest.mock('dotenv', () => ({ config: jest.fn() }));
       const { config: freshConfig } = require('@config/index');
       expect(freshConfig.port).toBe(3000);
-      expect(freshConfig.nodeEnv).toBe('development');
+      expect(freshConfig.nodeEnv).toBe('production');
       expect(freshConfig.driver).toBe('filesystem');
       expect(freshConfig.sqlitePath).toBe('./data/promptmetrics.db');
       expect(freshConfig.githubSyncIntervalMs).toBe(60000);
