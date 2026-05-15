@@ -89,6 +89,9 @@ export class PromptService {
       }
 
       if (variables && Object.keys(variables).length > 0) {
+        // Disable Mustache's HTML escaping — prompt content is sent to LLMs,
+        // not rendered in HTML. The UI layer must apply its own escaping when
+        // displaying prompt content.
         const renderedMessages = content.messages.map((msg) => {
           if (msg.role === 'assistant') return msg;
           const rendered = mustache.render(msg.content, variables, undefined, { escape: (text) => text });
