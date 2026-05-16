@@ -130,4 +130,14 @@ export class PlaygroundController {
     const result = await this.service.listModels(workspaceId, page, limit);
     res.json(result);
   }
+
+  async refreshModels(req: Request, res: Response): Promise<void> {
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+    const workspaceId = req.workspaceId || 'default';
+
+    this.service.clearModelsCache();
+    const result = await this.service.listModels(workspaceId, page, limit);
+    res.json(result);
+  }
 }

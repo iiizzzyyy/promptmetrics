@@ -18,6 +18,13 @@ export function createPlaygroundRoutes(): Router {
   router.get('/v1/playground/models', (req, res) => controller.listModels(req, res));
 
   router.post(
+    '/v1/playground/models/refresh',
+    requireScope('admin'),
+    auditLog('playground_models_refresh'),
+    (req, res) => controller.refreshModels(req, res),
+  );
+
+  router.post(
     '/v1/playground/chat',
     validateBody(playgroundChatSchema),
     requireScope('write'),

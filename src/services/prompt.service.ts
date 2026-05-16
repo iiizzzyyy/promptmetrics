@@ -19,11 +19,17 @@ export class PromptService {
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
 
     if (query) {
-      // NOTE: driver.search() is not workspace-scoped — it may return prompt
-      // names from other workspaces. The DB query below filters by workspace_id,
-      // so only names that exist in the requesting workspace are returned.
-      // Prompt names themselves are not sensitive content; the content is only
-      // returned after the workspace check in getPrompt().
+      // DESIGN NOTE (wontfix): driver.search() is not workspace-scoped — it
+      // searches across all workspaces and may return prompt names belonging to
+      // other tenants. The subsequent DB query filters by workspace_id so that
+      // only names present in the requesting workspace are returned to the
+      // caller. Prompt names themselves are not sensitive content (the full
+      // content is gated by getPrompt()'s workspace check), but the fact that
+      // a name exists in another workspace is visible to the driver layer.
+      // Properly scoping search would require adding a workspaceId parameter
+      // to the PromptDriver.search() interface and all three driver
+      // implementations (filesystem, GitHub, S3), which is a larger change
+      // than the current risk justifies. Accepted as a known trade-off.
       const driverItems = await this.driver.search(query);
       if (driverItems.length === 0) {
         return buildPaginatedResponse([], 0, page, limit);
@@ -106,9 +112,14 @@ export class PromptService {
       }
 
       if (variables && Object.keys(variables).length > 0) {
-        // Disable Mustache's HTML escaping — prompt content is sent to LLMs,
-        // not rendered in HTML. The UI layer must apply its own escaping when
-        // displaying prompt content.
+        // Mustache's default escape function HTML-escapes values (e.g. "<" →
+        // "&lt;"). That is wrong for prompt content, which is sent to LLMs —
+        // not rendered in HTML — so we intentionally disable it here. There is
+        // currently no way to opt into HTML escaping; if prompts are ever
+        // displayed in a web UI, the UI layer must apply its own escaping at
+        // render time.
+        // See also: mustache-renderer.service.ts renderTemplate(), which
+        // applies the same policy for playground prompts.
         const renderedMessages = content.messages.map((msg) => {
           if (msg.role === 'assistant') return msg;
           const rendered = mustache.render(msg.content, variables, undefined, { escape: (text) => text });
