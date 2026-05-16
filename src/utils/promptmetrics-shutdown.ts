@@ -1,5 +1,6 @@
 import { Server } from 'http';
 import { closeDb } from '@models/promptmetrics-sqlite';
+import { closeRedis } from '@services/redis.service';
 
 interface ShutdownOptions {
   server: Server;
@@ -27,6 +28,7 @@ export function setupGracefulShutdown(options: ShutdownOptions): void {
         await job();
       }
 
+      await closeRedis().catch((err) => console.error('Redis close error:', err));
       await closeDb();
       console.log('Database connection closed.');
 

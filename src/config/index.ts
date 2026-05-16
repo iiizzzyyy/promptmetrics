@@ -8,7 +8,7 @@ function getEnv(key: string, required: boolean = false, defaultValue?: string): 
   if (required && !value && !defaultValue) {
     throw new Error(`Missing required environment variable: ${key}`);
   }
-  return value || defaultValue;
+  return value ?? defaultValue;
 }
 
 function getEnvWithMinLength(

@@ -60,8 +60,16 @@ class AuditLogService {
     if (this.buffer.length === 0) return;
 
     const batch = this.buffer.splice(0, this.buffer.length);
-    const db = getDb();
+    let db;
+    try {
+      db = getDb();
+    } catch (err) {
+      // getDb() failed — re-queue the batch so entries aren't lost
+      this.buffer.unshift(...batch);
+      throw err;
+    }
 
+    const failed: AuditLogEntry[] = [];
     for (const entry of batch) {
       try {
         await db.prepare(
@@ -77,8 +85,13 @@ class AuditLogService {
         );
       } catch (err) {
         console.error('Failed to write audit log entry:', err);
-        this.buffer.unshift(entry);
+        failed.push(entry);
       }
+    }
+
+    if (failed.length > 0) {
+      this.droppedCount += failed.length;
+      console.error(`Dropped ${failed.length} audit log entries that could not be written`);
     }
   }
 
