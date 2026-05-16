@@ -69,7 +69,10 @@ export async function clearCache(): Promise<void> {
   if (isRedisEnabled()) {
     const redis = getRedisClient();
     if (redis) {
-      await redis.flushall();
+      const keys = await redis.keys('prompt:*');
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
       return;
     }
   }

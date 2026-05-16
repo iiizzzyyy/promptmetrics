@@ -46,7 +46,11 @@ class AuditLogService {
         await this.flush();
         return;
       } catch (err) {
-        if (attempt === maxAttempts) throw err;
+        if (attempt === maxAttempts) {
+          this.droppedCount += this.buffer.length;
+          this.buffer = [];
+          return;
+        }
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
@@ -57,7 +61,6 @@ class AuditLogService {
 
     const batch = this.buffer.splice(0, this.buffer.length);
     const db = getDb();
-    let failedCount = 0;
 
     for (const entry of batch) {
       try {
@@ -74,12 +77,8 @@ class AuditLogService {
         );
       } catch (err) {
         console.error('Failed to write audit log entry:', err);
-        failedCount++;
+        this.buffer.unshift(entry);
       }
-    }
-
-    if (failedCount > 0) {
-      this.droppedCount += failedCount;
     }
   }
 
