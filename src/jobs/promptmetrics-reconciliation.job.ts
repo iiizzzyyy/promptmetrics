@@ -35,22 +35,22 @@ export class PromptReconciliationJob {
       const db = getDb();
       const cutoff = Math.floor(Date.now() / 1000) - 120;
       const rows = (await db
-        .prepare('SELECT name, version_tag FROM prompts WHERE status = ? AND created_at < ?')
-        .all('pending', cutoff)) as Array<{ name: string; version_tag: string }>;
+        .prepare('SELECT name, version_tag, workspace_id FROM prompts WHERE status = ? AND created_at < ?')
+        .all('pending', cutoff)) as Array<{ name: string; version_tag: string; workspace_id: string }>;
 
       for (const row of rows) {
         try {
           const found = await this.driver.getPrompt(row.name, row.version_tag);
           if (found) {
             await db
-              .prepare("UPDATE prompts SET status = 'active' WHERE name = ? AND version_tag = ?")
-              .run(row.name, row.version_tag);
-            console.log(`[Reconciliation] Promoted ${row.name}@${row.version_tag} to active`);
+              .prepare("UPDATE prompts SET status = 'active' WHERE name = ? AND version_tag = ? AND workspace_id = ?")
+              .run(row.name, row.version_tag, row.workspace_id);
+            console.log(`[Reconciliation] Promoted ${row.name}@${row.version_tag} in workspace ${row.workspace_id} to active`);
           } else {
             await db
-              .prepare('DELETE FROM prompts WHERE name = ? AND version_tag = ?')
-              .run(row.name, row.version_tag);
-            console.log(`[Reconciliation] Deleted orphaned pending prompt ${row.name}@${row.version_tag}`);
+              .prepare('DELETE FROM prompts WHERE name = ? AND version_tag = ? AND workspace_id = ?')
+              .run(row.name, row.version_tag, row.workspace_id);
+            console.log(`[Reconciliation] Deleted orphaned pending prompt ${row.name}@${row.version_tag} in workspace ${row.workspace_id}`);
           }
         } catch (err) {
           console.error(
