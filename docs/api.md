@@ -21,6 +21,8 @@ Shallow health check.
 #### GET /health/deep
 Deep health check including database and driver status.
 
+> **Note:** This endpoint is handled by the raw HTTP server, not Express. It includes additional fields (`gitSyncLastRun`, `reconciliationRunning`) that are not available when accessed through Express.
+
 **Response:**
 ```json
 {
@@ -28,7 +30,12 @@ Deep health check including database and driver status.
   "checks": {
     "sqlite": "ok",
     "driver": "ok"
-  }
+  },
+  "dbType": "sqlite",
+  "dbConnected": true,
+  "driverType": "filesystem",
+  "gitSyncLastRun": 1715894400,
+  "reconciliationRunning": false
 }
 ```
 
@@ -1248,7 +1255,7 @@ Revoke an API key. Requires `admin` scope.
 ### Audit Logs
 
 #### GET /v1/audit-logs
-Query audit logs. Requires `admin` scope.
+Query audit logs. Requires `X-API-Key` header with `admin` scope. Rate-limited per key.
 
 **Query Parameters:**
 | Param | Type | Default | Description |
