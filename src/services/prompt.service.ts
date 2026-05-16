@@ -62,7 +62,19 @@ export class PromptService {
       throw AppError.notFound('Prompt');
     }
 
-    const key = cacheKey(workspaceId, name, version);
+    // If no version is specified and an active_version_id is set, use that version
+    // instead of falling through to the driver's "latest" logic.
+    let effectiveVersion = version;
+    if (!version) {
+      const activeVersion = (await db
+        .prepare("SELECT version_tag FROM prompts WHERE id = (SELECT active_version_id FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active' LIMIT 1)")
+        .get(name, workspaceId)) as { version_tag: string } | undefined;
+      if (activeVersion) {
+        effectiveVersion = activeVersion.version_tag;
+      }
+    }
+
+    const key = cacheKey(workspaceId, name, effectiveVersion);
     const cached = await getCachedPrompt(key);
 
     let rawContent: PromptFile;
@@ -72,7 +84,7 @@ export class PromptService {
       rawContent = cached.content;
       promptVersion = cached.version;
     } else {
-      const result = await this.driver.getPrompt(name, version);
+      const result = await this.driver.getPrompt(name, effectiveVersion);
       if (!result) {
         throw AppError.notFound('Prompt');
       }
