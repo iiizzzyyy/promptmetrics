@@ -36,15 +36,35 @@ export class ComplianceService {
   ): Promise<CursorPaginatedComplianceResponse> {
     const db = getDb();
     const effectiveLimit = Math.min(200, Math.max(1, limit || 50));
-    const cursorTimestamp = cursor ? parseInt(Buffer.from(cursor, 'base64').toString('utf8'), 10) : undefined;
 
-    const sql = cursorTimestamp
-      ? 'SELECT * FROM compliance_scores WHERE workspace_id = ? AND created_at < ? ORDER BY created_at DESC LIMIT ?'
-      : 'SELECT * FROM compliance_scores WHERE workspace_id = ? ORDER BY created_at DESC LIMIT ?';
+    // Cursor format: base64("created_at:id")
+    let cursorCreatedAt: number | undefined;
+    let cursorId: number | undefined;
+    if (cursor) {
+      const decoded = Buffer.from(cursor, 'base64').toString('utf8');
+      const parts = decoded.split(':');
+      cursorCreatedAt = parseInt(parts[0], 10);
+      cursorId = parseInt(parts[1], 10);
+    }
 
-    const params = cursorTimestamp
-      ? [workspaceId, cursorTimestamp, effectiveLimit + 1]
-      : [workspaceId, effectiveLimit + 1];
+    let sql: string;
+    let params: unknown[];
+    const dialect = db.dialect;
+
+    if (cursorCreatedAt !== undefined && cursorId !== undefined) {
+      if (dialect === 'postgres') {
+        // PostgreSQL supports row-value comparisons: (created_at, id) < (?, ?)
+        sql = 'SELECT * FROM compliance_scores WHERE workspace_id = ? AND (created_at, id) < (?, ?) ORDER BY created_at DESC, id DESC LIMIT ?';
+        params = [workspaceId, cursorCreatedAt, cursorId, effectiveLimit + 1];
+      } else {
+        // SQLite doesn't support row-value comparisons, so use equivalent OR logic
+        sql = 'SELECT * FROM compliance_scores WHERE workspace_id = ? AND (created_at < ? OR (created_at = ? AND id < ?)) ORDER BY created_at DESC, id DESC LIMIT ?';
+        params = [workspaceId, cursorCreatedAt, cursorCreatedAt, cursorId, effectiveLimit + 1];
+      }
+    } else {
+      sql = 'SELECT * FROM compliance_scores WHERE workspace_id = ? ORDER BY created_at DESC, id DESC LIMIT ?';
+      params = [workspaceId, effectiveLimit + 1];
+    }
 
     const items = (await db.prepare(sql).all(...params)) as Array<{
       id: number;
@@ -59,9 +79,10 @@ export class ComplianceService {
 
     const hasMore = items.length > effectiveLimit;
     const trimmed = hasMore ? items.slice(0, effectiveLimit) : items;
+    const last = trimmed[trimmed.length - 1];
     const nextCursor =
-      hasMore && trimmed.length > 0
-        ? Buffer.from(String(trimmed[trimmed.length - 1].created_at), 'utf8').toString('base64')
+      hasMore && last
+        ? Buffer.from(`${last.created_at}:${last.id}`, 'utf8').toString('base64')
         : null;
 
     return {

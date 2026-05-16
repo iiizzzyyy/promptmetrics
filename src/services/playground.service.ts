@@ -55,10 +55,12 @@ export class PlaygroundProxyService {
     if (!variables || Object.keys(variables).length === 0) {
       return messages;
     }
-    return messages.map((m) => ({
-      ...m,
-      content: renderTemplate(m.content, variables, { strict: true }),
-    }));
+    // Skip assistant-role messages — they are example outputs, not templates.
+    // This matches PromptService.getPrompt() which also skips assistant messages.
+    return messages.map((m) => {
+      if (m.role === 'assistant') return m;
+      return { ...m, content: renderTemplate(m.content, variables, { strict: true }) };
+    });
   }
 
   private async logRun(
