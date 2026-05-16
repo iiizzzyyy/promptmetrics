@@ -113,7 +113,7 @@ export class MetricsService {
       SELECT
         ${dateBucket} as date,
         COUNT(*) as request_count,
-        COALESCE(SUM(l.tokens_in + l.tokens_out), 0) as total_tokens,
+        COALESCE(SUM(COALESCE(l.tokens_in, 0) + COALESCE(l.tokens_out, 0)), 0) as total_tokens,
         COALESCE(SUM(l.cost_usd), 0) as total_cost_usd,
         COALESCE(AVG(l.latency_ms), 0) as avg_latency_ms
         ${
