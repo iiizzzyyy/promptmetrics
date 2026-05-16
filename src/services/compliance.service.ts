@@ -51,6 +51,9 @@ export class ComplianceService {
       const parts = decoded.split(':');
       cursorCreatedAt = parseInt(parts[0], 10);
       cursorId = parseInt(parts[1], 10);
+      if (!Number.isFinite(cursorCreatedAt) || !Number.isFinite(cursorId)) {
+        throw AppError.badRequest('Invalid cursor parameter');
+      }
     }
 
     let sql: string;

@@ -161,10 +161,10 @@ export class EvaluationService {
          WHERE er.evaluation_id = ?
            AND e.prompt_name = ?
            AND er.workspace_id = ?
-           AND e.version_tag = ?
+           AND (e.version_tag = ? OR (e.version_tag IS NULL AND ? IS NULL))
            AND er.score IS NOT NULL`,
       )
-      .all(evalId, promptName, workspaceId, versionTag)) as Array<{ score: number }>;
+      .all(evalId, promptName, workspaceId, versionTag, versionTag)) as Array<{ score: number }>;
 
     return rows.map((r) => r.score);
   }
