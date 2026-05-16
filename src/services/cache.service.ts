@@ -51,7 +51,14 @@ export async function invalidatePrompt(workspaceId: string, name: string): Promi
   if (isRedisEnabled()) {
     const redis = getRedisClient();
     if (redis) {
-      const keys = await redis.keys(`prompt:${workspaceId}:${name}:*`);
+      const pattern = `prompt:${workspaceId}:${name}:*`;
+      const keys: string[] = [];
+      let cursor = '0';
+      do {
+        const result = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+        cursor = result[0];
+        keys.push(...result[1]);
+      } while (cursor !== '0');
       if (keys.length > 0) {
         await redis.del(...keys);
       }
@@ -69,7 +76,13 @@ export async function clearCache(): Promise<void> {
   if (isRedisEnabled()) {
     const redis = getRedisClient();
     if (redis) {
-      const keys = await redis.keys('prompt:*');
+      const keys: string[] = [];
+      let cursor = '0';
+      do {
+        const result = await redis.scan(cursor, 'MATCH', 'prompt:*', 'COUNT', 100);
+        cursor = result[0];
+        keys.push(...result[1]);
+      } while (cursor !== '0');
       if (keys.length > 0) {
         await redis.del(...keys);
       }

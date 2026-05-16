@@ -17,11 +17,12 @@ export interface EvalResult {
 }
 
 const ajv = new Ajv();
-const compiledSchemaCache = new Map<Record<string, unknown>, ReturnType<typeof ajv.compile>>();
+const compiledSchemaCache = new Map<string, ReturnType<typeof ajv.compile>>();
 const MAX_CACHE_SIZE = 100;
 
 function getCachedValidator(schema: Record<string, unknown>) {
-  const cached = compiledSchemaCache.get(schema);
+  const key = JSON.stringify(schema);
+  const cached = compiledSchemaCache.get(key);
   if (cached) return cached;
 
   const validator = ajv.compile(schema);
@@ -33,7 +34,7 @@ function getCachedValidator(schema: Record<string, unknown>) {
     }
   }
 
-  compiledSchemaCache.set(schema, validator);
+  compiledSchemaCache.set(key, validator);
   return validator;
 }
 

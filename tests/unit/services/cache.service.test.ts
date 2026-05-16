@@ -7,6 +7,7 @@ const mockRedisClient = {
   del: jest.fn(),
   flushall: jest.fn(),
   keys: jest.fn(),
+  scan: jest.fn(),
 };
 
 jest.mock('@services/redis.service', () => ({
@@ -121,12 +122,12 @@ describe('CacheService', () => {
   });
 
   it('should invalidate via Redis when enabled', async () => {
-    mockRedisClient.keys.mockResolvedValue(['prompt:default:multi:1.0.0']);
+    mockRedisClient.scan.mockResolvedValue(['0', ['prompt:default:multi:1.0.0']]);
     (redisService.isRedisEnabled as jest.Mock).mockReturnValue(true);
     (redisService.getRedisClient as jest.Mock).mockReturnValue(mockRedisClient);
 
     await invalidatePrompt(WORKSPACE, 'multi');
-    expect(mockRedisClient.keys).toHaveBeenCalledWith('prompt:default:multi:*');
+    expect(mockRedisClient.scan).toHaveBeenCalledWith('0', 'MATCH', 'prompt:default:multi:*', 'COUNT', 100);
     expect(mockRedisClient.del).toHaveBeenCalledWith('prompt:default:multi:1.0.0');
   });
 });
