@@ -150,7 +150,7 @@ export class EvaluationService {
   async getResultsForVersion(
     evalId: number,
     promptName: string,
-    _versionTag: string,
+    versionTag: string,
     workspaceId: string = 'default',
   ): Promise<number[]> {
     const db = getDb();
@@ -162,9 +162,10 @@ export class EvaluationService {
          WHERE er.evaluation_id = ?
            AND e.prompt_name = ?
            AND er.workspace_id = ?
+           AND e.version_tag = ?
            AND er.score IS NOT NULL`,
       )
-      .all(evalId, promptName, workspaceId)) as Array<{ score: number }>;
+      .all(evalId, promptName, workspaceId, versionTag)) as Array<{ score: number }>;
 
     return rows.map((r) => r.score);
   }
