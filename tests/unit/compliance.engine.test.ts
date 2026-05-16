@@ -25,9 +25,9 @@ describe('ComplianceEngine', () => {
   });
 
   describe('getBuiltinRules', () => {
-    it('returns 7 built-in rules', () => {
+    it('returns 8 built-in rules', () => {
       const rules = ComplianceEngine.getBuiltinRules();
-      expect(rules).toHaveLength(7);
+      expect(rules).toHaveLength(8);
       const names = rules.map((r) => r.name);
       expect(names).toContain('Email Detection');
       expect(names).toContain('SSN Detection');

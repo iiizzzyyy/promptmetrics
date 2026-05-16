@@ -44,7 +44,22 @@ export class ComplianceEngine {
       },
       {
         name: 'Credit Card Detection',
-        pattern: /\b(?:\d{4}[-\s]?){3}\d{4}\b|\b\d{13,19}\b/g,
+        pattern: /\b(?:\d{4}[-\s]?){3}\d{4}\b/g,
+        severity: 'critical',
+        category: 'pii',
+      },
+      {
+        name: 'Long Digit Sequence Detection',
+        pattern: (text: string): boolean => {
+          const matches: string[] = [];
+          for (const m of text.matchAll(/\b(\d{13,19})\b/g)) {
+            const digits = m[1];
+            if (ComplianceEngine.luhnCheck(digits) && ComplianceEngine.shannonEntropy(digits) > 2.0) {
+              matches.push(m[0]);
+            }
+          }
+          return matches.length > 0;
+        },
         severity: 'critical',
         category: 'pii',
       },

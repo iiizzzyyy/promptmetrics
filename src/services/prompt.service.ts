@@ -19,6 +19,11 @@ export class PromptService {
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
 
     if (query) {
+      // NOTE: driver.search() is not workspace-scoped — it may return prompt
+      // names from other workspaces. The DB query below filters by workspace_id,
+      // so only names that exist in the requesting workspace are returned.
+      // Prompt names themselves are not sensitive content; the content is only
+      // returned after the workspace check in getPrompt().
       const driverItems = await this.driver.search(query);
       if (driverItems.length === 0) {
         return buildPaginatedResponse([], 0, page, limit);
