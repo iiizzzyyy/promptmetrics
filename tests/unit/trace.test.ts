@@ -125,7 +125,7 @@ describe('TraceController', () => {
   });
 
   it('returns 422 for invalid span body', async () => {
-    const req = mockReq({ name: 'step' }, { trace_id: 'any' });
+    const req = mockReq({ status: 'invalid_status' }, { trace_id: 'any' });
     const res = mockRes();
     await expect(controller.createSpan(req as Request, res as Response)).rejects.toThrow(
       expect.objectContaining({ statusCode: 422, code: 'VALIDATION_FAILED' }),

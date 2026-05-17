@@ -164,7 +164,10 @@ export class ABTestService {
       }
 
       if (!finalScoresA || !finalScoresB || finalScoresA.length === 0 || finalScoresB.length === 0) {
-        throw AppError.badRequest('Insufficient scores to run this A/B test');
+        throw AppError.badRequest('Insufficient scores to run this A/B test', {
+          scores_a_count: finalScoresA?.length ?? 0,
+          scores_b_count: finalScoresB?.length ?? 0,
+        });
       }
     }
 

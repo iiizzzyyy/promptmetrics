@@ -1000,13 +1000,15 @@ Scan prompt text for compliance violations (PII, security risks, and sensitive d
 - The scan result is persisted to the `compliance_scores` table.
 
 #### GET /v1/compliance/scores
-List persisted compliance scores with pagination.
+List persisted compliance scores with **cursor-based pagination** (unlike other list endpoints, which use offset-based pagination).
+
+> **Pagination note:** Most list endpoints use offset pagination (`page` + `limit`) and return `{ items, total, page, limit, totalPages }`. The compliance scores endpoint uses cursor pagination (`cursor` + `limit`) and returns `{ items, nextCursor, total }`. Use the `nextCursor` value from the response as the `cursor` parameter in the next request. Cursor pagination is more efficient for large sorted result sets because it avoids counting and skipping rows.
 
 **Query Parameters:**
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
-| `page` | integer | 1 | Page number |
-| `limit` | integer | 50 | Items per page (max 100) |
+| `limit` | integer | 50 | Items per page (max 200) |
+| `cursor` | string | — | Cursor from previous response's `nextCursor` |
 
 **Response:**
 ```json
@@ -1029,10 +1031,8 @@ List persisted compliance scores with pagination.
       "created_at": 1776849966
     }
   ],
-  "total": 1,
-  "page": 1,
-  "limit": 50,
-  "totalPages": 1
+  "nextCursor": "MTc3Njg0OTk2Njox",
+  "total": 15
 }
 ```
 

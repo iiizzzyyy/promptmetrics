@@ -130,6 +130,7 @@ export class TraceService {
       throw AppError.notFound('Trace');
     }
 
+    const status = input.status || 'unset';
     const spanId = input.span_id || crypto.randomUUID();
 
     await db
@@ -142,7 +143,7 @@ export class TraceService {
         spanId,
         input.parent_id || null,
         input.name,
-        input.status,
+        status,
         input.start_time || null,
         input.end_time || null,
         input.metadata ? JSON.stringify(input.metadata) : null,
@@ -153,7 +154,7 @@ export class TraceService {
       span_id: spanId,
       parent_id: input.parent_id || null,
       name: input.name,
-      status: input.status,
+      status,
       start_time: input.start_time || null,
       end_time: input.end_time || null,
       metadata: input.metadata || {},
@@ -192,6 +193,20 @@ export class TraceService {
       metadata: safeJsonParse<Record<string, unknown>>(row.metadata_json, {}),
       created_at: row.created_at,
     };
+  }
+
+  async deleteTrace(traceId: string, workspaceId: string = 'default'): Promise<void> {
+    const db = getDb();
+    const trace = (await db
+      .prepare('SELECT trace_id FROM traces WHERE trace_id = ? AND workspace_id = ?')
+      .get(traceId, workspaceId)) as { trace_id: string } | undefined;
+
+    if (!trace) {
+      throw AppError.notFound('Trace');
+    }
+
+    await db.prepare('DELETE FROM spans WHERE trace_id = ? AND workspace_id = ?').run(traceId, workspaceId);
+    await db.prepare('DELETE FROM traces WHERE trace_id = ? AND workspace_id = ?').run(traceId, workspaceId);
   }
 
   async listTraces(page: number, limit: number, workspaceId: string = 'default'): Promise<PaginatedResponse<Trace>> {

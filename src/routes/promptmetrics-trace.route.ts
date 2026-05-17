@@ -30,6 +30,14 @@ export function createTraceRoutes(): Router {
     (req, res) => controller.createSpan(req, res),
   );
   router.get('/v1/traces/:trace_id/spans/:span_id', (req, res) => controller.getSpan(req, res));
+  router.delete(
+    '/v1/traces/:trace_id',
+    requireScope('write'),
+    auditLog('delete_trace', (req) => ({
+      target_id: Array.isArray(req.params.trace_id) ? req.params.trace_id[0] : req.params.trace_id,
+    })),
+    (req, res) => controller.deleteTrace(req, res),
+  );
 
   return router;
 }

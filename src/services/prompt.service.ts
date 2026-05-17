@@ -157,6 +157,15 @@ export class PromptService {
     // Wrap the three-step write in a transaction so that if the driver
     // write fails, the pending row is rolled back instead of orphaned.
     const result = await db.transaction(async () => {
+      // Check for existing active prompt with same name+version
+      const existing = (await db
+        .prepare("SELECT status FROM prompts WHERE name = ? AND version_tag = ? AND workspace_id = ? AND status = 'active'")
+        .get(prompt.name, prompt.version, workspaceId)) as { status: string } | undefined;
+
+      if (existing) {
+        throw AppError.badRequest('Prompt already exists', { name: prompt.name, version: prompt.version });
+      }
+
       // Step 1: insert pending row (or reset existing to pending)
       await db
         .prepare(

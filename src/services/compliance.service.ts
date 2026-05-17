@@ -20,6 +20,7 @@ export interface ComplianceScore {
 export interface CursorPaginatedComplianceResponse {
   items: ComplianceScore[];
   nextCursor: string | null;
+  total: number;
 }
 
 export class ComplianceService {
@@ -36,6 +37,11 @@ export class ComplianceService {
   ): Promise<CursorPaginatedComplianceResponse> {
     const db = getDb();
     const effectiveLimit = Math.min(200, Math.max(1, limit || 50));
+
+    const totalRow = (await db
+      .prepare('SELECT COUNT(*) as c FROM compliance_scores WHERE workspace_id = ?')
+      .get(workspaceId)) as { c: number } | undefined;
+    const total = totalRow?.c ?? 0;
 
     // Cursor format: base64("created_at:id")
     let cursorCreatedAt: number | undefined;
@@ -102,6 +108,7 @@ export class ComplianceService {
         };
       }),
       nextCursor,
+      total,
     };
   }
 

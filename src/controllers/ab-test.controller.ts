@@ -85,7 +85,12 @@ export class ABTestController {
       scoresB = logsB.map(extractScore).filter((s) => s > 0);
 
       if (scoresA.length === 0 || scoresB.length === 0) {
-        throw AppError.badRequest('Insufficient logs to auto-compute scores for this A/B test');
+        throw AppError.badRequest('Insufficient logs to auto-compute scores for this A/B test', {
+          version_a_log_count: logsA.length,
+          version_b_log_count: logsB.length,
+          scores_a_count: scoresA.length,
+          scores_b_count: scoresB.length,
+        });
       }
     }
 
