@@ -338,9 +338,14 @@ Add a span to an existing trace.
 
 - `span_id` is optional; a UUID will be auto-generated if omitted.
 - `parent_id` is optional for nested spans.
-- `status` must be `ok` or `error`.
+- `status` must be `unset`, `ok`, `error`, or `running`. Defaults to `unset` if omitted.
 - `start_time` and `end_time` are millisecond timestamps (optional).
 - `metadata`: max 50 top-level keys; nested objects and arrays allowed.
+
+#### DELETE /v1/traces/:trace_id
+Delete a trace and all its spans. Requires `write` scope.
+
+**Response:** `204 No Content`
 
 **Response:** `201 Created`
 ```json
@@ -467,6 +472,11 @@ Update a run's status, output, or metadata.
 - Only provided fields are updated. `updated_at` is refreshed automatically.
 
 **Response:** `200 OK`
+
+#### DELETE /v1/runs/:run_id
+Delete a workflow run. Requires `write` scope.
+
+**Response:** `204 No Content`
 ```json
 { "run_id": "550e8400-e29b-41d4-a716-446655440000", "status": "updated" }
 ```
