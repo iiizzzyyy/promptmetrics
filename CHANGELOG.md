@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-05-16
+
+### Fixed
+
+- **#119**: Add `authenticateApiKey` and `rateLimitPerKey` middleware to audit-log route — the endpoint was completely inaccessible, returning 403 for every request.
+- **#120**: Fix audit-log flush data loss — `getDb()` failure after `splice()` permanently lost all batch entries with 0 reported drops. Now re-queues the batch before throwing.
+- **#121**: Use Anthropic API `system` parameter instead of converting system messages to user role — fixes consecutive-user-message errors and improves instruction following.
+- **#124**: Fix `getPrompt` active_version subquery to filter NULL rows — prevented wrong prompt version from being served.
+- **#125**: Add `workspace_id` filter to `GithubDriver.listVersions` — was leaking prompt versions across workspace boundaries.
+- **#126**: Validate compliance cursor pagination values — malformed cursors caused 500 on Postgres and empty pages on SQLite.
+- **#127**: Fix evaluation-rule schema cache using object reference identity — cache never hit, causing memory leak. Now uses `JSON.stringify` as key.
+- **#128**: Replace `redis.keys()` with `redis.scan()` in cache invalidation — `KEYS` is O(N) and blocks the Redis event loop.
+- **#129**: Use `parsePagination()` in `DatasetController.listDatasets` — raw `Number()` allowed unbounded queries.
+- **#130**: Fix `getEnv()` treating empty-string env vars as unset — `DRIVER=""` silently fell back to `filesystem`.
+- **#131**: Map Anthropic 529 (Overloaded) to `rateLimit` instead of `unknown` — makes overloaded errors retryable.
+- **#132**: Remove dead `/health/deep` Express route — the handler in `server.ts` runs first and shadows it.
+- **#133**: Add `closeRedis()` to graceful shutdown — Redis connections were leaked on shutdown.
+- **#134**: Remove impossible `RETURNING id` retry inside Postgres transactions — the 42703 error aborts the transaction, making retry impossible.
+- **#136**: Process remaining Ollama buffer after stream ends — final JSON without trailing newline was silently discarded.
+- **#137**: Add `console.warn` when falling back to default model pricing for unknown Anthropic models.
+- **#141**: Fix `getResultsForVersion` for NULL `version_tag` evaluations — A/B tests linked to versionless evaluations now return results correctly.
+
+### Changed
+
+- **#122**: Add circuit breaker protection to playground streaming — `streamChatCompletion` now checks breaker state before streaming and tests connection through the breaker.
+
 ## [1.3.0] - 2026-05-04
 
 ### Security

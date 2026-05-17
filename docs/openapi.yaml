@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: PromptMetrics API
   description: Lightweight, self-hosted prompt registry with GitHub-backed versioning and metadata logging.
-  version: 1.1.0
+  version: 1.4.0
   contact:
     name: PromptMetrics Support
 servers:

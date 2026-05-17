@@ -21,31 +21,41 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 
 ---
 
-## What's New in v1.3.0
+## What's New in v1.4.0
 
-- **BFF Session Cookie Auth** — Dashboard uses HTTP-only, SameSite=strict session cookies. API keys are no longer exposed to the browser.
-- **CSRF Protection** — All state-changing BFF endpoints require a double-submit CSRF token.
-- **Scoped Authorization on All Mutations** — Previously unprotected routes (`/v1/logs`, `/v1/runs`, `/v1/traces`, `/v1/prompts/:name/labels`) now enforce `requireScope('write')`.
-- **Real Error Rate Metrics** — Time-series metrics compute `error_rate` as actual failures divided by total requests, not a placeholder.
-- **Audit Logging on All Mutations** — Every state-changing API call is recorded with actor, action, timestamp, and optional target ID.
-- **Compliance Scanning Engine** — New pluggable engine (`stub`, `llm-guard`, `lakera`) scans prompts for PII, secrets, and policy violations with automated risk scoring.
-- **Compliance Provider Info** — Scan results now include provider name, flagged status, and violation categories.
-- **A/B Test Real Scores** — Variant metrics aggregate actual evaluation scores with confidence intervals and standard deviation.
-- **Promote Winner Transaction** — Winner promotion runs inside a DB transaction to prevent partial state; updates `active_version_id` atomically.
-- **Radix UI Migration** — Dialog, Popover, and AlertDialog rebuilt on Radix primitives with focus trapping, Escape-to-close, and return-focus.
-- **Playground Validation** — Zod + React Hook Form validation on all playground inputs with detailed error messages.
-- **Resizable Panels** — Drag-to-resize layout panels in playground and trace views.
-- **Error Boundary** — Top-level React error boundary catches render crashes and shows a recoverable fallback UI.
-- **Settings Sheet** — Slide-out settings panel with workspace and preference management.
-- **AlertDialog Confirmations** — Destructive actions (delete, promote) require explicit confirmation.
-- **E2E Console Hygiene** — Playwright tests assert zero console errors and zero hydration warnings across all dashboard pages.
-- **Accessibility Audit** — axe-core scans assert zero critical/serious violations on key pages.
+- **Audit Log Auth Fix** — `GET /v1/audit-logs` was completely inaccessible (always returned 403) because `authenticateApiKey` middleware was missing. Now properly authenticated with admin scope and rate limiting.
+- **Audit Log Data Loss Fix** — `getDb()` failure during flush permanently lost all batch entries with 0 reported drops. Entries are now re-queued before throwing.
+- **Anthropic System Prompt Fix** — System messages are now passed via the Anthropic API's dedicated `system` parameter instead of being converted to user role, fixing consecutive-user-message errors and improving instruction following.
+- **Cross-Workspace Data Leak Fix** — `GithubDriver.listVersions()` was missing `workspace_id` filter, leaking prompt versions across workspace boundaries.
+- **Compliance Cursor Validation** — Malformed cursor pagination values caused 500 errors on Postgres and empty pages on SQLite. Now returns 400 for invalid cursors.
+- **Schema Cache Fix** — Evaluation rule engine schema cache used object reference identity, so it never hit. Now uses `JSON.stringify` as the cache key.
+- **Redis KEYS → SCAN** — Cache invalidation replaced blocking `KEYS` command with non-blocking `SCAN` iteration to prevent production latency spikes.
+- **Dataset Pagination** — `DatasetController.listDatasets` now uses `parsePagination()` to clamp queries, preventing unbounded result sets.
+- **Env Var Empty String Fix** — `getEnv()` treated empty-string env vars as unset (`DRIVER=""` silently fell back to `filesystem`). Now uses nullish coalescing (`??`).
+- **Anthropic 529 Retryable** — HTTP 529 (Overloaded) now maps to `rateLimit` instead of `unknown`, making it retryable by callers.
+- **Dead Health Route Removed** — The Express `/health/deep` handler was unreachable (shadowed by `server.ts`). Removed to avoid confusion.
+- **Redis Graceful Shutdown** — `closeRedis()` is now called during shutdown; previously Redis connections were leaked.
+- **Postgres Transaction Retry Removed** — `RETURNING id` retry inside transactions was impossible (PostgreSQL aborts the transaction on error). Simplified to skip retry.
+- **Ollama Streaming Fix** — Final JSON fragment without trailing newline was silently discarded. Buffer is now processed after stream ends.
+- **Active Version NULL Fix** — `getPrompt` active_version subquery now filters for `active_version_id IS NOT NULL`, preventing wrong version from being served.
+- **Eval NULL version_tag** — `getResultsForVersion` now handles NULL `version_tag` evaluations correctly, fixing A/B tests linked to versionless evaluations.
+- **Streaming Circuit Breaker** — Playground `streamChatCompletion` now checks circuit breaker state and tests connection through the breaker.
+- **Cost Estimation Warning** — Unknown Anthropic models now log a warning when falling back to default pricing.
+
+### Previous: v1.3.0
+
+- BFF Session Cookie Auth, CSRF Protection, Scoped Authorization on All Mutations
+- Real Error Rate Metrics, Audit Logging on All Mutations
+- Compliance Scanning Engine, A/B Test Real Scores, Promote Winner Transaction
+- Radix UI Migration, Playground Validation, Resizable Panels
+- Error Boundary, Settings Sheet, AlertDialog Confirmations
+- E2E Console Hygiene, Accessibility Audit
 
 ---
 
 ## Table of Contents
 
-- [What's New in v1.3.0](#whats-new-in-v130)
+- [What's New in v1.4.0](#whats-new-in-v140)
 - [Why PromptMetrics?](#why-promptmetrics)
 - [Features](#features)
 - [Architecture](#architecture)
