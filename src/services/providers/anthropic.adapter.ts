@@ -179,9 +179,13 @@ export class AnthropicAdapter implements LLMProviderAdapter {
   }
 
   estimateCost(model: string, tokensIn: number, tokensOut: number): number {
-    const pricing = PRICING_TABLE[model] || PRICING_TABLE['claude-3-5-sonnet-20241022'];
-    const inputCost = (tokensIn / 1000) * pricing.inputPer1k;
-    const outputCost = (tokensOut / 1000) * pricing.outputPer1k;
+    const pricing = PRICING_TABLE[model];
+    if (!pricing) {
+      console.warn(`Unknown model ${model} for cost estimation, using claude-3-5-sonnet-20241022 pricing as fallback`);
+    }
+    const resolvedPricing = pricing || PRICING_TABLE['claude-3-5-sonnet-20241022'];
+    const inputCost = (tokensIn / 1000) * resolvedPricing.inputPer1k;
+    const outputCost = (tokensOut / 1000) * resolvedPricing.outputPer1k;
     return Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000;
   }
 

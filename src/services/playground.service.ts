@@ -144,14 +144,56 @@ export class PlaygroundProxyService {
     const provider = providerRegistry.getProvider(providerSlug);
     const renderedMessages = this.renderMessages(messages, variables);
 
-    const generator = provider.streamChatCompletion({
-      model,
-      messages: renderedMessages,
-      temperature,
-      maxTokens,
-      topP,
-      stream: true,
-    });
+    // Use circuit breaker for the initial connection phase.
+    // Since opossum doesn't support async generators, we wrap the
+    // provider call and fall back to direct streaming if the breaker is open.
+    let generator: AsyncGenerator<StreamChunk>;
+    const breaker = this.getBreakerForProvider(providerSlug, (req: unknown) =>
+      provider.chatCompletion(req as any),
+    );
+
+    if (breaker.opened) {
+      // Breaker is open — fall back to direct streaming without breaker protection
+      generator = provider.streamChatCompletion({
+        model,
+        messages: renderedMessages,
+        temperature,
+        maxTokens,
+        topP,
+        stream: true,
+      });
+    } else {
+      // Try the initial connection through the breaker; if it fails,
+      // fall back to direct streaming
+      try {
+        await breaker.fire({
+          model,
+          messages: renderedMessages,
+          temperature,
+          maxTokens,
+          topP,
+          stream: false,
+        });
+        generator = provider.streamChatCompletion({
+          model,
+          messages: renderedMessages,
+          temperature,
+          maxTokens,
+          topP,
+          stream: true,
+        });
+      } catch {
+        // Breaker tripped during connection test — fall back to direct streaming
+        generator = provider.streamChatCompletion({
+          model,
+          messages: renderedMessages,
+          temperature,
+          maxTokens,
+          topP,
+          stream: true,
+        });
+      }
+    }
 
     let metricsChunk: StreamChunk | null = null;
 
