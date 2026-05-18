@@ -82,4 +82,11 @@ export class TraceController {
     const result = await this.service.listTraces(page, limit, workspaceId);
     res.status(200).json(result);
   }
+
+  async deleteTrace(req: Request, res: Response): Promise<void> {
+    const traceId = req.params.trace_id as string;
+    const workspaceId = req.workspaceId || 'default';
+    await this.service.deleteTrace(traceId, workspaceId);
+    res.status(204).send();
+  }
 }

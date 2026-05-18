@@ -186,7 +186,7 @@ Add a span to an existing trace.
 ```bash
 promptmetrics add-span 550e8400-e29b-41d4-a716-446655440000 \
   --name fetch-prompt \
-  --status ok \
+  --status unset \
   --start-time 1000 \
   --end-time 2000 \
   --api-key pm_xxxxxxxx

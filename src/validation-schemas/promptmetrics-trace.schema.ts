@@ -13,7 +13,7 @@ export const createSpanSchema = Joi.object({
   span_id: Joi.string().uuid().optional(),
   parent_id: Joi.string().uuid().optional(),
   name: Joi.string().max(256).required(),
-  status: Joi.string().valid('ok', 'error').required(),
+  status: Joi.string().valid('unset', 'ok', 'error', 'running').default('unset'),
   start_time: Joi.number().integer().min(0),
   end_time: Joi.number().integer().min(0),
   metadata: Joi.object().unknown(true).max(50).messages({
