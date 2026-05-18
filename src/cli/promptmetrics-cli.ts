@@ -349,7 +349,7 @@ program
   .command('add-span <trace_id>')
   .description('Add a span to a trace')
   .requiredOption('--name <name>', 'Span name')
-  .requiredOption('--status <status>', 'Span status (ok|error)')
+  .requiredOption('--status <status>', 'Span status (unset|ok|error|running)')
   .option('--parent-id <id>', 'Parent span ID')
   .option('--start-time <ms>', 'Start time in ms')
   .option('--end-time <ms>', 'End time in ms')

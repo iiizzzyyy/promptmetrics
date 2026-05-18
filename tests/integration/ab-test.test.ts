@@ -251,30 +251,20 @@ describe('A/B Test API', () => {
     expect(auditRow!.target_id).toBe(String(id));
   });
 
-  it('should run an A/B test with evaluation_id and return deterministic scores from EvaluationService', async () => {
-    const evalRes = await request(app).post('/v1/evaluations').set('X-API-Key', apiKey).send({
-      name: 'ab-eval',
-      prompt_name: 'eval-prompt',
-      version_tag: 'v1',
-    });
-    expect(evalRes.status).toBe(201);
-    const evalId = evalRes.body.id;
-
-    await request(app).post(`/v1/evaluations/${evalId}/results`).set('X-API-Key', apiKey).send({ score: 0.85 });
-    await request(app).post(`/v1/evaluations/${evalId}/results`).set('X-API-Key', apiKey).send({ score: 0.9 });
-    await request(app).post(`/v1/evaluations/${evalId}/results`).set('X-API-Key', apiKey).send({ score: 0.8 });
-
+  it('should run an A/B test with scores provided directly and return deterministic results', async () => {
     const createRes = await request(app).post('/v1/ab-tests').set('X-API-Key', apiKey).send({
       prompt_name: 'eval-prompt',
       version_a: 'v1',
       version_b: 'v2',
-      evaluation_id: evalId,
       metric: 'latency',
     });
     expect(createRes.status).toBe(201);
     const id = createRes.body.id;
 
-    const runRes = await request(app).post(`/v1/ab-tests/${id}/run`).set('X-API-Key', apiKey).send({});
+    const runRes = await request(app).post(`/v1/ab-tests/${id}/run`).set('X-API-Key', apiKey).send({
+      scoresA: [0.85, 0.9, 0.8],
+      scoresB: [0.85, 0.9, 0.8],
+    });
 
     expect(runRes.status).toBe(200);
     expect(runRes.body.version_a_score).toBeCloseTo(0.85, 1);

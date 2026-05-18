@@ -29,6 +29,14 @@ export function createRunRoutes(): Router {
     })),
     (req, res) => controller.updateRun(req, res),
   );
+  router.delete(
+    '/v1/runs/:run_id',
+    requireScope('write'),
+    auditLog('delete_run', (req) => ({
+      target_id: Array.isArray(req.params.run_id) ? req.params.run_id[0] : req.params.run_id,
+    })),
+    (req, res) => controller.deleteRun(req, res),
+  );
 
   return router;
 }

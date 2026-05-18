@@ -961,10 +961,21 @@ paths:
   /v1/compliance/scores:
     get:
       summary: List compliance scores
-      description: Returns a paginated list of compliance scores.
+      description: Returns a cursor-paginated list of compliance scores. Unlike other list endpoints that use offset pagination (page + limit), this endpoint uses cursor pagination (cursor + limit) for efficient traversal of large sorted result sets.
       parameters:
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/LimitParam'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          description: Number of items per page
+        - name: cursor
+          in: query
+          schema:
+            type: string
+          description: Cursor from a previous response's nextCursor field
       responses:
         '200':
           description: Paginated list of compliance scores
