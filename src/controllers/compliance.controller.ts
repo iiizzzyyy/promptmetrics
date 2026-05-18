@@ -45,12 +45,22 @@ export class ComplianceController {
   }
 
   async listScores(req: Request, res: Response): Promise<void> {
-    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
-    const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined;
     const workspaceId = req.workspaceId || 'default';
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
 
-    const result = await this.service.listScores(limit, cursor, workspaceId);
-    res.status(200).json(result);
+    // Offset pagination takes precedence when 'page' is provided
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+    const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined;
+
+    if (page !== undefined && page > 0) {
+      // Offset pagination mode — matches all other list endpoints
+      const result = await this.service.listScoresOffset(page, limit, workspaceId);
+      res.status(200).json(result);
+    } else {
+      // Cursor pagination mode (legacy, deprecated)
+      const result = await this.service.listScores(limit, cursor, workspaceId);
+      res.status(200).json(result);
+    }
   }
 
   async getScore(req: Request, res: Response): Promise<void> {

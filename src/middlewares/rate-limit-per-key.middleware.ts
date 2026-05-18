@@ -4,9 +4,9 @@ import { getRedisClient } from '@services/redis.service';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
 
 // Rate-limit configuration -- overridable via environment for CI/test environments.
-// Production defaults: 100 requests per 60-second window.
+// Production defaults: 300 requests per 60-second window.
 const WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS) || 60 * 1000;
-const DEFAULT_MAX = Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 100;
+const DEFAULT_MAX = Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 300;
 
 function getDbOrNull() {
   try {

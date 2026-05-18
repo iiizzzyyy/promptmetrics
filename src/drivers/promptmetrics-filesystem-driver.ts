@@ -85,9 +85,10 @@ export class FilesystemDriver implements PromptDriver {
     }
 
     const filePath = path.join(promptDir, `${prompt.version}.json`);
-    if (fs.existsSync(filePath)) {
-      throw new Error(`Prompt already exists: ${prompt.name} v${prompt.version}`);
-    }
+    // Duplicate check is handled by PromptService at the DB layer — the driver
+    // just writes. Overwriting a stale file is safe because the service's
+    // 3-phase write (pending → driver → active) transaction ensures that only
+    // one request can own a given name+version at a time.
     fs.writeFileSync(filePath, JSON.stringify(prompt, null, 2), 'utf-8');
 
     const stats = fs.statSync(filePath);

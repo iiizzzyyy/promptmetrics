@@ -3,6 +3,7 @@ import { ComplianceDriver, ComplianceScanResponse } from '@drivers/compliance/co
 import { Violation } from '@services/compliance.engine';
 import { getDb } from '@models/promptmetrics-sqlite';
 import { safeJsonParse } from '@utils/safe-json';
+import { PaginatedResponse, buildPaginatedResponse, parsePagination, parseCountRow } from '@utils/pagination';
 
 export interface ComplianceScore {
   id: number;
@@ -109,6 +110,56 @@ export class ComplianceService {
       nextCursor,
       total,
     };
+  }
+
+  /** Offset-based pagination — consistent with all other list endpoints. */
+  async listScoresOffset(
+    page: number,
+    limit: number,
+    workspaceId: string = 'default',
+  ): Promise<PaginatedResponse<ComplianceScore>> {
+    const db = getDb();
+    const { offset } = parsePagination({ page: String(page), limit: String(limit) });
+
+    const total = parseCountRow(
+      await db.prepare('SELECT COUNT(*) as c FROM compliance_scores WHERE workspace_id = ?').get(workspaceId),
+    );
+
+    const items = (await db
+      .prepare(
+        'SELECT * FROM compliance_scores WHERE workspace_id = ? ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?',
+      )
+      .all(workspaceId, limit, offset)) as Array<{
+      id: number;
+      prompt_name: string;
+      version_tag: string;
+      score: number;
+      violations_json: string;
+      provider: string;
+      workspace_id: string;
+      created_at: number;
+    }>;
+
+    return buildPaginatedResponse(
+      items.map((item) => {
+        const violations = safeJsonParse<Violation[]>(item.violations_json, []);
+        return {
+          id: item.id,
+          prompt_name: item.prompt_name,
+          version_tag: item.version_tag,
+          score: item.score,
+          risk_level: this.computeRiskLevel(item.score),
+          violations,
+          provider: item.provider ?? 'stub',
+          flagged: item.score < 90,
+          categories: [...new Set(violations.map((v) => v.category))],
+          created_at: item.created_at,
+        };
+      }),
+      total,
+      page,
+      limit,
+    );
   }
 
   async getScore(id: number, workspaceId: string = 'default'): Promise<ComplianceScore> {

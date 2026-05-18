@@ -124,6 +124,20 @@ describe('A/B Test API', () => {
   });
 
   it('should promote winner', async () => {
+    const db = getDb();
+    const now = Math.floor(Date.now() / 1000);
+    // Seed prompt versions so label creation can validate them
+    await db
+      .prepare(
+        "INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, 'active', 'filesystem', ?)",
+      )
+      .run('promote-test-prompt', 'v1', 'default', now);
+    await db
+      .prepare(
+        "INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, 'active', 'filesystem', ?)",
+      )
+      .run('promote-test-prompt', 'v2', 'default', now);
+
     const createRes = await request(app).post('/v1/ab-tests').set('X-API-Key', apiKey).send({
       prompt_name: 'promote-test-prompt',
       version_a: 'v1',
@@ -165,6 +179,20 @@ describe('A/B Test API', () => {
   });
 
   it('should persist promoted_version and promoted_at on promote', async () => {
+    const db = getDb();
+    const now = Math.floor(Date.now() / 1000);
+    // Seed prompt versions so label creation can validate them
+    await db
+      .prepare(
+        "INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, 'active', 'filesystem', ?)",
+      )
+      .run('persist-promote-prompt', 'v1', 'default', now);
+    await db
+      .prepare(
+        "INSERT INTO prompts (name, version_tag, workspace_id, status, driver, created_at) VALUES (?, ?, ?, 'active', 'filesystem', ?)",
+      )
+      .run('persist-promote-prompt', 'v2', 'default', now);
+
     const createRes = await request(app).post('/v1/ab-tests').set('X-API-Key', apiKey).send({
       prompt_name: 'persist-promote-prompt',
       version_a: 'v1',
@@ -261,10 +289,13 @@ describe('A/B Test API', () => {
     expect(createRes.status).toBe(201);
     const id = createRes.body.id;
 
-    const runRes = await request(app).post(`/v1/ab-tests/${id}/run`).set('X-API-Key', apiKey).send({
-      scoresA: [0.85, 0.9, 0.8],
-      scoresB: [0.85, 0.9, 0.8],
-    });
+    const runRes = await request(app)
+      .post(`/v1/ab-tests/${id}/run`)
+      .set('X-API-Key', apiKey)
+      .send({
+        scoresA: [0.85, 0.9, 0.8],
+        scoresB: [0.85, 0.9, 0.8],
+      });
 
     expect(runRes.status).toBe(200);
     expect(runRes.body.version_a_score).toBeCloseTo(0.85, 1);

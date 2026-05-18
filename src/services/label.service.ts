@@ -11,18 +11,57 @@ export interface Label {
 
 export interface CreateLabelInput {
   name: string;
-  version_tag: string;
+  version_tag?: string;
 }
 
 export class LabelService {
   async createLabel(promptName: string, input: CreateLabelInput, workspaceId: string = 'default'): Promise<Label> {
     const db = getDb();
+
+    // Verify the prompt exists in this workspace
+    const prompt = (await db
+      .prepare("SELECT id FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active' LIMIT 1")
+      .get(promptName, workspaceId)) as { id: number } | undefined;
+
+    if (!prompt) {
+      throw AppError.notFound('Prompt');
+    }
+
+    // If version_tag is not provided, auto-populate from the prompt's latest active version
+    let versionTag = input.version_tag;
+    if (!versionTag) {
+      const latestVersion = (await db
+        .prepare(
+          "SELECT version_tag FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
+        )
+        .get(promptName, workspaceId)) as { version_tag: string } | undefined;
+
+      if (!latestVersion) {
+        throw AppError.badRequest('Prompt has no active versions', { prompt_name: promptName });
+      }
+      versionTag = latestVersion.version_tag;
+    } else {
+      // Validate that the specified version exists for this prompt
+      const versionExists = (await db
+        .prepare(
+          "SELECT 1 FROM prompts WHERE name = ? AND version_tag = ? AND workspace_id = ? AND status = 'active' LIMIT 1",
+        )
+        .get(promptName, versionTag, workspaceId)) as { 1: number } | undefined;
+
+      if (!versionExists) {
+        throw AppError.badRequest('Version not found for this prompt', {
+          prompt_name: promptName,
+          version_tag: versionTag,
+        });
+      }
+    }
+
     await db
       .prepare(
         `INSERT INTO prompt_labels (prompt_name, name, version_tag, workspace_id) VALUES (?, ?, ?, ?)
        ON CONFLICT(prompt_name, name) DO UPDATE SET version_tag = excluded.version_tag`,
       )
-      .run(promptName, input.name, input.version_tag, workspaceId);
+      .run(promptName, input.name, versionTag, workspaceId);
 
     // Fetch the row back to get the correct created_at from the DB,
     // rather than using Date.now() which would reset on upsert.
@@ -35,7 +74,7 @@ export class LabelService {
     return {
       prompt_name: row?.prompt_name ?? promptName,
       name: row?.name ?? input.name,
-      version_tag: row?.version_tag ?? input.version_tag,
+      version_tag: row?.version_tag ?? versionTag,
       created_at: row?.created_at ?? Math.floor(Date.now() / 1000),
     };
   }
@@ -48,9 +87,11 @@ export class LabelService {
   ): Promise<PaginatedResponse<Label>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const total = parseCountRow(await db
-      .prepare('SELECT COUNT(*) as c FROM prompt_labels WHERE prompt_name = ? AND workspace_id = ?')
-      .get(promptName, workspaceId));
+    const total = parseCountRow(
+      await db
+        .prepare('SELECT COUNT(*) as c FROM prompt_labels WHERE prompt_name = ? AND workspace_id = ?')
+        .get(promptName, workspaceId),
+    );
     const items = (await db
       .prepare(
         'SELECT * FROM prompt_labels WHERE prompt_name = ? AND workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',

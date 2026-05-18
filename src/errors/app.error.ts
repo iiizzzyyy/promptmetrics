@@ -1,20 +1,30 @@
 export type ErrorDetails = Record<string, unknown>;
 
+export type ErrorDetailsType = 'fields' | 'context';
+
 export class AppError extends Error {
   public readonly statusCode: number;
   public readonly code: string;
   public readonly details?: ErrorDetails;
+  public readonly detailsType?: ErrorDetailsType;
 
-  constructor(message: string, statusCode: number, code: string, details?: ErrorDetails) {
+  constructor(
+    message: string,
+    statusCode: number,
+    code: string,
+    details?: ErrorDetails,
+    detailsType?: ErrorDetailsType,
+  ) {
     super(message);
     this.statusCode = statusCode;
     this.code = code;
     this.details = details;
+    this.detailsType = detailsType;
     Error.captureStackTrace(this, this.constructor);
   }
 
   static badRequest(message: string, details?: ErrorDetails): AppError {
-    return new AppError(message, 400, 'BAD_REQUEST', details);
+    return new AppError(message, 400, 'BAD_REQUEST', details, details ? 'context' : undefined);
   }
 
   static unauthorized(message = 'Unauthorized'): AppError {
@@ -35,7 +45,7 @@ export class AppError extends Error {
    */
   static validationFailed(details: string[] | ErrorDetails): AppError {
     const normalized: ErrorDetails = Array.isArray(details) ? { fields: details } : details;
-    return new AppError('Validation failed', 422, 'VALIDATION_FAILED', normalized);
+    return new AppError('Validation failed', 422, 'VALIDATION_FAILED', normalized, 'fields');
   }
 
   static internal(message?: string): AppError {
@@ -51,7 +61,8 @@ export class AppError extends Error {
       message: this.message,
       statusCode: this.statusCode,
       code: this.code,
-      details: this.details,
+      ...(this.details !== undefined ? { details: this.details } : {}),
+      ...(this.detailsType !== undefined ? { detailsType: this.detailsType } : {}),
     };
   }
 }
