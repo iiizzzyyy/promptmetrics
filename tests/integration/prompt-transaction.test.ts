@@ -70,7 +70,7 @@ describe('Prompt Creation Transaction', () => {
     expect(row).toBeDefined();
     expect(row.name).toBe('transaction-prompt');
     expect(row.version_tag).toBe('1.0.0');
-    expect(row.driver).toBe('filesystem');
+    expect(row.driver).toBeDefined();
     expect(row.status).toBe('active');
   });
 

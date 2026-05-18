@@ -60,11 +60,13 @@ export class ComplianceService {
     if (cursorCreatedAt !== undefined && cursorId !== undefined) {
       if (dialect === 'postgres') {
         // PostgreSQL supports row-value comparisons: (created_at, id) < (?, ?)
-        sql = 'SELECT * FROM compliance_scores WHERE workspace_id = ? AND (created_at, id) < (?, ?) ORDER BY created_at DESC, id DESC LIMIT ?';
+        sql =
+          'SELECT * FROM compliance_scores WHERE workspace_id = ? AND (created_at, id) < (?, ?) ORDER BY created_at DESC, id DESC LIMIT ?';
         params = [workspaceId, cursorCreatedAt, cursorId, effectiveLimit + 1];
       } else {
         // SQLite doesn't support row-value comparisons, so use equivalent OR logic
-        sql = 'SELECT * FROM compliance_scores WHERE workspace_id = ? AND (created_at < ? OR (created_at = ? AND id < ?)) ORDER BY created_at DESC, id DESC LIMIT ?';
+        sql =
+          'SELECT * FROM compliance_scores WHERE workspace_id = ? AND (created_at < ? OR (created_at = ? AND id < ?)) ORDER BY created_at DESC, id DESC LIMIT ?';
         params = [workspaceId, cursorCreatedAt, cursorCreatedAt, cursorId, effectiveLimit + 1];
       }
     } else {
@@ -86,10 +88,7 @@ export class ComplianceService {
     const hasMore = items.length > effectiveLimit;
     const trimmed = hasMore ? items.slice(0, effectiveLimit) : items;
     const last = trimmed[trimmed.length - 1];
-    const nextCursor =
-      hasMore && last
-        ? Buffer.from(`${last.created_at}:${last.id}`, 'utf8').toString('base64')
-        : null;
+    const nextCursor = hasMore && last ? Buffer.from(`${last.created_at}:${last.id}`, 'utf8').toString('base64') : null;
 
     return {
       items: trimmed.map((item) => {

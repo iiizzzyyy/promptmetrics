@@ -58,8 +58,18 @@ export class ABTestController {
           'This A/B test uses evaluation-based scoring. Remove scoresA/scoresB from the request body; scores are computed from the linked evaluation.',
         );
       }
-      scoresA = await this.service.getEvaluationScores(test.evaluation_id, test.prompt_name, test.version_a, workspaceId);
-      scoresB = await this.service.getEvaluationScores(test.evaluation_id, test.prompt_name, test.version_b, workspaceId);
+      scoresA = await this.service.getEvaluationScores(
+        test.evaluation_id,
+        test.prompt_name,
+        test.version_a,
+        workspaceId,
+      );
+      scoresB = await this.service.getEvaluationScores(
+        test.evaluation_id,
+        test.prompt_name,
+        test.version_b,
+        workspaceId,
+      );
     } else if (!scoresA || !scoresB) {
       const metric = test.metric || 'latency';
 

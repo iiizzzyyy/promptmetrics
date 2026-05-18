@@ -36,18 +36,24 @@ export class PromptService {
       }
       const placeholders = driverItems.map(() => '?').join(',');
       const rows = (await db
-        .prepare(`SELECT DISTINCT name FROM prompts WHERE workspace_id = ? AND status = 'active' AND name IN (${placeholders}) ORDER BY name`)
+        .prepare(
+          `SELECT DISTINCT name FROM prompts WHERE workspace_id = ? AND status = 'active' AND name IN (${placeholders}) ORDER BY name`,
+        )
         .all(workspaceId, ...driverItems)) as Array<{ name: string }>;
       const total = rows.length;
       const paginated = rows.slice(offset, offset + limit);
       return buildPaginatedResponse(paginated, total, page, limit);
     }
 
-    const total = parseCountRow(await db
-      .prepare("SELECT COUNT(DISTINCT name) as c FROM prompts WHERE workspace_id = ? AND status = 'active'")
-      .get(workspaceId));
+    const total = parseCountRow(
+      await db
+        .prepare("SELECT COUNT(DISTINCT name) as c FROM prompts WHERE workspace_id = ? AND status = 'active'")
+        .get(workspaceId),
+    );
     const rows = (await db
-      .prepare("SELECT DISTINCT name FROM prompts WHERE workspace_id = ? AND status = 'active' ORDER BY name LIMIT ? OFFSET ?")
+      .prepare(
+        "SELECT DISTINCT name FROM prompts WHERE workspace_id = ? AND status = 'active' ORDER BY name LIMIT ? OFFSET ?",
+      )
       .all(workspaceId, limit, offset)) as Array<{ name: string }>;
 
     return buildPaginatedResponse(rows, total, page, limit);
@@ -73,7 +79,9 @@ export class PromptService {
     let effectiveVersion = version;
     if (!version) {
       const activeVersion = (await db
-        .prepare("SELECT version_tag FROM prompts WHERE id = (SELECT active_version_id FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active' LIMIT 1)")
+        .prepare(
+          "SELECT version_tag FROM prompts WHERE id = (SELECT active_version_id FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active' LIMIT 1)",
+        )
         .get(name, workspaceId)) as { version_tag: string } | undefined;
       if (activeVersion) {
         effectiveVersion = activeVersion.version_tag;
@@ -140,11 +148,15 @@ export class PromptService {
   ): Promise<PaginatedResponse<PromptVersion>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });
-    const total = parseCountRow(await db
-      .prepare("SELECT COUNT(*) as c FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active'")
-      .get(name, workspaceId));
+    const total = parseCountRow(
+      await db
+        .prepare("SELECT COUNT(*) as c FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active'")
+        .get(name, workspaceId),
+    );
     const rows = (await db
-      .prepare("SELECT * FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT ? OFFSET ?")
+      .prepare(
+        "SELECT * FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT ? OFFSET ?",
+      )
       .all(name, workspaceId, limit, offset)) as PromptVersion[];
 
     return buildPaginatedResponse(rows, total, page, limit);
@@ -159,7 +171,9 @@ export class PromptService {
     const result = await db.transaction(async () => {
       // Check for existing active prompt with same name+version
       const existing = (await db
-        .prepare("SELECT status FROM prompts WHERE name = ? AND version_tag = ? AND workspace_id = ? AND status = 'active'")
+        .prepare(
+          "SELECT status FROM prompts WHERE name = ? AND version_tag = ? AND workspace_id = ? AND status = 'active'",
+        )
         .get(prompt.name, prompt.version, workspaceId)) as { status: string } | undefined;
 
       if (existing) {
