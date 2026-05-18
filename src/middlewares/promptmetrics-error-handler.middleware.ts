@@ -2,14 +2,11 @@ import { Request, Response, NextFunction } from 'express';
 import { config } from '@config/index';
 import { AppError } from '@errors/app.error';
 
-export function errorHandlerMiddleware(
-  err: Error,
-  req: Request,
-  res: Response,
-  _next: NextFunction,
-): void {
+export function errorHandlerMiddleware(err: Error, req: Request, res: Response, _next: NextFunction): void {
   if (err instanceof SyntaxError && 'body' in err) {
-    res.status(400).json({ error: 'Bad Request', code: 'BAD_REQUEST', message: 'Invalid JSON body', requestId: req.requestId });
+    res
+      .status(400)
+      .json({ error: 'Bad Request', code: 'BAD_REQUEST', message: 'Invalid JSON body', requestId: req.requestId });
     return;
   }
 
@@ -18,6 +15,7 @@ export function errorHandlerMiddleware(
       error: err.message,
       code: err.code,
       ...(err.details !== undefined ? { details: err.details } : {}),
+      ...(err.detailsType !== undefined ? { detailsType: err.detailsType } : {}),
       requestId: req.requestId,
     });
     return;

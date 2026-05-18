@@ -33,6 +33,14 @@ describe('LabelController', () => {
     if (fs.existsSync(testDbPath + '-shm')) fs.unlinkSync(testDbPath + '-shm');
     await closeDb();
     await initSchema();
+
+    // Seed a prompt so label creation can validate it exists
+    const db = getDb();
+    await db
+      .prepare(
+        `INSERT INTO prompts (name, version_tag, status, driver, created_at) VALUES (?, ?, 'active', 'filesystem', ?)`,
+      )
+      .run('welcome', '1.0.0', Math.floor(Date.now() / 1000));
   });
 
   afterEach(async () => {
@@ -56,6 +64,12 @@ describe('LabelController', () => {
 
   it('updates existing label on duplicate (upsert)', async () => {
     const db = getDb();
+    // Add a second version for upsert
+    await db
+      .prepare(
+        `INSERT INTO prompts (name, version_tag, status, driver, created_at) VALUES (?, ?, 'active', 'filesystem', ?)`,
+      )
+      .run('welcome', '1.1.0', Math.floor(Date.now() / 1000));
     await db
       .prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)')
       .run('welcome', 'production', '1.0.0');
@@ -67,6 +81,33 @@ describe('LabelController', () => {
     expect(res.status).toHaveBeenCalledWith(201);
     const json = (res.json as jest.Mock).mock.calls[0][0];
     expect(json.version_tag).toBe('1.1.0');
+  });
+
+  it('auto-populates version_tag from latest prompt version', async () => {
+    const req = mockReq({ name: 'staging' }, { name: 'welcome' });
+    const res = mockRes();
+    await controller.createLabel(req as Request, res as Response);
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    const json = (res.json as jest.Mock).mock.calls[0][0];
+    expect(json.name).toBe('staging');
+    expect(json.version_tag).toBe('1.0.0');
+  });
+
+  it('returns 404 when prompt does not exist for label creation', async () => {
+    const req = mockReq({ name: 'production', version_tag: '1.0.0' }, { name: 'nonexistent' });
+    const res = mockRes();
+    await expect(controller.createLabel(req as Request, res as Response)).rejects.toThrow(
+      expect.objectContaining({ statusCode: 404, code: 'NOT_FOUND' }),
+    );
+  });
+
+  it('returns 400 when specified version does not exist', async () => {
+    const req = mockReq({ name: 'production', version_tag: '9.9.9' }, { name: 'welcome' });
+    const res = mockRes();
+    await expect(controller.createLabel(req as Request, res as Response)).rejects.toThrow(
+      expect.objectContaining({ statusCode: 400, code: 'BAD_REQUEST' }),
+    );
   });
 
   it('returns 422 for invalid label body', async () => {

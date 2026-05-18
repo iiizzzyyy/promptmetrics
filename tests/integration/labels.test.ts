@@ -42,6 +42,14 @@ describe('Label API Integration', () => {
 
     const driver = new FilesystemDriver(testPromptsPath);
     app = createApp(driver);
+
+    // Seed prompts so label creation can validate them
+    const now = Math.floor(Date.now() / 1000);
+    await db
+      .prepare(
+        `INSERT INTO prompts (name, version_tag, status, driver, created_at) VALUES (?, ?, 'active', 'filesystem', ?)`,
+      )
+      .run('welcome', '1.0.0', now);
   });
 
   afterEach(async () => {
@@ -66,6 +74,13 @@ describe('Label API Integration', () => {
 
   it('POST /v1/prompts/:name/labels updates existing label (upsert)', async () => {
     const db = getDb();
+    const now = Math.floor(Date.now() / 1000);
+    // Add a second version for the upsert target
+    await db
+      .prepare(
+        `INSERT INTO prompts (name, version_tag, status, driver, created_at) VALUES (?, ?, 'active', 'filesystem', ?)`,
+      )
+      .run('welcome', '1.1.0', now);
     await db
       .prepare('INSERT INTO prompt_labels (prompt_name, name, version_tag) VALUES (?, ?, ?)')
       .run('welcome', 'production', '1.0.0');
@@ -77,6 +92,36 @@ describe('Label API Integration', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.version_tag).toBe('1.1.0');
+  });
+
+  it('POST /v1/prompts/:name/labels auto-populates version_tag from latest version', async () => {
+    const res = await request(app)
+      .post('/v1/prompts/welcome/labels')
+      .set('X-API-Key', apiKey)
+      .send({ name: 'staging' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.prompt_name).toBe('welcome');
+    expect(res.body.name).toBe('staging');
+    expect(res.body.version_tag).toBe('1.0.0');
+  });
+
+  it('POST /v1/prompts/:name/labels returns 404 for nonexistent prompt', async () => {
+    const res = await request(app)
+      .post('/v1/prompts/nonexistent/labels')
+      .set('X-API-Key', apiKey)
+      .send({ name: 'production', version_tag: '1.0.0' });
+
+    expect(res.status).toBe(404);
+  });
+
+  it('POST /v1/prompts/:name/labels returns 400 for nonexistent version', async () => {
+    const res = await request(app)
+      .post('/v1/prompts/welcome/labels')
+      .set('X-API-Key', apiKey)
+      .send({ name: 'canary', version_tag: '9.9.9' });
+
+    expect(res.status).toBe(400);
   });
 
   it('GET /v1/prompts/:name/labels lists labels', async () => {

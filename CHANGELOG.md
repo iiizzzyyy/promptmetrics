@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] - 2026-05-18
+
+### Fixed
+
+- **Error `details` format consistency** — All error responses now include a `detailsType` field (`"fields"` for validation errors, `"context"` for business errors) so clients can programmatically distinguish between `{ fields: string[] }` and `{ key: value }` detail shapes. Previously the two shapes were indistinguishable without inspecting the `details` object itself.
+- **Filesystem driver duplicate prompt** — Removed the redundant `fs.existsSync` check in `FilesystemDriver.createPrompt` that threw a raw `Error` (causing 500 `INTERNAL_ERROR` responses). The service-layer DB check at `PromptService.createPrompt` is the authoritative duplicate guard and already returns a proper `400 BAD_REQUEST` with structured details. Stale files from previous runs are now safely overwritten by the driver write.
+- **Rate limit defaults** — Raised default `RATE_LIMIT_MAX_REQUESTS` from 100 to 300 per 60-second window. The previous default was too aggressive for bulk operations. Existing deployments with explicit env vars are unaffected.
+- **Label `version_tag` auto-population** — `POST /v1/prompts/:name/labels` now makes `version_tag` optional. When omitted, it auto-populates from the prompt's latest active version. Added prompt existence validation (returns 404 if prompt doesn't exist) and version validation (returns 400 if specified version doesn't exist).
+- **Compliance pagination consistency** — `GET /v1/compliance/scores` now accepts offset pagination (`page` + `limit`) alongside the existing cursor pagination (`cursor` + `limit`). When `page` is provided, the response matches the standard `{ items, total, page, limit, totalPages }` format used by all other list endpoints. Cursor pagination is deprecated but still functional.
+
 ## [1.5.1] - 2026-05-18
 
 ### Fixed

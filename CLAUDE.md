@@ -83,7 +83,7 @@ Migrations are numbered TypeScript files in `migrations/`. They use dialect-awar
 2. `PromptController` handles HTTP concerns (pagination, query parsing) then delegates to `PromptService`.
 3. `getPrompt` performs Mustache variable substitution on `system` and `user` role messages. Cached in LRU (or Redis when `REDIS_URL` is set).
 4. Read operations filter on `status = 'active'`, so incomplete writes are invisible.
-5. Validation is done via Joi schemas in `src/validation-schemas/` and returns 422 with a `details` object. Joi validation errors are normalized to `{ fields: string[] }`. Business errors use `{ key: value }` shapes.
+5. Validation is done via Joi schemas in `src/validation-schemas/` and returns 422 with a `details` object. Joi validation errors are normalized to `{ fields: string[] }` with `detailsType: "fields"`. Business errors use `{ key: value }` shapes with `detailsType: "context"`.
 
 ---
 
@@ -110,13 +110,16 @@ Migrations are numbered TypeScript files in `migrations/`. They use dialect-awar
 1. **Driver double-instantiation bug** — `server.ts` already creates the driver. Pass it into `createApp(driver)`; do not instantiate a second one inside `createApp()`.
 2. **Postgres placeholder rewriting** — The Postgres adapter rewrites `?` to `$1, $2, ...` at runtime. Never write `$N` placeholders directly; always use `?` so SQL works for both dialects.
 3. **Postgres `RETURNING id` retry** — The adapter auto-appends `RETURNING id` to INSERTs. If a table lacks an `id` column (e.g., `config`, `rate_limits`, `migrations`), the adapter catches `42703` and retries without it. Add new no-id tables to `TABLES_WITHOUT_ID` in `postgres.adapter.ts`.
-4. **Prompt 3-phase write** — `PromptService.createPrompt` inserts `pending`, calls the driver, then updates to `active`. Read operations filter on `status = 'active'`. The `PromptReconciliationJob` heals stuck prompts automatically.
+4. **Prompt 3-phase write** — `PromptService.createPrompt` inserts `pending`, calls the driver, then updates to `active`. Read operations filter on `status = 'active'`. The `PromptReconciliationJob` heals stuck prompts automatically. The filesystem driver no longer has a duplicate check — the service-layer DB check is the authoritative guard.
 5. **Debounced `last_used_at`** — `authenticateApiKey` only updates `last_used_at` if it hasn't been updated in the last 60 seconds (configurable via `API_KEY_LAST_USED_DEBOUNCE_MS`). Don't expect sub-second precision.
 6. **Raw body parser for webhooks** — `/webhooks` uses Express's `raw()` parser to preserve the exact body bytes for signature verification. Do not add `express.json()` middleware before this route.
 7. **Health endpoint bypasses Express** — `/health/deep` is handled directly by the raw `http.Server` in `server.ts`, not by Express. Changes to Express middleware won't affect it.
 8. **Mustache skips `assistant` roles** — When rendering prompt variables, `assistant` role messages are skipped. They are example outputs, not templates.
 9. **Cache invalidation is explicit** — `CacheService.invalidatePrompt` must be called after prompt creation/update. The cache does not auto-invalidate.
 10. **Dialect-aware date bucketing** — `MetricsService.getDateBucket` uses `date(column, 'unixepoch')` for SQLite and `TO_CHAR(TO_TIMESTAMP(column), 'YYYY-MM-DD')` for Postgres. Always use this helper; don't inline date formatting.
+11. **Error `detailsType` field** — All `AppError` responses include a `detailsType` field: `"fields"` for validation errors (Joi), `"context"` for business errors (badRequest, etc.). Clients should use this to distinguish error detail shapes.
+12. **Label `version_tag` is optional** — `POST /v1/prompts/:name/labels` auto-populates `version_tag` from the prompt's latest active version when omitted. The endpoint also validates prompt existence (404) and version existence (400).
+13. **Compliance pagination dual mode** — `GET /v1/compliance/scores` accepts both offset (`page` + `limit`) and cursor (`cursor` + `limit`) pagination. Offset is preferred and matches all other list endpoints. Cursor is deprecated.
 
 ---
 

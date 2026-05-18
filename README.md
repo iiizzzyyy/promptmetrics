@@ -21,7 +21,15 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 
 ---
 
-## What's New in v1.5.1
+## What's New in v1.5.2
+
+- **Error `detailsType` Field** — All error responses now include a `detailsType` field (`"fields"` for validation errors, `"context"` for business errors) so clients can programmatically distinguish between `{ fields: string[] }` and `{ key: value }` detail shapes.
+- **Filesystem Driver Fix** — Removed redundant `fs.existsSync` check that threw a raw `Error` (causing 500 responses). The service-layer DB check is the authoritative duplicate guard and returns proper `400 BAD_REQUEST` with structured details. Stale files from previous runs are now safely overwritten.
+- **Rate Limit Defaults** — Raised default `RATE_LIMIT_MAX_REQUESTS` from 100 to 300 per 60-second window. Previous default was too aggressive for bulk operations.
+- **Label `version_tag` Auto-Population** — `POST /v1/prompts/:name/labels` now makes `version_tag` optional. When omitted, auto-populates from the prompt's latest active version. Added prompt existence validation (404) and version validation (400).
+- **Compliance Pagination Consistency** — `GET /v1/compliance/scores` now accepts offset pagination (`page` + `limit`) alongside cursor pagination (`cursor` + `limit`). Offset mode returns the standard `{ items, total, page, limit, totalPages }` response. Cursor mode is deprecated but still functional.
+
+### Previous: v1.5.1
 
 - **Filesystem Duplicate Prompt Fix** — Creating a prompt that already exists on disk now returns an error instead of silently overwriting the file.
 - **SQLite Rate Limit Fix** — Fixed race condition that caused premature 429s and stale `RateLimit-Remaining` headers under concurrent requests. Rate limit checks are now atomic via `db.transaction()`.
@@ -308,7 +316,7 @@ All configuration is environment-variable driven. No config files required for t
 | `OTEL_ENABLED` | No | `false` | Enable OpenTelemetry |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | If OTEL=true | — | OTLP collector URL |
 | `RATE_LIMIT_WINDOW_MS` | No | `60000` | Rate-limit time window in milliseconds |
-| `RATE_LIMIT_MAX_REQUESTS` | No | `100` | Max requests per window per API key |
+| `RATE_LIMIT_MAX_REQUESTS` | No | `300` | Max requests per window per API key |
 | `API_KEY_LAST_USED_DEBOUNCE_MS` | No | `60000` | Minimum ms between `last_used_at` writes (reduces SQLite contention) |
 | `PROMPT_RECONCILE_INTERVAL_MS` | No | `60000` | Interval in ms for the reconciliation job to heal pending prompts |
 
