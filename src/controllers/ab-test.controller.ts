@@ -58,8 +58,18 @@ export class ABTestController {
           'This A/B test uses evaluation-based scoring. Remove scoresA/scoresB from the request body; scores are computed from the linked evaluation.',
         );
       }
-      scoresA = await this.service.getEvaluationScores(test.evaluation_id, test.prompt_name, test.version_a, workspaceId);
-      scoresB = await this.service.getEvaluationScores(test.evaluation_id, test.prompt_name, test.version_b, workspaceId);
+      scoresA = await this.service.getEvaluationScores(
+        test.evaluation_id,
+        test.prompt_name,
+        test.version_a,
+        workspaceId,
+      );
+      scoresB = await this.service.getEvaluationScores(
+        test.evaluation_id,
+        test.prompt_name,
+        test.version_b,
+        workspaceId,
+      );
     } else if (!scoresA || !scoresB) {
       const metric = test.metric || 'latency';
 
@@ -85,7 +95,12 @@ export class ABTestController {
       scoresB = logsB.map(extractScore).filter((s) => s > 0);
 
       if (scoresA.length === 0 || scoresB.length === 0) {
-        throw AppError.badRequest('Insufficient logs to auto-compute scores for this A/B test');
+        throw AppError.badRequest('Insufficient logs to auto-compute scores for this A/B test', {
+          version_a_log_count: logsA.length,
+          version_b_log_count: logsB.length,
+          scores_a_count: scoresA.length,
+          scores_b_count: scoresB.length,
+        });
       }
     }
 
