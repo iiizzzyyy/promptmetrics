@@ -21,7 +21,13 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 
 ---
 
-## What's New in v1.5.0
+## What's New in v1.5.1
+
+- **Filesystem Duplicate Prompt Fix** — Creating a prompt that already exists on disk now returns an error instead of silently overwriting the file.
+- **SQLite Rate Limit Fix** — Fixed race condition that caused premature 429s and stale `RateLimit-Remaining` headers under concurrent requests. Rate limit checks are now atomic via `db.transaction()`.
+- **Error Response Normalization** — All validation errors now return `422 VALIDATION_FAILED` with a consistent `details` shape (`{ fields: string[] }` for Joi errors, `{ key: value }` for business errors). Query validation errors previously returned `400 BAD_REQUEST` with bare `string[]` details.
+
+### Previous: v1.5.0
 
 - **Trace & Run Deletion** — `DELETE /v1/traces/:trace_id` and `DELETE /v1/runs/:run_id` endpoints for cleaning up data. Trace deletion cascades to spans. Both require `write` scope and produce audit log entries.
 - **Expanded Span Status** — Span `status` now accepts `unset`, `ok`, `error`, and `running` (matching OpenTelemetry conventions). `status` is optional and defaults to `unset`.

@@ -1,9 +1,11 @@
+export type ErrorDetails = Record<string, unknown>;
+
 export class AppError extends Error {
   public readonly statusCode: number;
   public readonly code: string;
-  public readonly details?: unknown;
+  public readonly details?: ErrorDetails;
 
-  constructor(message: string, statusCode: number, code: string, details?: unknown) {
+  constructor(message: string, statusCode: number, code: string, details?: ErrorDetails) {
     super(message);
     this.statusCode = statusCode;
     this.code = code;
@@ -11,7 +13,7 @@ export class AppError extends Error {
     Error.captureStackTrace(this, this.constructor);
   }
 
-  static badRequest(message: string, details?: unknown): AppError {
+  static badRequest(message: string, details?: ErrorDetails): AppError {
     return new AppError(message, 400, 'BAD_REQUEST', details);
   }
 
@@ -27,8 +29,13 @@ export class AppError extends Error {
     return new AppError(`${resource} not found`, 404, 'NOT_FOUND');
   }
 
-  static validationFailed(details: unknown): AppError {
-    return new AppError('Validation failed', 422, 'VALIDATION_FAILED', details);
+  /** Validation error with structured details.
+   *  Accepts either a string[] (from Joi) or an ErrorDetails object.
+   *  String arrays are normalized to { fields: string[] }.
+   */
+  static validationFailed(details: string[] | ErrorDetails): AppError {
+    const normalized: ErrorDetails = Array.isArray(details) ? { fields: details } : details;
+    return new AppError('Validation failed', 422, 'VALIDATION_FAILED', normalized);
   }
 
   static internal(message?: string): AppError {

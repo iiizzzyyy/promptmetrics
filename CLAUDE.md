@@ -83,7 +83,7 @@ Migrations are numbered TypeScript files in `migrations/`. They use dialect-awar
 2. `PromptController` handles HTTP concerns (pagination, query parsing) then delegates to `PromptService`.
 3. `getPrompt` performs Mustache variable substitution on `system` and `user` role messages. Cached in LRU (or Redis when `REDIS_URL` is set).
 4. Read operations filter on `status = 'active'`, so incomplete writes are invisible.
-5. Validation is done via Joi schemas in `src/validation-schemas/` and returns 422 with a `details` array.
+5. Validation is done via Joi schemas in `src/validation-schemas/` and returns 422 with a `details` object. Joi validation errors are normalized to `{ fields: string[] }`. Business errors use `{ key: value }` shapes.
 
 ---
 

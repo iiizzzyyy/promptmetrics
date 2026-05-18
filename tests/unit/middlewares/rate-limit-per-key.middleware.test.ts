@@ -56,7 +56,10 @@ describe('rateLimitPerKey middleware', () => {
     const pipelineMock: any = {
       incr: jest.fn().mockImplementation(() => pipelineMock),
       expire: jest.fn().mockImplementation(() => pipelineMock),
-      exec: jest.fn().mockResolvedValue([[null, 5], [null, 1]]),
+      exec: jest.fn().mockResolvedValue([
+        [null, 5],
+        [null, 1],
+      ]),
     };
     const redisMock = {
       pipeline: jest.fn().mockReturnValue(pipelineMock),
@@ -78,7 +81,10 @@ describe('rateLimitPerKey middleware', () => {
     const pipelineMock: any = {
       incr: jest.fn().mockImplementation(() => pipelineMock),
       expire: jest.fn().mockImplementation(() => pipelineMock),
-      exec: jest.fn().mockResolvedValue([[null, 11], [null, 1]]),
+      exec: jest.fn().mockResolvedValue([
+        [null, 11],
+        [null, 1],
+      ]),
     };
     const redisMock = {
       pipeline: jest.fn().mockReturnValue(pipelineMock),
@@ -109,21 +115,27 @@ describe('rateLimitPerKey middleware', () => {
     expect(mockGetDb).not.toHaveBeenCalled();
   });
 
-  it('falls through to SQLite when Redis client is not available', async () => {
+  it('allows request and sets headers via SQLite transaction', async () => {
     mockGetRedisClient.mockReturnValue(null);
-    const runMock = jest.fn().mockResolvedValue({ changes: 1 });
-    const getMock = jest.fn().mockResolvedValue({ count: 1 });
-    mockGetDb.mockReturnValue({
-      prepare: jest.fn().mockImplementation((sql: string) => {
-        if (sql.includes('UPDATE rate_limits')) {
-          return { run: runMock };
-        }
-        if (sql.includes('SELECT count FROM rate_limits')) {
-          return { get: getMock };
-        }
-        return { run: runMock, get: getMock };
-      }),
+
+    const mockPrepare = jest.fn().mockImplementation((sql: string) => {
+      if (sql.includes('UPDATE rate_limits')) {
+        return { run: jest.fn().mockResolvedValue({ changes: 1 }) };
+      }
+      if (sql.includes('SELECT count')) {
+        return { get: jest.fn().mockResolvedValue({ count: 1 }) };
+      }
+      return { run: jest.fn().mockResolvedValue({ changes: 1 }), get: jest.fn().mockResolvedValue({ count: 1 }) };
     });
+
+    const mockDb = {
+      prepare: mockPrepare,
+      transaction: jest.fn(async (fn: any) => {
+        return fn({ prepare: mockPrepare });
+      }),
+    };
+
+    mockGetDb.mockReturnValue(mockDb);
 
     req = { headers: { 'x-api-key': 'key1' }, workspaceId: 'ws1' };
     const middleware = rateLimitPerKey(60_000, 10);
@@ -131,5 +143,6 @@ describe('rateLimitPerKey middleware', () => {
 
     expect(next).toHaveBeenCalled();
     expect(setHeaderMock).toHaveBeenCalledWith('RateLimit-Limit', '10');
+    expect(setHeaderMock).toHaveBeenCalledWith('RateLimit-Remaining', '9');
   });
 });
