@@ -338,9 +338,14 @@ Add a span to an existing trace.
 
 - `span_id` is optional; a UUID will be auto-generated if omitted.
 - `parent_id` is optional for nested spans.
-- `status` must be `ok` or `error`.
+- `status` must be `unset`, `ok`, `error`, or `running`. Defaults to `unset` if omitted.
 - `start_time` and `end_time` are millisecond timestamps (optional).
 - `metadata`: max 50 top-level keys; nested objects and arrays allowed.
+
+#### DELETE /v1/traces/:trace_id
+Delete a trace and all its spans. Requires `write` scope.
+
+**Response:** `204 No Content`
 
 **Response:** `201 Created`
 ```json
@@ -467,6 +472,11 @@ Update a run's status, output, or metadata.
 - Only provided fields are updated. `updated_at` is refreshed automatically.
 
 **Response:** `200 OK`
+
+#### DELETE /v1/runs/:run_id
+Delete a workflow run. Requires `write` scope.
+
+**Response:** `204 No Content`
 ```json
 { "run_id": "550e8400-e29b-41d4-a716-446655440000", "status": "updated" }
 ```
@@ -1000,13 +1010,15 @@ Scan prompt text for compliance violations (PII, security risks, and sensitive d
 - The scan result is persisted to the `compliance_scores` table.
 
 #### GET /v1/compliance/scores
-List persisted compliance scores with pagination.
+List persisted compliance scores with **cursor-based pagination** (unlike other list endpoints, which use offset-based pagination).
+
+> **Pagination note:** Most list endpoints use offset pagination (`page` + `limit`) and return `{ items, total, page, limit, totalPages }`. The compliance scores endpoint uses cursor pagination (`cursor` + `limit`) and returns `{ items, nextCursor, total }`. Use the `nextCursor` value from the response as the `cursor` parameter in the next request. Cursor pagination is more efficient for large sorted result sets because it avoids counting and skipping rows.
 
 **Query Parameters:**
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
-| `page` | integer | 1 | Page number |
-| `limit` | integer | 50 | Items per page (max 100) |
+| `limit` | integer | 50 | Items per page (max 200) |
+| `cursor` | string | — | Cursor from previous response's `nextCursor` |
 
 **Response:**
 ```json
@@ -1029,10 +1041,8 @@ List persisted compliance scores with pagination.
       "created_at": 1776849966
     }
   ],
-  "total": 1,
-  "page": 1,
-  "limit": 50,
-  "totalPages": 1
+  "nextCursor": "MTc3Njg0OTk2Njox",
+  "total": 15
 }
 ```
 
