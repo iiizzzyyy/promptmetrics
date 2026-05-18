@@ -45,7 +45,7 @@ class AuditLogService {
       try {
         await this.flush();
         return;
-      } catch (err) {
+      } catch {
         if (attempt === maxAttempts) {
           this.droppedCount += this.buffer.length;
           this.buffer = [];

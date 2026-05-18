@@ -65,4 +65,11 @@ export class RunController {
     const result = await this.service.listRuns(page, limit, workspaceId);
     res.status(200).json(result);
   }
+
+  async deleteRun(req: Request, res: Response): Promise<void> {
+    const runId = req.params.run_id as string;
+    const workspaceId = req.workspaceId || 'default';
+    await this.service.deleteRun(runId, workspaceId);
+    res.status(204).send();
+  }
 }
