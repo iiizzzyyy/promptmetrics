@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-05-17
+
+### Added
+
+- **DELETE /v1/traces/:trace_id** — Delete a trace and all its spans. Requires `write` scope. Produces an audit log entry.
+- **DELETE /v1/runs/:run_id** — Delete a workflow run. Requires `write` scope. Produces an audit log entry.
+- **Span status expansion** — Span `status` now accepts `unset`, `ok`, `error`, and `running` (matching OpenTelemetry conventions). Previously only `ok` and `error` were valid. `status` is now optional and defaults to `unset`.
+- **Compliance scores `total` count** — The `GET /v1/compliance/scores` response now includes a `total` field with the total number of compliance scores in the workspace.
+
+### Changed
+
+- **Duplicate prompt error** — Creating a prompt with a `name` + `version` that already exists as `active` now returns `400 Bad Request` with `{ error, code, details: { name, version } }` instead of silently upserting.
+- **A/B test error details** — The `400` response for insufficient logs/scores now includes `version_a_log_count`, `version_b_log_count`, `scores_a_count`, and `scores_b_count` in the `details` field.
+- **Compliance pagination docs** — Documented that `GET /v1/compliance/scores` uses cursor pagination (`cursor` + `limit`) while all other list endpoints use offset pagination (`page` + `limit`). Updated `api.md` and `openapi.yaml`.
+
+### Migrations
+
+- **024_add_trace_run_cascade_deletes** — Adds `ON DELETE CASCADE` to `spans.trace_id` foreign key and `ON DELETE SET NULL` to `runs.trace_id` foreign key.
+- **025_expand_span_status** — Expands `spans.status` CHECK constraint from `('ok', 'error')` to `('unset', 'ok', 'error', 'running')` with default `'unset'`.
+
 ## [1.4.0] - 2026-05-16
 
 ### Fixed

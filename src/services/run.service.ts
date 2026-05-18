@@ -153,6 +153,19 @@ export class RunService {
     return { run_id: runId, status: 'updated' };
   }
 
+  async deleteRun(runId: string, workspaceId: string = 'default'): Promise<void> {
+    const db = getDb();
+    const run = (await db
+      .prepare('SELECT run_id FROM runs WHERE run_id = ? AND workspace_id = ?')
+      .get(runId, workspaceId)) as { run_id: string } | undefined;
+
+    if (!run) {
+      throw AppError.notFound('Run');
+    }
+
+    await db.prepare('DELETE FROM runs WHERE run_id = ? AND workspace_id = ?').run(runId, workspaceId);
+  }
+
   async listRuns(page: number, limit: number, workspaceId: string = 'default'): Promise<PaginatedResponse<Run>> {
     const db = getDb();
     const { offset } = parsePagination({ page: String(page), limit: String(limit) });

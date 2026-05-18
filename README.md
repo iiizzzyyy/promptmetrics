@@ -21,13 +21,14 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 
 ---
 
-## What's New in v1.4.0
+## What's New in v1.5.0
 
-- **Audit Log Auth Fix** — `GET /v1/audit-logs` was completely inaccessible (always returned 403) because `authenticateApiKey` middleware was missing. Now properly authenticated with admin scope and rate limiting.
-- **Audit Log Data Loss Fix** — `getDb()` failure during flush permanently lost all batch entries with 0 reported drops. Entries are now re-queued before throwing.
-- **Anthropic System Prompt Fix** — System messages are now passed via the Anthropic API's dedicated `system` parameter instead of being converted to user role, fixing consecutive-user-message errors and improving instruction following.
-- **Cross-Workspace Data Leak Fix** — `GithubDriver.listVersions()` was missing `workspace_id` filter, leaking prompt versions across workspace boundaries.
-- **Compliance Cursor Validation** — Malformed cursor pagination values caused 500 errors on Postgres and empty pages on SQLite. Now returns 400 for invalid cursors.
+- **Trace & Run Deletion** — `DELETE /v1/traces/:trace_id` and `DELETE /v1/runs/:run_id` endpoints for cleaning up data. Trace deletion cascades to spans. Both require `write` scope and produce audit log entries.
+- **Expanded Span Status** — Span `status` now accepts `unset`, `ok`, `error`, and `running` (matching OpenTelemetry conventions). `status` is optional and defaults to `unset`.
+- **Compliance Scores Total** — `GET /v1/compliance/scores` now returns a `total` count alongside `items` and `nextCursor`.
+- **Duplicate Prompt Error** — Creating a prompt that already exists as `active` returns `400` with details instead of silently upserting.
+- **A/B Test Error Details** — Insufficient logs/scores `400` errors now include version and score counts in the `details` field.
+- **Compliance Pagination Docs** — Documented that compliance scores use cursor pagination while all other list endpoints use offset pagination.
 - **Schema Cache Fix** — Evaluation rule engine schema cache used object reference identity, so it never hit. Now uses `JSON.stringify` as the cache key.
 - **Redis KEYS → SCAN** — Cache invalidation replaced blocking `KEYS` command with non-blocking `SCAN` iteration to prevent production latency spikes.
 - **Dataset Pagination** — `DatasetController.listDatasets` now uses `parsePagination()` to clamp queries, preventing unbounded result sets.
@@ -332,11 +333,13 @@ Multi-tenancy: Pass `X-Workspace-Id` header to scope all data. API keys are vali
 - `POST /v1/traces` — Create a trace
 - `GET /v1/traces/:trace_id` — Get a trace with spans
 - `POST /v1/traces/:trace_id/spans` — Add a span
+- `DELETE /v1/traces/:trace_id` — Delete a trace and its spans (write scope)
 
 ### Workflow Runs
 - `POST /v1/runs` — Create a workflow run
 - `GET /v1/runs` — List runs
 - `PATCH /v1/runs/:run_id` — Update a run
+- `DELETE /v1/runs/:run_id` — Delete a run (write scope)
 
 ### Prompt Labels
 - `POST /v1/prompts/:name/labels` — Tag a version
