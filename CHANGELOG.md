@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2026-05-18
+
+### Fixed
+
+- **Filesystem driver duplicate prompt** — `FilesystemDriver.createPrompt` silently overwrote existing prompt files instead of returning an error. Now checks `fs.existsSync` before writing and throws if the file already exists, matching the DB driver's duplicate detection behavior.
+- **SQLite rate limit contention** — `checkSqliteRateLimit` used a non-atomic three-step sequence (UPDATE, INSERT, retry UPDATE) that caused premature 429s and over-counting under concurrent requests. Rewritten to use `db.transaction()` for atomic check-and-increment, eliminating the race condition. The transaction also reads the count within the same transaction, fixing stale `RateLimit-Remaining` headers.
+- **Error response format inconsistency** — `AppError.details` was typed as `unknown`, producing three distinct shapes across the API (`string[]`, `{ [key: string]: unknown }`, or absent). Normalized to `Record<string, unknown>` (aliased as `ErrorDetails`). `validationFailed()` now normalizes `string[]` (from Joi) to `{ fields: string[] }`. Query validation errors now return `422 VALIDATION_FAILED` (was `400 BAD_REQUEST`) for consistency with body validation.
+
 ## [1.5.0] - 2026-05-17
 
 ### Added

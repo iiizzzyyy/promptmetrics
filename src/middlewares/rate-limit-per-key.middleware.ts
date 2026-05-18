@@ -77,35 +77,49 @@ async function checkSqliteRateLimit(
     const now = Date.now();
     const windowStart = Math.floor(now / windowMs) * windowMs;
 
-    const updateResult = await db
-      .prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ? AND window_start = ? AND count < ?')
-      .run(rateLimitKey, windowStart, maxRequests);
+    // Use a transaction to make the check-and-increment atomic,
+    // preventing race conditions under concurrent requests.
+    // Returns { allowed: boolean, count: number } so we can distinguish
+    // between "we just incremented to max" (allowed) and "already at max" (blocked).
+    const result = await db.transaction(async (): Promise<{ allowed: boolean; count: number }> => {
+      // Try to increment an existing row for the current window.
+      // Only increments when count < maxRequests, so a successful increment
+      // means this request is within the limit.
+      const updateResult = await db
+        .prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ? AND window_start = ? AND count < ?')
+        .run(rateLimitKey, windowStart, maxRequests);
 
-    let incremented = updateResult.changes > 0;
-
-    if (!incremented) {
-      const insertResult = await db
-        .prepare(
-          `INSERT INTO rate_limits (key, window_start, count)
-         VALUES (?, ?, 1)
-         ON CONFLICT(key) DO UPDATE SET
-           window_start = excluded.window_start,
-           count = excluded.count
-         WHERE rate_limits.window_start < excluded.window_start`,
-        )
-        .run(rateLimitKey, windowStart);
-      incremented = insertResult.changes > 0;
-
-      if (!incremented) {
-        // Another request may have initialized the row; retry the atomic update once.
-        const retryResult = await db
-          .prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ? AND window_start = ? AND count < ?')
-          .run(rateLimitKey, windowStart, maxRequests);
-        incremented = retryResult.changes > 0;
+      if (updateResult.changes > 0) {
+        // We incremented successfully — this request is within the limit.
+        const row = (await db.prepare('SELECT count FROM rate_limits WHERE key = ?').get(rateLimitKey)) as
+          | { count: number }
+          | undefined;
+        return { allowed: true, count: row?.count ?? 1 };
       }
-    }
 
-    if (!incremented) {
+      // No row was updated. Either no row exists for this key/window,
+      // or the count has reached maxRequests.
+      const row = (await db.prepare('SELECT window_start, count FROM rate_limits WHERE key = ?').get(rateLimitKey)) as
+        | { window_start: number; count: number }
+        | undefined;
+
+      if (!row || row.window_start < windowStart) {
+        // New window or first request — insert/reset the counter to 1.
+        await db
+          .prepare(
+            `INSERT INTO rate_limits (key, window_start, count) VALUES (?, ?, 1)
+             ON CONFLICT(key) DO UPDATE SET window_start = excluded.window_start, count = excluded.count`,
+          )
+          .run(rateLimitKey, windowStart);
+        return { allowed: true, count: 1 };
+      }
+
+      // Row exists for the current window and count >= maxRequests.
+      // This request is over the limit.
+      return { allowed: false, count: row.count };
+    });
+
+    if (!result.allowed) {
       const retryAfter = Math.ceil((windowStart + windowMs - now) / 1000);
       res.setHeader('Retry-After', String(retryAfter));
       res.status(429).json({
@@ -115,13 +129,9 @@ async function checkSqliteRateLimit(
       return true;
     }
 
-    const row = (await db.prepare('SELECT count FROM rate_limits WHERE key = ?').get(rateLimitKey)) as
-      | { count: number }
-      | undefined;
-
-    const count = row?.count ?? 1;
+    const remaining = Math.max(0, maxRequests - result.count);
     res.setHeader('RateLimit-Limit', String(maxRequests));
-    res.setHeader('RateLimit-Remaining', String(Math.max(0, maxRequests - count)));
+    res.setHeader('RateLimit-Remaining', String(remaining));
     res.setHeader('RateLimit-Reset', String(Math.ceil((windowStart + windowMs) / 1000)));
     return false;
   } catch (err) {

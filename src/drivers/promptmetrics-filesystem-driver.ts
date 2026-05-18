@@ -85,6 +85,9 @@ export class FilesystemDriver implements PromptDriver {
     }
 
     const filePath = path.join(promptDir, `${prompt.version}.json`);
+    if (fs.existsSync(filePath)) {
+      throw new Error(`Prompt already exists: ${prompt.name} v${prompt.version}`);
+    }
     fs.writeFileSync(filePath, JSON.stringify(prompt, null, 2), 'utf-8');
 
     const stats = fs.statSync(filePath);

@@ -64,17 +64,19 @@ class AuditLogService {
 
     for (const entry of batch) {
       try {
-        await db.prepare(
-          'INSERT INTO audit_logs (action, prompt_name, version_tag, target_id, api_key_name, ip_address, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        ).run(
-          entry.action,
-          entry.prompt_name || null,
-          entry.version_tag || null,
-          entry.target_id || null,
-          entry.api_key_name,
-          entry.ip_address,
-          entry.workspace_id || 'default',
-        );
+        await db
+          .prepare(
+            'INSERT INTO audit_logs (action, prompt_name, version_tag, target_id, api_key_name, ip_address, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          )
+          .run(
+            entry.action,
+            entry.prompt_name || null,
+            entry.version_tag || null,
+            entry.target_id || null,
+            entry.api_key_name,
+            entry.ip_address,
+            entry.workspace_id || 'default',
+          );
       } catch (err) {
         console.error('Failed to write audit log entry:', err);
         this.buffer.unshift(entry);
