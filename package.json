@@ -57,7 +57,7 @@
     "@types/node": "^24.6.0",
     "@types/opossum": "^8.1.9",
     "@types/pg": "^8.20.0",
-    "@types/supertest": "^6.0.3",
+    "@types/supertest": "^7.2.0",
     "@types/swagger-ui-express": "^4.1.8",
     "@types/umzug": "^2.3.9",
     "@typescript-eslint/eslint-plugin": "^8.44.1",
