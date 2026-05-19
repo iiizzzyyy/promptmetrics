@@ -1,4 +1,5 @@
 import { parseIdParam } from '@utils/validation';
+import { parsePagination } from '@utils/pagination';
 import { Request, Response } from 'express';
 import { AppError } from '@errors/app.error';
 import { DatasetService } from '@services/dataset.service';
@@ -19,8 +20,7 @@ export class DatasetController {
   }
 
   async listDatasets(req: Request, res: Response): Promise<void> {
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 50;
+    const { page, limit } = parsePagination(req.query);
     const workspaceId = req.workspaceId || 'default';
     const result = await this.service.listDatasets(page, limit, workspaceId);
     res.status(200).json(result);

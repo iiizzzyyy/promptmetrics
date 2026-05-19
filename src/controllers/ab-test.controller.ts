@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { AppError } from '@errors/app.error';
 import { ABTestService } from '@services/ab-test.service';
 import { LogService } from '@services/log.service';
+import { parsePagination } from '@utils/pagination';
 import { createABTestSchema, runABTestSchema } from '@validation-schemas/ab-test.schema';
 
 export class ABTestController {
@@ -23,8 +24,7 @@ export class ABTestController {
   }
 
   async listTests(req: Request, res: Response): Promise<void> {
-    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+    const { page, limit } = parsePagination(req.query);
     const workspaceId = req.workspaceId || 'default';
     const result = await this.service.listTests(page, limit, workspaceId);
     res.status(200).json(result);

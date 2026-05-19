@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { AppError } from '@errors/app.error';
 import { EvaluationService } from '@services/evaluation.service';
 import { EvalRunService } from '@services/eval-run.service';
+import { parsePagination } from '@utils/pagination';
 import {
   createEvaluationSchema,
   createEvaluationResultSchema,
@@ -27,8 +28,7 @@ export class EvaluationController {
   }
 
   async listEvaluations(req: Request, res: Response): Promise<void> {
-    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+    const { page, limit } = parsePagination(req.query);
     const workspaceId = req.workspaceId || 'default';
     const result = await this.service.listEvaluations(page, limit, workspaceId);
     res.status(200).json(result);
@@ -62,8 +62,7 @@ export class EvaluationController {
 
   async listResults(req: Request, res: Response): Promise<void> {
     const id = parseIdParam(req.params.id);
-    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+    const { page, limit } = parsePagination(req.query);
     const workspaceId = req.workspaceId || 'default';
     const result = await this.service.listResults(id, page, limit, workspaceId);
     res.status(200).json(result);
@@ -83,8 +82,7 @@ export class EvaluationController {
 
   async listRuns(req: Request, res: Response): Promise<void> {
     const id = parseIdParam(req.params.id);
-    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+    const { page, limit } = parsePagination(req.query);
     const workspaceId = req.workspaceId || 'default';
     const result = await this.evalRunService.listRuns(id, page, limit, workspaceId);
     res.status(200).json(result);

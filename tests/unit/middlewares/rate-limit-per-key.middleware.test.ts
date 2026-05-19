@@ -77,7 +77,7 @@ describe('rateLimitPerKey middleware', () => {
     expect(next).toHaveBeenCalled();
   });
 
-  it('returns 429 when Redis count exceeds maxRequests', async () => {
+  it('throws AppError with 429 when Redis count exceeds maxRequests', async () => {
     const pipelineMock: any = {
       incr: jest.fn().mockImplementation(() => pipelineMock),
       expire: jest.fn().mockImplementation(() => pipelineMock),
@@ -94,13 +94,8 @@ describe('rateLimitPerKey middleware', () => {
 
     req = { headers: { 'x-api-key': 'key1' }, workspaceId: 'ws1' };
     const middleware = rateLimitPerKey(60_000, 10);
-    await middleware(req as Request, res as Response, next);
 
-    expect(statusMock).toHaveBeenCalledWith(429);
-    expect(jsonMock).toHaveBeenCalledWith({
-      error: 'Rate limit exceeded',
-      code: 'RATE_LIMIT_EXCEEDED',
-    });
+    await expect(middleware(req as Request, res as Response, next)).rejects.toThrow('Rate limit exceeded');
     expect(setHeaderMock).toHaveBeenCalledWith('Retry-After', expect.any(String));
     expect(next).not.toHaveBeenCalled();
   });

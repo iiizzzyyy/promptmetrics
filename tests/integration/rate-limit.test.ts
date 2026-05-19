@@ -5,6 +5,7 @@ import { getDb, closeDb, initSchema } from '@models/promptmetrics-sqlite';
 import { hashApiKey } from '@middlewares/promptmetrics-auth.middleware';
 import { FilesystemDriver } from '@drivers/promptmetrics-filesystem-driver';
 import { rateLimitPerKey } from '@middlewares/rate-limit-per-key.middleware';
+import { errorHandlerMiddleware } from '@middlewares/promptmetrics-error-handler.middleware';
 import fs from 'fs';
 import path from 'path';
 
@@ -30,10 +31,14 @@ describe('Per-API-Key Rate Limiting', () => {
     keyA = 'pm_key_a';
     keyB = 'pm_key_b';
     await db
-      .prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes')
+      .prepare(
+        'INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes',
+      )
       .run(hashApiKey(keyA), 'key-a', 'read,write');
     await db
-      .prepare('INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes')
+      .prepare(
+        'INSERT INTO api_keys (key_hash, name, scopes) VALUES (?, ?, ?) ON CONFLICT(key_hash) DO UPDATE SET name = excluded.name, scopes = excluded.scopes',
+      )
       .run(hashApiKey(keyB), 'key-b', 'read,write');
 
     const driver = new FilesystemDriver(testPromptsPath);
@@ -63,8 +68,7 @@ describe('Per-API-Key Rate Limiting', () => {
 
     const testApp = express();
     testApp.use(router);
-
-    // keyA uses 3 of its 3 allowed requests
+    testApp.use(errorHandlerMiddleware);
     for (let i = 0; i < 3; i++) {
       const res = await request(testApp).get('/test-limit').set('X-Test-Key', 'key-a');
       expect(res.status).toBe(200);
@@ -91,8 +95,7 @@ describe('Per-API-Key Rate Limiting', () => {
 
     const testApp = express();
     testApp.use(router);
-
-    // First two requests succeed
+    testApp.use(errorHandlerMiddleware);
     const r1 = await request(testApp).get('/limited');
     expect(r1.status).toBe(200);
     expect(r1.headers['ratelimit-limit']).toBe('2');
@@ -125,9 +128,9 @@ describe('Per-API-Key Rate Limiting', () => {
       .prepare('INSERT INTO rate_limits (key, window_start, count) VALUES (?, ?, 1)')
       .run('large-window-test', largeWindowStart);
 
-    const row = (await db
-      .prepare('SELECT window_start FROM rate_limits WHERE key = ?')
-      .get('large-window-test')) as { window_start: number } | undefined;
+    const row = (await db.prepare('SELECT window_start FROM rate_limits WHERE key = ?').get('large-window-test')) as
+      | { window_start: number }
+      | undefined;
 
     expect(row).toBeDefined();
     expect(row!.window_start).toBe(largeWindowStart);
@@ -145,6 +148,7 @@ describe('Per-API-Key Rate Limiting', () => {
 
     const testApp = express();
     testApp.use(router);
+    testApp.use(errorHandlerMiddleware);
 
     const requests = Array.from({ length: 20 }).map(() => request(testApp).get('/concurrent'));
     const results = await Promise.all(requests);

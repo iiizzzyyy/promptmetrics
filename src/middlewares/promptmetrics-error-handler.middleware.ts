@@ -4,9 +4,13 @@ import { AppError } from '@errors/app.error';
 
 export function errorHandlerMiddleware(err: Error, req: Request, res: Response, _next: NextFunction): void {
   if (err instanceof SyntaxError && 'body' in err) {
-    res
-      .status(400)
-      .json({ error: 'Bad Request', code: 'BAD_REQUEST', message: 'Invalid JSON body', requestId: req.requestId });
+    res.status(400).json({
+      error: 'Bad Request',
+      code: 'BAD_REQUEST',
+      message: 'Invalid JSON body',
+      detailsType: 'context',
+      requestId: req.requestId,
+    });
     return;
   }
 
@@ -15,7 +19,7 @@ export function errorHandlerMiddleware(err: Error, req: Request, res: Response, 
       error: err.message,
       code: err.code,
       ...(err.details !== undefined ? { details: err.details } : {}),
-      ...(err.detailsType !== undefined ? { detailsType: err.detailsType } : {}),
+      detailsType: err.detailsType,
       requestId: req.requestId,
     });
     return;
@@ -26,6 +30,7 @@ export function errorHandlerMiddleware(err: Error, req: Request, res: Response, 
     error: 'Internal server error',
     code: 'INTERNAL_ERROR',
     message: config.nodeEnv === 'development' ? err.message : undefined,
+    detailsType: 'context',
     requestId: req.requestId,
   });
 }

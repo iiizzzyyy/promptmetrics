@@ -2,19 +2,20 @@ import { Request, Response } from 'express';
 import { PlaygroundProxyService } from '@services/playground.service';
 import { AppError } from '@errors/app.error';
 import { ProviderError } from '@services/llm-provider.adapter';
+import { parsePagination } from '@utils/pagination';
 
 function mapProviderError(err: ProviderError): AppError {
   switch (err.code) {
     case 'rate_limit':
-      return new AppError(err.message, 429, 'RATE_LIMIT');
+      return new AppError(err.message, 429, 'RATE_LIMIT', undefined, 'context');
     case 'content_policy':
-      return new AppError(err.message, 400, 'CONTENT_POLICY');
+      return new AppError(err.message, 400, 'CONTENT_POLICY', undefined, 'context');
     case 'timeout':
-      return new AppError(err.message, 504, 'TIMEOUT');
+      return new AppError(err.message, 504, 'TIMEOUT', undefined, 'context');
     case 'invalid_request':
-      return new AppError(err.message, 400, 'INVALID_REQUEST');
+      return new AppError(err.message, 400, 'INVALID_REQUEST', undefined, 'context');
     default:
-      return new AppError(err.message, 502, 'PROVIDER_ERROR');
+      return new AppError(err.message, 502, 'PROVIDER_ERROR', undefined, 'context');
   }
 }
 
@@ -123,8 +124,7 @@ export class PlaygroundController {
   }
 
   async listModels(req: Request, res: Response): Promise<void> {
-    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+    const { page, limit } = parsePagination(req.query);
     const workspaceId = req.workspaceId || 'default';
 
     const result = await this.service.listModels(workspaceId, page, limit);
@@ -132,8 +132,7 @@ export class PlaygroundController {
   }
 
   async refreshModels(req: Request, res: Response): Promise<void> {
-    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+    const { page, limit } = parsePagination(req.query);
     const workspaceId = req.workspaceId || 'default';
 
     this.service.clearModelsCache();

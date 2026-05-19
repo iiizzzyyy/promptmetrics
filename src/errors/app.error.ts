@@ -24,36 +24,38 @@ export class AppError extends Error {
   }
 
   static badRequest(message: string, details?: ErrorDetails): AppError {
-    return new AppError(message, 400, 'BAD_REQUEST', details, details ? 'context' : undefined);
+    return new AppError(message, 400, 'BAD_REQUEST', details, 'context');
   }
 
   static unauthorized(message = 'Unauthorized'): AppError {
-    return new AppError(message, 401, 'UNAUTHORIZED');
+    return new AppError(message, 401, 'UNAUTHORIZED', undefined, 'context');
   }
 
   static forbidden(message = 'Forbidden'): AppError {
-    return new AppError(message, 403, 'FORBIDDEN');
+    return new AppError(message, 403, 'FORBIDDEN', undefined, 'context');
   }
 
   static notFound(resource: string): AppError {
-    return new AppError(`${resource} not found`, 404, 'NOT_FOUND');
+    return new AppError(`${resource} not found`, 404, 'NOT_FOUND', undefined, 'context');
   }
 
   /** Validation error with structured details.
    *  Accepts either a string[] (from Joi) or an ErrorDetails object.
-   *  String arrays are normalized to { fields: string[] }.
+   *  All inputs are normalized to { fields: string[] } for consistent client parsing.
    */
   static validationFailed(details: string[] | ErrorDetails): AppError {
-    const normalized: ErrorDetails = Array.isArray(details) ? { fields: details } : details;
+    const normalized: ErrorDetails = Array.isArray(details)
+      ? { fields: details }
+      : { fields: Object.values(details).map(String) };
     return new AppError('Validation failed', 422, 'VALIDATION_FAILED', normalized, 'fields');
   }
 
   static internal(message?: string): AppError {
-    return new AppError(message || 'Internal server error', 500, 'INTERNAL_ERROR');
+    return new AppError(message || 'Internal server error', 500, 'INTERNAL_ERROR', undefined, 'context');
   }
 
   static notImplemented(message = 'Not yet implemented'): AppError {
-    return new AppError(message, 501, 'NOT_IMPLEMENTED');
+    return new AppError(message, 501, 'NOT_IMPLEMENTED', undefined, 'context');
   }
 
   toJSON() {
@@ -62,7 +64,7 @@ export class AppError extends Error {
       statusCode: this.statusCode,
       code: this.code,
       ...(this.details !== undefined ? { details: this.details } : {}),
-      ...(this.detailsType !== undefined ? { detailsType: this.detailsType } : {}),
+      detailsType: this.detailsType,
     };
   }
 }
