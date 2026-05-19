@@ -33,7 +33,7 @@ export class MetricsController {
   async getPromptMetrics(req: Request, res: Response): Promise<void> {
     const window = (req.query.window as string) || '30d';
     const { start, end } = this.validateWindow(window);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+    const { limit } = parsePagination(req.query);
     const workspaceId = req.workspaceId || 'default';
     const prompts = await this.service.getPromptMetrics(workspaceId, start, end, limit);
     res.status(200).json({ window, prompts });

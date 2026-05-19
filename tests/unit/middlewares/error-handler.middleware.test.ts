@@ -33,6 +33,7 @@ describe('errorHandlerMiddleware', () => {
       error: 'Bad Request',
       code: 'BAD_REQUEST',
       message: 'Invalid JSON body',
+      detailsType: 'context',
       requestId: 'req-123',
     });
   });
@@ -46,6 +47,7 @@ describe('errorHandlerMiddleware', () => {
       error: 'Not found',
       code: 'NOT_FOUND',
       details: { field: 'id' },
+      detailsType: undefined,
       requestId: 'req-123',
     });
   });
@@ -59,6 +61,7 @@ describe('errorHandlerMiddleware', () => {
     const jsonArg = jsonMock.mock.calls[0][0];
     expect(jsonArg.error).toBe('Internal server error');
     expect(jsonArg.code).toBe('INTERNAL_ERROR');
+    expect(jsonArg.detailsType).toBe('context');
     expect(jsonArg.message).toBeUndefined();
   });
 
@@ -70,6 +73,7 @@ describe('errorHandlerMiddleware', () => {
     expect(statusMock).toHaveBeenCalledWith(500);
     const jsonArg = jsonMock.mock.calls[0][0];
     expect(jsonArg.message).toBe('dev error details');
+    expect(jsonArg.detailsType).toBe('context');
   });
 
   it('AppError JSON.stringify includes statusCode and code', () => {
@@ -79,5 +83,6 @@ describe('errorHandlerMiddleware', () => {
     expect(parsed.statusCode).toBe(400);
     expect(parsed.code).toBe('BAD_REQUEST');
     expect(parsed.details).toEqual({ foo: 1 });
+    expect(parsed.detailsType).toBeUndefined();
   });
 });

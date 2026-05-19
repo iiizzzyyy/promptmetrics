@@ -5,11 +5,6 @@ export const paginationQuerySchema = Joi.object({
   limit: Joi.number().integer().min(1).max(100).default(50),
 }).unknown(true);
 
-export const cursorPaginationQuerySchema = Joi.object({
-  limit: Joi.number().integer().min(1).max(200).default(50),
-  cursor: Joi.string().optional(),
-}).unknown(true);
-
 // Combined schema that accepts either offset or cursor pagination.
 // When 'page' is present, offset pagination is used; otherwise cursor pagination.
 export const combinedPaginationQuerySchema = Joi.object({

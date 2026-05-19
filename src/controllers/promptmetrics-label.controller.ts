@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AppError } from '@errors/app.error';
 import { LabelService } from '@services/label.service';
+import { parsePagination } from '@utils/pagination';
 import { createLabelSchema } from '@validation-schemas/promptmetrics-label.schema';
 
 export class LabelController {
@@ -25,8 +26,7 @@ export class LabelController {
 
   async listLabels(req: Request, res: Response): Promise<void> {
     const promptName = req.params.name as string;
-    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+    const { page, limit } = parsePagination(req.query);
     const workspaceId = req.workspaceId || 'default';
 
     const result = await this.service.listLabels(promptName, page, limit, workspaceId);

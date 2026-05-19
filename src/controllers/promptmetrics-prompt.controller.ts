@@ -2,13 +2,13 @@ import { Request, Response } from 'express';
 import { AppError } from '@errors/app.error';
 import { PromptService } from '@services/prompt.service';
 import { createPromptSchema } from '@validation-schemas/promptmetrics-prompt.schema';
+import { parsePagination } from '@utils/pagination';
 
 export class PromptController {
   constructor(private service: PromptService) {}
 
   async listPrompts(req: Request, res: Response): Promise<void> {
-    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+    const { page, limit } = parsePagination(req.query);
     const query = req.query.q as string | undefined;
     if (query && query.length > 256) {
       throw AppError.badRequest('Search query exceeds maximum length of 256 characters');
@@ -43,8 +43,7 @@ export class PromptController {
 
   async listVersions(req: Request, res: Response): Promise<void> {
     const name = req.params.name as string;
-    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+    const { page, limit } = parsePagination(req.query);
     const workspaceId = req.workspaceId || 'default';
 
     const result = await this.service.listVersions(workspaceId, name, page, limit);

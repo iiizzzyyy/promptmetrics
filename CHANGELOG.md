@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.3] - 2026-05-19
+
+### Fixed
+
+- **Error `detailsType` consistency** — All `AppError` responses now always include `detailsType`. Previously, `badRequest()` without details, `unauthorized()`, `forbidden()`, `notFound()`, `internal()`, and `notImplemented()` omitted `detailsType`. They now return `"context"`. Validation errors always return `"fields"`.
+- **Rate limit error format** — Rate limit 429 responses now flow through the standard error handler and include `detailsType`, `requestId`, and the same structure as all other API errors. Previously they returned a raw JSON body without these fields.
+- **`validationFailed` inconsistent details shape** — When `validationFailed()` received an `ErrorDetails` object (e.g., mustache variable errors), it was passed through without normalization, producing `{ missing: [...] }` with `detailsType: "fields"`. This violated the `"fields"` contract which promises `{ fields: string[] }`. Now all `validationFailed` calls normalize to `{ fields: string[] }`.
+- **Playground provider errors missing `detailsType`** — All five provider error types (`rate_limit`, `content_policy`, `timeout`, `invalid_request`, `PROVIDER_ERROR`) now include `detailsType: "context"`.
+- **Error handler non-AppError paths** — SyntaxError (invalid JSON) and 500 catch-all responses now include `detailsType: "context"`.
+
+### Changed
+
+- **Pagination consolidation** — Replaced inline `Math.max/Math.min` pagination parsing in 8 controllers with the shared `parsePagination()` utility. `DatasetController` now uses `parsePagination()` instead of loose `Number()` parsing without bounds clamping.
+- **Removed dead code** — Removed unused `cursorPaginationQuerySchema` export from `pagination.schema.ts`.
+
 ## [1.5.2] - 2026-05-18
 
 ### Fixed

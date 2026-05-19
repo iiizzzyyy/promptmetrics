@@ -21,6 +21,14 @@ Self-hosted with no vendor lock-in. Prompt content lives in Git, not a database.
 
 ---
 
+## What's New in v1.5.3
+
+- **Error `detailsType` consistency** — All `AppError` responses now always include `detailsType`. Previously, several error types (`badRequest` without details, `unauthorized`, `forbidden`, `notFound`, `internal`) omitted this field. They now consistently return `"context"`.
+- **Rate limit error format** — 429 rate limit responses now flow through the standard error handler, producing the same response structure as all other errors (`detailsType`, `requestId`).
+- **`validationFailed` shape normalization** — Mustache variable errors now normalize to `{ fields: string[] }` instead of `{ missing: string[] }`, matching the `"fields"` contract.
+- **Playground provider errors** — All provider error types now include `detailsType: "context"`.
+- **Pagination consolidation** — 8 controllers that duplicated pagination parsing inline now use the shared `parsePagination()` utility.
+- **Dead code removal** — Removed unused `cursorPaginationQuerySchema` export.
 ## What's New in v1.5.2
 
 - **Error `detailsType` Field** — All error responses now include a `detailsType` field (`"fields"` for validation errors, `"context"` for business errors) so clients can programmatically distinguish between `{ fields: string[] }` and `{ key: value }` detail shapes.
