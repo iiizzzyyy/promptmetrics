@@ -273,13 +273,14 @@ export class GithubDriver implements PromptDriver {
     name: string,
     page: number = 1,
     limit: number = 50,
+    workspaceId: string = 'default',
   ): Promise<{ items: PromptVersion[]; total: number }> {
     const db = getDb();
     const rows = (await db
-      .prepare('SELECT * FROM prompts WHERE name = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
-      .all(name, limit, (page - 1) * limit)) as PromptVersion[];
+      .prepare('SELECT * FROM prompts WHERE name = ? AND workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
+      .all(name, workspaceId, limit, (page - 1) * limit)) as PromptVersion[];
 
-    const total = parseCountRow(await db.prepare('SELECT COUNT(*) as count FROM prompts WHERE name = ?').get(name));
+    const total = parseCountRow(await db.prepare('SELECT COUNT(*) as count FROM prompts WHERE name = ? AND workspace_id = ?').get(name, workspaceId));
 
     return { items: rows, total };
   }

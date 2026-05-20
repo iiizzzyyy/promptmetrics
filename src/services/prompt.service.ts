@@ -80,7 +80,7 @@ export class PromptService {
     if (!version) {
       const activeVersion = (await db
         .prepare(
-          "SELECT version_tag FROM prompts WHERE id = (SELECT active_version_id FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active' LIMIT 1)",
+          "SELECT version_tag FROM prompts WHERE id = (SELECT active_version_id FROM prompts WHERE name = ? AND workspace_id = ? AND status = 'active' AND active_version_id IS NOT NULL LIMIT 1)",
         )
         .get(name, workspaceId)) as { version_tag: string } | undefined;
       if (activeVersion) {
