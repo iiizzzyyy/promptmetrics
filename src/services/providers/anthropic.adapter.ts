@@ -27,7 +27,7 @@ function mapAnthropicError(err: unknown): ProviderError {
       return ProviderError.rateLimit('anthropic');
     }
     if (status === 529) {
-      return ProviderError.unknown('anthropic', 'Anthropic API is overloaded');
+      return ProviderError.rateLimit('anthropic');
     }
     if (status === 400) {
       return ProviderError.invalidRequest('anthropic', message);
@@ -78,15 +78,16 @@ export class AnthropicAdapter implements LLMProviderAdapter {
     const startTime = Date.now();
 
     try {
+      const systemMessages = request.messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n');
+      const apiMessages = request.messages
+        .filter((m) => m.role !== 'system')
+        .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+
       const response = await this.getClient().messages.create({
         model: request.model,
         max_tokens: request.maxTokens ?? 4096,
-        messages: request.messages.map((m) => {
-          if (m.role === 'system') {
-            return { role: 'user' as const, content: `[System]\n${m.content}` };
-          }
-          return { role: m.role, content: m.content };
-        }),
+        system: systemMessages || undefined,
+        messages: apiMessages,
         temperature: request.temperature,
         top_p: request.topP,
       });
@@ -116,16 +117,17 @@ export class AnthropicAdapter implements LLMProviderAdapter {
     const startTime = Date.now();
 
     try {
+      const systemMessages = request.messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n');
+      const apiMessages = request.messages
+        .filter((m) => m.role !== 'system')
+        .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+
       const stream = await this.getClient().messages.create(
         {
           model: request.model,
           max_tokens: request.maxTokens ?? 4096,
-          messages: request.messages.map((m) => {
-            if (m.role === 'system') {
-              return { role: 'user' as const, content: `[System]\n${m.content}` };
-            }
-            return { role: m.role, content: m.content };
-          }),
+          system: systemMessages || undefined,
+          messages: apiMessages,
           temperature: request.temperature,
           top_p: request.topP,
           stream: true,

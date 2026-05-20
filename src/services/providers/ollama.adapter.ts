@@ -192,6 +192,20 @@ export class OllamaAdapter implements LLMProviderAdapter {
         reader.releaseLock();
       }
 
+      // Process any remaining buffer content (e.g., final JSON without trailing newline)
+      if (buffer.trim()) {
+        const parsed = safeJsonParse<OllamaStreamChunk | null>(buffer.trim(), null);
+        if (parsed) {
+          if (parsed.message?.content) {
+            tokensOut += 1;
+            yield { type: 'token', content: parsed.message.content };
+          }
+          if (parsed.done) {
+            finishReason = parsed.done_reason || 'stop';
+          }
+        }
+      }
+
       const tokensIn = this.estimateTokensIn(request);
       const latencyMs = Date.now() - startTime;
 
