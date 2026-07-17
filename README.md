@@ -1,3 +1,5 @@
+> **Maintained by the [@promptmetrics](https://github.com/promptmetrics) team.** This is the open-source product repo; the org holds our HubSpot/Claude tooling and skills.
+
 # PromptMetrics
 
 [![npm](https://img.shields.io/npm/v/promptmetrics.svg)](https://www.npmjs.com/package/promptmetrics)
